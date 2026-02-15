@@ -69,7 +69,7 @@ fn model_roundtrip_fixtures_decode_view_and_roundtrip_binary() {
         );
     }
 
-    assert!(seen >= 20, "expected at least 20 model_roundtrip fixtures");
+    assert!(seen >= 40, "expected at least 40 model_roundtrip fixtures");
 }
 
 #[test]

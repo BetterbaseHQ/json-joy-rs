@@ -36,8 +36,8 @@ fn fixture_manifest_exists_and_has_entries() {
         .as_u64()
         .expect("manifest.fixture_count must be u64");
     assert!(
-        fixture_count >= 50,
-        "fixture_count must be >= 50 for broad patch-surface coverage"
+        fixture_count >= 100,
+        "fixture_count must be >= 100 for broad patch/model surface coverage"
     );
 }
 

@@ -1,0 +1,72 @@
+{
+  "fixture_version": 1,
+  "name": "model_roundtrip_random_02_v1",
+  "scenario": "model_roundtrip",
+  "input": {
+    "sid": 73101,
+    "data": [
+      [
+        -1.6,
+        ""
+      ],
+      {
+        "syl4ygkwv": -8.9,
+        "26fg4v3i": -98.6,
+        "q03b6ol": {
+          "4gf": false
+        },
+        "kuicc": {
+          "lsqcj5": null
+        }
+      },
+      [
+        2.5
+      ],
+      {
+        "983cl": 71.4,
+        "a6ij1447z": {
+          "qedgi": false,
+          "ii4km": false
+        },
+        "vm1gc2iv": -23.6,
+        "a20fwl4": null
+      }
+    ]
+  },
+  "expected": {
+    "model_binary_hex": "000000d98124c114048123c1811e02812220812100fbbff999999999999a811f80811c44780973796c3479676b7776811b00fbc021cccccccccccd78083236666734763369811a00fbc058a66666666666780771303362366f6c81194163346766811800f4656b7569636381164178066c7371636a35811500f68112c11e01811120811000fa402000001d4465393833636c1c00fb4051d9999999999a78096136696a313434377a1b426571656467691a00f4656969346b6d1900f47808766d3167633269761700fbc03799999999999a780761323066776c341600f6018dbb0425",
+    "view_json": [
+      [
+        -1.6,
+        ""
+      ],
+      {
+        "syl4ygkwv": -8.9,
+        "26fg4v3i": -98.6,
+        "q03b6ol": {
+          "4gf": false
+        },
+        "kuicc": {
+          "lsqcj5": null
+        }
+      },
+      [
+        2.5
+      ],
+      {
+        "983cl": 71.4,
+        "a6ij1447z": {
+          "qedgi": false,
+          "ii4km": false
+        },
+        "vm1gc2iv": -23.6,
+        "a20fwl4": null
+      }
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

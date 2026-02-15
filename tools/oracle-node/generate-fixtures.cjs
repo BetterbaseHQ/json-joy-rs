@@ -44,6 +44,52 @@ function cloneJson(x) {
   return JSON.parse(JSON.stringify(x));
 }
 
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function rng() {
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randInt(rng, maxExclusive) {
+  return Math.floor(rng() * maxExclusive);
+}
+
+function randString(rng, minLen, maxLen) {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const len = minLen + randInt(rng, maxLen - minLen + 1);
+  let out = '';
+  for (let i = 0; i < len; i++) out += alphabet[randInt(rng, alphabet.length)];
+  return out;
+}
+
+function randScalar(rng) {
+  const t = randInt(rng, 5);
+  if (t === 0) return null;
+  if (t === 1) return rng() < 0.5;
+  if (t === 2) return (randInt(rng, 2000) - 1000) / 10;
+  return randString(rng, 0, 16);
+}
+
+function randJson(rng, depth) {
+  if (depth <= 0) return randScalar(rng);
+  const t = randInt(rng, 4);
+  if (t <= 1) return randScalar(rng);
+  if (t === 2) {
+    const n = randInt(rng, 5);
+    const arr = [];
+    for (let i = 0; i < n; i++) arr.push(randJson(rng, depth - 1));
+    return arr;
+  }
+  const n = randInt(rng, 5);
+  const obj = {};
+  for (let i = 0; i < n; i++) obj[randString(rng, 1, 10)] = randJson(rng, depth - 1);
+  return obj;
+}
+
 function mkModel(data, sid) {
   const model = Model.create(undefined, sid);
   model.api.set(data);
@@ -270,6 +316,15 @@ function allModelFixtures() {
     {name: 'model_roundtrip_server_array_v1', sid: 1, data: [1, 2, 3]},
     {name: 'model_roundtrip_server_nested_v1', sid: 1, data: {doc: {title: 'server', flags: [true, false]}}},
   ];
+
+  const rng = mulberry32(0x5eedC0de);
+  for (let i = 0; i < 20; i++) {
+    cases.push({
+      name: `model_roundtrip_random_${String(i + 1).padStart(2, '0')}_v1`,
+      sid: 73100 + i,
+      data: randJson(rng, 3),
+    });
+  }
 
   return cases.map((c) => buildModelFixture(c.name, c.sid, c.data));
 }

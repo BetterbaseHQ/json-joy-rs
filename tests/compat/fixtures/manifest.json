@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 82,
+  "fixture_count": 102,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -373,6 +373,106 @@
       "name": "model_roundtrip_server_nested_v1",
       "scenario": "model_roundtrip",
       "file": "model_roundtrip_server_nested_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_01_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_01_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_02_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_02_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_03_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_03_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_04_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_04_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_05_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_05_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_06_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_06_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_07_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_07_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_08_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_08_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_09_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_09_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_10_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_10_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_11_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_11_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_12_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_12_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_13_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_13_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_14_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_14_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_15_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_15_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_16_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_16_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_17_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_17_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_18_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_18_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_19_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_19_v1.json"
+    },
+    {
+      "name": "model_roundtrip_random_20_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_random_20_v1.json"
     },
     {
       "name": "model_decode_error_empty_v1",
