@@ -1,7 +1,7 @@
 //! less-db-js compatibility layer (M5, oracle-backed bridge).
 
 use crate::diff_runtime;
-use crate::is_valid_session_id;
+use crate::{generate_session_id, is_valid_session_id};
 use crate::model::Model;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -82,12 +82,13 @@ pub fn fork_model(model: &CompatModel, sid: Option<u64>) -> Result<CompatModel, 
             Ok(cloned)
         }
         None => {
-            let out = oracle_call(json!({
-                "op": "fork",
-                "model_binary_hex": hex(&model.model_binary),
-                "sid": sid,
-            }))?;
-            parse_state(out)
+            let mut cloned = model.clone();
+            let mut sid = generate_session_id();
+            while sid == cloned.sid {
+                sid = generate_session_id();
+            }
+            cloned.sid = sid;
+            Ok(cloned)
         }
     }
 }
@@ -136,16 +137,9 @@ pub fn merge_with_pending_patches(
     if patches.is_empty() {
         return Ok(());
     }
-    let patch_hexes: Vec<String> = patches.iter().map(|p| hex(p)).collect();
-    let out = oracle_call(json!({
-        "op": "merge",
-        "model_binary_hex": hex(&model.model_binary),
-        "patches_binary_hex": patch_hexes,
-    }))?;
-    let state = parse_state(out)?;
-    model.model_binary = state.model_binary;
-    model.view = state.view;
-    model.sid = state.sid;
+    for patch in patches {
+        apply_patch(model, patch)?;
+    }
     Ok(())
 }
 
