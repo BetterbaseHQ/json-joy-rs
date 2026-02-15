@@ -1,14 +1,18 @@
 //! M4 internal diff entrypoint.
 //!
 //! Compatibility note:
-//! - This path delegates to pinned upstream json-joy oracle logic for exact
-//!   binary parity while Rust-native diff implementation is hardened.
+//! - This path now includes a native fast path for logical empty-root object
+//!   models. For all other cases it delegates to pinned upstream json-joy
+//!   oracle logic for exact binary parity while Rust-native diff implementation
+//!   is hardened.
 
+use crate::model::Model;
+use crate::patch::{ConValue, DecodedOp, Timestamp};
+use crate::patch_builder::{encode_patch_from_ops, PatchBuildError};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::process::Command;
 use thiserror::Error;
-use crate::model::Model;
 
 #[derive(Debug, Error)]
 pub enum DiffError {
@@ -20,6 +24,8 @@ pub enum DiffError {
     InvalidOutput,
     #[error("invalid patch hex")]
     InvalidPatchHex,
+    #[error("native patch encode failed: {0}")]
+    NativeEncode(#[from] PatchBuildError),
 }
 
 pub struct RuntimeDiffer;
@@ -39,13 +45,19 @@ pub fn diff_model_to_patch_bytes(
     next_view: &Value,
     sid: u64,
 ) -> Result<Option<Vec<u8>>, DiffError> {
-    // Native no-op fast path. This removes subprocess overhead for exact-equal
-    // states and is parity-safe because upstream diff returns no patch in this
-    // case.
+    // Native no-op fast path. Upstream diff returns no patch for exact-equal
+    // views, so this is parity-safe and avoids subprocess overhead.
     if let Ok(model) = Model::from_binary(base_model_binary) {
         if model.view() == next_view {
             return Ok(None);
         }
+    }
+
+    // Native logical empty-object root path. This covers the current
+    // model_diff_parity fixture corpus and many less-db create/diff/apply
+    // scenarios while preserving oracle fallback for broader semantics.
+    if let Some(native) = try_native_empty_obj_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
     }
 
     let script = oracle_diff_script_path();
@@ -82,6 +94,204 @@ pub fn diff_model_to_patch_bytes(
         .and_then(Value::as_str)
         .ok_or(DiffError::InvalidOutput)?;
     Ok(Some(decode_hex(hex_str)?))
+}
+
+fn try_native_empty_obj_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let _ = base_obj;
+
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+    if next_obj.is_empty() {
+        return Ok(Some(None));
+    }
+
+    let (root_sid, base_time) = match logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+    let root = Timestamp {
+        sid: root_sid,
+        time: 1,
+    };
+    let mut pairs = Vec::with_capacity(next_obj.len());
+    for (k, v) in next_obj {
+        let id = emitter.emit_value(v);
+        pairs.push((k.clone(), id));
+    }
+    emitter.push(DecodedOp::InsObj {
+        id: emitter.next_id(),
+        obj: root,
+        data: pairs,
+    });
+
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(Some(encoded)))
+}
+
+struct NativeEmitter {
+    sid: u64,
+    cursor: u64,
+    ops: Vec<DecodedOp>,
+}
+
+impl NativeEmitter {
+    fn new(sid: u64, start_time: u64) -> Self {
+        Self {
+            sid,
+            cursor: start_time,
+            ops: Vec::new(),
+        }
+    }
+
+    fn next_id(&self) -> Timestamp {
+        Timestamp {
+            sid: self.sid,
+            time: self.cursor,
+        }
+    }
+
+    fn push(&mut self, op: DecodedOp) {
+        self.cursor = self.cursor.saturating_add(op.span());
+        self.ops.push(op);
+    }
+
+    fn emit_value(&mut self, value: &Value) -> Timestamp {
+        match value {
+            Value::Null | Value::Bool(_) | Value::Number(_) => {
+                let id = self.next_id();
+                self.push(DecodedOp::NewCon {
+                    id,
+                    value: ConValue::Json(value.clone()),
+                });
+                id
+            }
+            Value::String(s) => {
+                let str_id = self.next_id();
+                self.push(DecodedOp::NewStr { id: str_id });
+                if !s.is_empty() {
+                    let ins_id = self.next_id();
+                    self.push(DecodedOp::InsStr {
+                        id: ins_id,
+                        obj: str_id,
+                        reference: str_id,
+                        data: s.clone(),
+                    });
+                }
+                str_id
+            }
+            Value::Array(items) => {
+                let arr_id = self.next_id();
+                self.push(DecodedOp::NewArr { id: arr_id });
+                if !items.is_empty() {
+                    let mut children = Vec::with_capacity(items.len());
+                    for item in items {
+                        if is_con_scalar(item) {
+                            // Array scalar elements are emitted as VAL wrappers
+                            // around CON nodes to mirror upstream diff op shape.
+                            let val_id = self.next_id();
+                            self.push(DecodedOp::NewVal { id: val_id });
+                            let con_id = self.emit_value(item);
+                            let ins_id = self.next_id();
+                            self.push(DecodedOp::InsVal {
+                                id: ins_id,
+                                obj: val_id,
+                                val: con_id,
+                            });
+                            children.push(val_id);
+                        } else {
+                            children.push(self.emit_value(item));
+                        }
+                    }
+                    let ins_id = self.next_id();
+                    self.push(DecodedOp::InsArr {
+                        id: ins_id,
+                        obj: arr_id,
+                        reference: arr_id,
+                        data: children,
+                    });
+                }
+                arr_id
+            }
+            Value::Object(map) => {
+                let obj_id = self.next_id();
+                self.push(DecodedOp::NewObj { id: obj_id });
+                if !map.is_empty() {
+                    let mut pairs = Vec::with_capacity(map.len());
+                    for (k, v) in map {
+                        let id = self.emit_value(v);
+                        pairs.push((k.clone(), id));
+                    }
+                    let ins_id = self.next_id();
+                    self.push(DecodedOp::InsObj {
+                        id: ins_id,
+                        obj: obj_id,
+                        data: pairs,
+                    });
+                }
+                obj_id
+            }
+        }
+    }
+}
+
+fn is_con_scalar(value: &Value) -> bool {
+    matches!(value, Value::Null | Value::Bool(_) | Value::Number(_))
+}
+
+fn logical_clock_sid_time(data: &[u8]) -> Option<(u64, u64)> {
+    if data.is_empty() {
+        return None;
+    }
+    // server-clock preamble is not handled by native path yet.
+    if (data[0] & 0x80) != 0 {
+        return None;
+    }
+    if data.len() < 4 {
+        return None;
+    }
+    let offset = u32::from_be_bytes([data[0], data[1], data[2], data[3]]) as usize;
+    let mut pos = 4usize.checked_add(offset)?;
+    let _table_len = read_vu57(data, &mut pos)?;
+    let sid = read_vu57(data, &mut pos)?;
+    let time = read_vu57(data, &mut pos)?;
+    Some((sid, time))
+}
+
+fn read_vu57(data: &[u8], pos: &mut usize) -> Option<u64> {
+    let mut result: u64 = 0;
+    let mut shift: u32 = 0;
+    for i in 0..8 {
+        let b = *data.get(*pos)?;
+        *pos += 1;
+        if i < 7 {
+            let part = (b & 0x7f) as u64;
+            result |= part.checked_shl(shift)?;
+            if (b & 0x80) == 0 {
+                return Some(result);
+            }
+            shift += 7;
+        } else {
+            result |= (b as u64).checked_shl(49)?;
+            return Some(result);
+        }
+    }
+    None
 }
 
 fn oracle_diff_script_path() -> PathBuf {
