@@ -3,6 +3,7 @@
 use crate::diff_runtime;
 use crate::{generate_session_id, is_valid_session_id};
 use crate::model::Model;
+use crate::model_runtime::RuntimeModel;
 use crate::patch::Patch;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -60,6 +61,33 @@ pub fn apply_patch(model: &mut CompatModel, patch_bytes: &[u8]) -> Result<(), Co
     if let Ok(decoded) = Patch::from_binary(patch_bytes) {
         if decoded.op_count() == 0 {
             return Ok(());
+        }
+        // Native no-op/stale replay fast path.
+        //
+        // If runtime application does not change materialized view and the
+        // patch contains no `nop`, keep binary/view unchanged and avoid oracle
+        // subprocess overhead. `nop` is excluded because upstream may advance
+        // clock state even when view stays the same.
+        if !decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, crate::patch::DecodedOp::Nop { .. }))
+        {
+            // Runtime apply coverage is currently strongest for empty-object
+            // logical base models. Restrict no-op fast path to that envelope
+            // to avoid false no-op decisions for richer model states.
+            let base_empty_object = Model::from_binary(&model.model_binary)
+                .ok()
+                .is_some_and(|m| matches!(m.view(), Value::Object(map) if map.is_empty()));
+
+            if base_empty_object {
+                if let Ok(mut runtime) = RuntimeModel::from_model_binary(&model.model_binary) {
+                    let before = runtime.view_json();
+                    if runtime.apply_patch(&decoded).is_ok() && runtime.view_json() == before {
+                        return Ok(());
+                    }
+                }
+            }
         }
     }
     let out = oracle_call(json!({
