@@ -230,13 +230,85 @@ function allDecodeErrorFixtures() {
   return invalid.map((v) => buildDecodeErrorFixture(v.name, v.hex));
 }
 
+function buildModelFixture(name, sid, data) {
+  const model = mkModel(cloneJson(data), sid);
+  const binary = model.toBinary();
+  const restored = Model.fromBinary(binary);
+
+  return baseFixture(name, 'model_roundtrip', {sid, data}, {
+    model_binary_hex: hex(binary),
+    view_json: restored.view()
+  });
+}
+
+function allModelFixtures() {
+  const cases = [
+    {name: 'model_roundtrip_scalar_number_v1', sid: 73001, data: 1},
+    {name: 'model_roundtrip_scalar_string_v1', sid: 73002, data: 'hello'},
+    {name: 'model_roundtrip_scalar_bool_v1', sid: 73003, data: true},
+    {name: 'model_roundtrip_scalar_null_v1', sid: 73004, data: null},
+    {name: 'model_roundtrip_object_simple_v1', sid: 73005, data: {a: 1, b: 'x'}},
+    {name: 'model_roundtrip_object_nested_v1', sid: 73006, data: {a: {b: {c: 1}}}},
+    {name: 'model_roundtrip_object_many_keys_v1', sid: 73007, data: {a: 1, b: 2, c: 3, d: 4}},
+    {name: 'model_roundtrip_array_numbers_v1', sid: 73008, data: [1, 2, 3]},
+    {name: 'model_roundtrip_array_objects_v1', sid: 73009, data: [{id: 1}, {id: 2}]},
+    {name: 'model_roundtrip_array_nested_v1', sid: 73010, data: [[1], [2, 3], []]},
+    {name: 'model_roundtrip_mixed_doc_v1', sid: 73011, data: {id: 'd1', title: 'T', tags: ['a'], done: false}},
+    {name: 'model_roundtrip_empty_object_v1', sid: 73012, data: {}},
+    {name: 'model_roundtrip_empty_array_v1', sid: 73013, data: []},
+    {name: 'model_roundtrip_long_string_v1', sid: 73014, data: {txt: 'The quick brown fox jumps over the lazy dog'}},
+    {name: 'model_roundtrip_deep_v1', sid: 73015, data: {a: {b: {c: {d: {e: 1}}}}}},
+    {name: 'model_roundtrip_unicode_v1', sid: 73016, data: {txt: 'hello-π-✓'}},
+    {name: 'model_roundtrip_numbers_v1', sid: 73017, data: {n1: 0, n2: -1, n3: 123.456}},
+    {name: 'model_roundtrip_boolean_map_v1', sid: 73018, data: {a: true, b: false}},
+    {name: 'model_roundtrip_nullable_fields_v1', sid: 73019, data: {a: null, b: 1, c: null}},
+    {name: 'model_roundtrip_complex_v1', sid: 73020, data: {meta: {v: 1}, items: [{k: 'a'}, {k: 'b'}], active: true}}
+  ];
+
+  return cases.map((c) => buildModelFixture(c.name, c.sid, c.data));
+}
+
+function buildModelDecodeErrorFixture(name, modelBinaryHex) {
+  let message = 'UNKNOWN';
+  try {
+    Model.fromBinary(fromHex(modelBinaryHex));
+    message = 'NO_ERROR';
+  } catch (err) {
+    message = err instanceof Error ? err.message : String(err);
+  }
+
+  return baseFixture(name, 'model_decode_error', {model_binary_hex: modelBinaryHex}, {
+    error_message: message
+  });
+}
+
+function allModelDecodeErrorFixtures() {
+  const invalid = [
+    {name: 'model_decode_error_empty_v1', hex: ''},
+    {name: 'model_decode_error_one_byte_v1', hex: '00'},
+    {name: 'model_decode_error_two_bytes_v1', hex: '0000'},
+    {name: 'model_decode_error_random_4_v1', hex: 'deadbeef'},
+    {name: 'model_decode_error_random_8_v1', hex: '0123456789abcdef'},
+    {name: 'model_decode_error_ff_16_v1', hex: 'ffffffffffffffffffffffffffffffff'},
+    {name: 'model_decode_error_ascii_json_v1', hex: Buffer.from('{\"x\":1}', 'utf8').toString('hex')},
+    {name: 'model_decode_error_long_random_v1', hex: 'abcd'.repeat(32)}
+  ];
+
+  return invalid.map((v) => buildModelDecodeErrorFixture(v.name, v.hex));
+}
+
 function main() {
   ensureDir(OUT_DIR);
   for (const file of fs.readdirSync(OUT_DIR)) {
     if (file.endsWith('.json')) fs.unlinkSync(path.join(OUT_DIR, file));
   }
 
-  const fixtures = [...allDiffFixtures(), ...allDecodeErrorFixtures()];
+  const fixtures = [
+    ...allDiffFixtures(),
+    ...allDecodeErrorFixtures(),
+    ...allModelFixtures(),
+    ...allModelDecodeErrorFixtures()
+  ];
 
   for (const fixture of fixtures) {
     writeFixture(fixture.name, fixture);

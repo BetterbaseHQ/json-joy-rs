@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 50,
+  "fixture_count": 78,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -253,6 +253,146 @@
       "name": "decode_error_long_random_v1",
       "scenario": "patch_decode_error",
       "file": "decode_error_long_random_v1.json"
+    },
+    {
+      "name": "model_roundtrip_scalar_number_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_scalar_number_v1.json"
+    },
+    {
+      "name": "model_roundtrip_scalar_string_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_scalar_string_v1.json"
+    },
+    {
+      "name": "model_roundtrip_scalar_bool_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_scalar_bool_v1.json"
+    },
+    {
+      "name": "model_roundtrip_scalar_null_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_scalar_null_v1.json"
+    },
+    {
+      "name": "model_roundtrip_object_simple_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_object_simple_v1.json"
+    },
+    {
+      "name": "model_roundtrip_object_nested_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_object_nested_v1.json"
+    },
+    {
+      "name": "model_roundtrip_object_many_keys_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_object_many_keys_v1.json"
+    },
+    {
+      "name": "model_roundtrip_array_numbers_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_array_numbers_v1.json"
+    },
+    {
+      "name": "model_roundtrip_array_objects_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_array_objects_v1.json"
+    },
+    {
+      "name": "model_roundtrip_array_nested_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_array_nested_v1.json"
+    },
+    {
+      "name": "model_roundtrip_mixed_doc_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_mixed_doc_v1.json"
+    },
+    {
+      "name": "model_roundtrip_empty_object_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_empty_object_v1.json"
+    },
+    {
+      "name": "model_roundtrip_empty_array_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_empty_array_v1.json"
+    },
+    {
+      "name": "model_roundtrip_long_string_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_long_string_v1.json"
+    },
+    {
+      "name": "model_roundtrip_deep_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_deep_v1.json"
+    },
+    {
+      "name": "model_roundtrip_unicode_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_unicode_v1.json"
+    },
+    {
+      "name": "model_roundtrip_numbers_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_numbers_v1.json"
+    },
+    {
+      "name": "model_roundtrip_boolean_map_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_boolean_map_v1.json"
+    },
+    {
+      "name": "model_roundtrip_nullable_fields_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_nullable_fields_v1.json"
+    },
+    {
+      "name": "model_roundtrip_complex_v1",
+      "scenario": "model_roundtrip",
+      "file": "model_roundtrip_complex_v1.json"
+    },
+    {
+      "name": "model_decode_error_empty_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_empty_v1.json"
+    },
+    {
+      "name": "model_decode_error_one_byte_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_one_byte_v1.json"
+    },
+    {
+      "name": "model_decode_error_two_bytes_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_two_bytes_v1.json"
+    },
+    {
+      "name": "model_decode_error_random_4_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_random_4_v1.json"
+    },
+    {
+      "name": "model_decode_error_random_8_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_random_8_v1.json"
+    },
+    {
+      "name": "model_decode_error_ff_16_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_ff_16_v1.json"
+    },
+    {
+      "name": "model_decode_error_ascii_json_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_ascii_json_v1.json"
+    },
+    {
+      "name": "model_decode_error_long_random_v1",
+      "scenario": "model_decode_error",
+      "file": "model_decode_error_long_random_v1.json"
     }
   ]
 }

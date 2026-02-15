@@ -1,0 +1,26 @@
+{
+  "fixture_version": 1,
+  "name": "model_roundtrip_nullable_fields_v1",
+  "scenario": "model_roundtrip",
+  "input": {
+    "sid": 73019,
+    "data": {
+      "a": null,
+      "b": 1,
+      "c": null
+    }
+  },
+  "expected": {
+    "model_binary_hex": "00000011154361611400f6616213000161631200f601bbba0406",
+    "view_json": {
+      "a": null,
+      "b": 1,
+      "c": null
+    }
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

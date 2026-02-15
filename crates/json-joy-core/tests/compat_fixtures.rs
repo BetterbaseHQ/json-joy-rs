@@ -59,6 +59,39 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
         assert!(fixture["expected"].is_object(), "fixture.expected must be object");
         assert!(fixture["meta"].is_object(), "fixture.meta must be object");
         assert_eq!(fixture["meta"]["upstream_version"].as_str(), Some("17.67.0"));
+
+        match fixture["scenario"].as_str().expect("scenario must be string") {
+            "patch_diff_apply" => {
+                assert!(
+                    fixture["expected"]["patch_present"].is_boolean(),
+                    "patch_diff_apply fixtures must define expected.patch_present"
+                );
+            }
+            "patch_decode_error" => {
+                assert!(
+                    fixture["expected"]["error_message"].is_string(),
+                    "patch_decode_error fixtures must define expected.error_message"
+                );
+            }
+            "model_roundtrip" => {
+                assert!(
+                    fixture["expected"]["model_binary_hex"].is_string(),
+                    "model_roundtrip fixtures must define expected.model_binary_hex"
+                );
+                assert!(
+                    !fixture["expected"]["view_json"].is_null()
+                        || fixture["input"]["data"].is_null(),
+                    "model_roundtrip fixtures must define expected.view_json"
+                );
+            }
+            "model_decode_error" => {
+                assert!(
+                    fixture["expected"]["error_message"].is_string(),
+                    "model_decode_error fixtures must define expected.error_message"
+                );
+            }
+            other => panic!("unexpected fixture scenario: {other}"),
+        }
     }
 }
 
@@ -74,7 +107,18 @@ fn manifest_contains_required_scenarios() {
     let has_decode_error = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("patch_decode_error"));
+    let has_model_roundtrip = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("model_roundtrip"));
+    let has_model_decode_error = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("model_decode_error"));
 
     assert!(has_diff_apply, "fixtures must include patch_diff_apply scenarios");
     assert!(has_decode_error, "fixtures must include patch_decode_error scenarios");
+    assert!(has_model_roundtrip, "fixtures must include model_roundtrip scenarios");
+    assert!(
+        has_model_decode_error,
+        "fixtures must include model_decode_error scenarios"
+    );
 }

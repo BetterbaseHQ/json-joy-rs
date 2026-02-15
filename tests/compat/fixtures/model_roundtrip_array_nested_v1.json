@@ -1,0 +1,36 @@
+{
+  "fixture_version": 1,
+  "name": "model_roundtrip_array_nested_v1",
+  "scenario": "model_roundtrip",
+  "input": {
+    "sid": 73010,
+    "data": [
+      [
+        1
+      ],
+      [
+        2,
+        3
+      ],
+      []
+    ]
+  },
+  "expected": {
+    "model_binary_hex": "000000218113c113038112c11e01811120811000011dc116021c201b0002192018000314c001b2ba0414",
+    "view_json": [
+      [
+        1
+      ],
+      [
+        2,
+        3
+      ],
+      []
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

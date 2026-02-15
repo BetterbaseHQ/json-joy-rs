@@ -1,0 +1,22 @@
+{
+  "fixture_version": 1,
+  "name": "model_roundtrip_long_string_v1",
+  "scenario": "model_roundtrip",
+  "input": {
+    "sid": 73014,
+    "data": {
+      "txt": "The quick brown fox jumps over the lazy dog"
+    }
+  },
+  "expected": {
+    "model_binary_hex": "00000039812e4163747874812d81812c782b54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f6701b6ba042f",
+    "view_json": {
+      "txt": "The quick brown fox jumps over the lazy dog"
+    }
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

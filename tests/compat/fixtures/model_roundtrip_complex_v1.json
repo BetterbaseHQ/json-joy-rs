@@ -1,0 +1,44 @@
+{
+  "fixture_version": 1,
+  "name": "model_roundtrip_complex_v1",
+  "scenario": "model_roundtrip",
+  "input": {
+    "sid": 73020,
+    "data": {
+      "meta": {
+        "v": 1
+      },
+      "items": [
+        {
+          "k": "a"
+        },
+        {
+          "k": "b"
+        }
+      ],
+      "active": true
+    }
+  },
+  "expected": {
+    "model_binary_hex": "00000037811143646d65746181104161761f0001656974656d731dc114021c41616b1b811a61611841616b178116616278066163746976651200f501bcba0412",
+    "view_json": {
+      "meta": {
+        "v": 1
+      },
+      "items": [
+        {
+          "k": "a"
+        },
+        {
+          "k": "b"
+        }
+      ],
+      "active": true
+    }
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
