@@ -13,9 +13,10 @@
 
 ## M2: Model Binary + View
 
-- [ ] Generate model-focused fixtures (decode/view/roundtrip).
-- [ ] Add failing model compatibility tests.
-- [ ] Implement model binary decode + view parity.
+- [x] Generate model-focused fixtures (decode/view/roundtrip).
+- [x] Add failing model compatibility tests.
+- [ ] Implement model binary decode parity baseline (accept/reject + roundtrip).
+- [ ] Implement model `view()` materialization parity from binary.
 
 ## M3: Patch Application + Clock Semantics
 
