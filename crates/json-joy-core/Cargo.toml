@@ -1,0 +1,9 @@
+[package]
+name = "json-joy-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Core Rust primitives for json-joy-rs"
+
+[dependencies]
+rand = "0.8"

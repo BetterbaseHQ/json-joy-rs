@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+
+members = [
+  "crates/json-joy-core",
+  "crates/json-joy-ffi",
+  "tools/embedded-uniffi-bindgen",
+]
+
+default-members = [
+  "crates/json-joy-core",
+  "crates/json-joy-ffi",
+  "tools/embedded-uniffi-bindgen",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/nicoth-in/json-joy-rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

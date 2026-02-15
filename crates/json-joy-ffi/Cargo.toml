@@ -1,0 +1,16 @@
+[package]
+name = "json-joy-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "UniFFI bridge crate for json-joy-rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+json-joy-core = { path = "../json-joy-core" }
+uniffi = { version = "0.31.0", default-features = false }
+
+[build-dependencies]
+uniffi = { version = "0.31.0", features = ["build"] }

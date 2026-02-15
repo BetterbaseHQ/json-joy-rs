@@ -1,0 +1,5 @@
+namespace json_joy {
+    string version();
+    u64 generate_session_id();
+    boolean is_valid_session_id(u64 sid);
+};
