@@ -31,7 +31,7 @@ fn decode_hex(s: &str) -> Vec<u8> {
 }
 
 #[test]
-fn model_roundtrip_fixtures_decode_and_roundtrip_binary() {
+fn model_roundtrip_fixtures_decode_view_and_roundtrip_binary() {
     let dir = fixtures_dir();
     let manifest = read_json(&dir.join("manifest.json"));
     let fixtures = manifest["fixtures"].as_array().expect("manifest.fixtures must be array");
@@ -53,11 +53,18 @@ fn model_roundtrip_fixtures_decode_and_roundtrip_binary() {
 
         let model = Model::from_binary(&model_bytes)
             .unwrap_or_else(|e| panic!("Model decode failed for {}: {e}", entry["name"]));
+        let expected_view = &fixture["expected"]["view_json"];
 
         assert_eq!(
             model.to_binary(),
             model_bytes,
             "Model roundtrip mismatch for fixture {}",
+            entry["name"]
+        );
+        assert_eq!(
+            model.view(),
+            expected_view,
+            "Model view mismatch for fixture {}",
             entry["name"]
         );
     }
