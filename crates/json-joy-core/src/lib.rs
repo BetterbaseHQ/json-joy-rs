@@ -1,5 +1,7 @@
 //! Core primitives for json-joy-rs.
 
+pub mod patch;
+
 use rand::Rng;
 
 /// Minimum valid session id for json-joy logical clocks.
