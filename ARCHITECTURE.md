@@ -31,3 +31,11 @@ This repository is structured as a Rust-core + bindings monorepo, following the 
 - `json-joy-core` can evolve rapidly.
 - `json-joy-ffi` should provide a stable semver API contract for non-Rust consumers.
 - The Python package should track `json-joy-ffi` releases.
+
+## Native parity transition
+
+- Compatibility fixtures and oracle scripts are authoritative test oracles, not
+  the desired runtime architecture.
+- Runtime-core parity progress is tracked in `CORE_PARITY_MATRIX.md`.
+- During M6, production bridge paths are incrementally replaced with native
+  implementations while preserving fixture and differential parity.

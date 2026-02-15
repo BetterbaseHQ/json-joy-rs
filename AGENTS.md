@@ -61,3 +61,12 @@ A section is considered complete only when:
 ## Documentation discipline
 
 When workflow changes, update this file and relevant plan docs (`PORT_PLAN.md`) in the same change.
+
+## M6 coverage discipline
+
+- Keep `/Users/nchapman/Drive/Code/json-joy-rs/CORE_PARITY_MATRIX.md` current as the
+  single source of truth for runtime-core parity status.
+- Before starting a new core-port slice, update the matrix row status and gates
+  (`test-port mapped`, `fixture coverage`, `differential parity`, `no bridge`).
+- Do not mark a family `native` unless production code has no oracle subprocess
+  dependency for that family.

@@ -261,6 +261,22 @@ Deliverables:
 Exit criteria:
 - `make bindings-python` + Python import/smoke tests pass in CI.
 
+## M6+: Core-Complete Native Runtime Port
+
+Deliverables:
+- Runtime-core parity tracking via `CORE_PARITY_MATRIX.md`.
+- Native patch construction path (`patch_builder`) used by runtime features.
+- Upstream-mapped runtime suites (`upstream_port_*` tests).
+- Seeded differential checks (`differential_runtime_*` tests).
+- Property/state-machine replay checks (`property_replay_*` tests).
+
+Exit criteria:
+- Runtime production paths for diff/apply/model lifecycle no longer use oracle
+  subprocess bridge.
+- In-scope runtime-core families in `CORE_PARITY_MATRIX.md` marked `native`.
+- Existing fixture parity tests plus new upstream/differential/property suites
+  all pass.
+
 ## 8. CI Gates
 
 Minimum required gates before accepting “compatible”:
