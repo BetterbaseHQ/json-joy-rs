@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::process::Command;
 use thiserror::Error;
+use crate::model::Model;
 
 #[derive(Debug, Error)]
 pub enum DiffError {
@@ -38,6 +39,15 @@ pub fn diff_model_to_patch_bytes(
     next_view: &Value,
     sid: u64,
 ) -> Result<Option<Vec<u8>>, DiffError> {
+    // Native no-op fast path. This removes subprocess overhead for exact-equal
+    // states and is parity-safe because upstream diff returns no patch in this
+    // case.
+    if let Ok(model) = Model::from_binary(base_model_binary) {
+        if model.view() == next_view {
+            return Ok(None);
+        }
+    }
+
     let script = oracle_diff_script_path();
     let payload = json!({
         "base_model_binary_hex": hex(base_model_binary),
