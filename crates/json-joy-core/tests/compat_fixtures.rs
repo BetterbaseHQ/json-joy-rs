@@ -32,6 +32,13 @@ fn fixture_manifest_exists_and_has_entries() {
         Some("17.67.0"),
         "manifest upstream version must remain pinned"
     );
+    let fixture_count = manifest["fixture_count"]
+        .as_u64()
+        .expect("manifest.fixture_count must be u64");
+    assert!(
+        fixture_count >= 50,
+        "fixture_count must be >= 50 for broad patch-surface coverage"
+    );
 }
 
 #[test]
@@ -53,4 +60,21 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
         assert!(fixture["meta"].is_object(), "fixture.meta must be object");
         assert_eq!(fixture["meta"]["upstream_version"].as_str(), Some("17.67.0"));
     }
+}
+
+#[test]
+fn manifest_contains_required_scenarios() {
+    let dir = fixtures_dir();
+    let manifest = read_json(&dir.join("manifest.json"));
+    let fixtures = manifest["fixtures"].as_array().expect("manifest.fixtures must be array");
+
+    let has_diff_apply = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("patch_diff_apply"));
+    let has_decode_error = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("patch_decode_error"));
+
+    assert!(has_diff_apply, "fixtures must include patch_diff_apply scenarios");
+    assert!(has_decode_error, "fixtures must include patch_decode_error scenarios");
 }

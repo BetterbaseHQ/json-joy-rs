@@ -1,0 +1,30 @@
+{
+  "fixture_version": 1,
+  "name": "diff_object_remove_key_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72013,
+    "base": {
+      "a": 1,
+      "b": 2
+    },
+    "next": {
+      "a": 1
+    }
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "cdb20406f70200f75101616206",
+    "patch_op_count": 2,
+    "patch_span": 2,
+    "view_after_apply_json": {
+      "a": 1
+    },
+    "model_binary_after_apply_hex": "0000000c1642616115000161621100f701cdb20407"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

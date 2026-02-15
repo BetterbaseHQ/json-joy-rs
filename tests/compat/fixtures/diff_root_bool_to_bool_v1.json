@@ -1,0 +1,23 @@
+{
+  "fixture_version": 1,
+  "name": "diff_root_bool_to_bool_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72003,
+    "base": true,
+    "next": false
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "c3b20403f70200f448800003",
+    "patch_op_count": 2,
+    "patch_span": 2,
+    "view_after_apply_json": false,
+    "model_binary_after_apply_hex": "000000031100f401c3b20404"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

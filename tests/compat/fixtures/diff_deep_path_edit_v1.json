@@ -1,0 +1,47 @@
+{
+  "fixture_version": 1,
+  "name": "diff_deep_path_edit_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72038,
+    "base": {
+      "a": {
+        "b": {
+          "c": {
+            "d": "x"
+          }
+        }
+      }
+    },
+    "next": {
+      "a": {
+        "b": {
+          "c": {
+            "d": "y"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "e6b2040cf7026105067981050601",
+    "patch_op_count": 2,
+    "patch_span": 2,
+    "view_after_apply_json": {
+      "a": {
+        "b": {
+          "c": {
+            "d": "y"
+          }
+        }
+      }
+    },
+    "model_binary_after_apply_hex": "000000171c4161611b4161621a416163194161641882170111617901e6b2040d"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

@@ -2,22 +2,257 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
+  "fixture_count": 50,
   "fixtures": [
     {
-      "name": "model_roundtrip_v1",
-      "scenario": "model_roundtrip",
-      "file": "model_roundtrip_v1.json"
+      "name": "diff_root_number_to_number_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_root_number_to_number_v1.json"
     },
     {
-      "name": "patch_roundtrip_v1",
-      "scenario": "patch_roundtrip",
-      "file": "patch_roundtrip_v1.json"
+      "name": "diff_root_string_to_string_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_root_string_to_string_v1.json"
     },
     {
-      "name": "fork_merge_replay_v1",
-      "scenario": "fork_merge_replay",
-      "file": "fork_merge_replay_v1.json"
+      "name": "diff_root_bool_to_bool_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_root_bool_to_bool_v1.json"
+    },
+    {
+      "name": "diff_root_obj_to_scalar_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_root_obj_to_scalar_v1.json"
+    },
+    {
+      "name": "diff_root_scalar_to_obj_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_root_scalar_to_obj_v1.json"
+    },
+    {
+      "name": "diff_noop_object_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_noop_object_v1.json"
+    },
+    {
+      "name": "diff_noop_array_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_noop_array_v1.json"
+    },
+    {
+      "name": "diff_string_append_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_string_append_v1.json"
+    },
+    {
+      "name": "diff_string_insert_mid_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_string_insert_mid_v1.json"
+    },
+    {
+      "name": "diff_string_delete_mid_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_string_delete_mid_v1.json"
+    },
+    {
+      "name": "diff_string_replace_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_string_replace_v1.json"
+    },
+    {
+      "name": "diff_object_add_key_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_object_add_key_v1.json"
+    },
+    {
+      "name": "diff_object_remove_key_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_object_remove_key_v1.json"
+    },
+    {
+      "name": "diff_object_update_key_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_object_update_key_v1.json"
+    },
+    {
+      "name": "diff_object_multi_change_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_object_multi_change_v1.json"
+    },
+    {
+      "name": "diff_array_append_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_append_v1.json"
+    },
+    {
+      "name": "diff_array_insert_mid_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_insert_mid_v1.json"
+    },
+    {
+      "name": "diff_array_delete_mid_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_delete_mid_v1.json"
+    },
+    {
+      "name": "diff_array_replace_elem_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_replace_elem_v1.json"
+    },
+    {
+      "name": "diff_array_clear_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_clear_v1.json"
+    },
+    {
+      "name": "diff_nested_object_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_nested_object_v1.json"
+    },
+    {
+      "name": "diff_nested_array_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_nested_array_v1.json"
+    },
+    {
+      "name": "diff_nested_combo_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_nested_combo_v1.json"
+    },
+    {
+      "name": "diff_doc_update_title_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_doc_update_title_v1.json"
+    },
+    {
+      "name": "diff_doc_update_body_and_score_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_doc_update_body_and_score_v1.json"
+    },
+    {
+      "name": "diff_doc_tag_add_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_doc_tag_add_v1.json"
+    },
+    {
+      "name": "diff_doc_tag_remove_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_doc_tag_remove_v1.json"
+    },
+    {
+      "name": "diff_long_string_insert_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_long_string_insert_v1.json"
+    },
+    {
+      "name": "diff_long_string_delete_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_long_string_delete_v1.json"
+    },
+    {
+      "name": "diff_array_object_insert_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_object_insert_v1.json"
+    },
+    {
+      "name": "diff_array_object_update_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_array_object_update_v1.json"
+    },
+    {
+      "name": "diff_empty_obj_to_key_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_empty_obj_to_key_v1.json"
+    },
+    {
+      "name": "diff_key_to_empty_obj_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_key_to_empty_obj_v1.json"
+    },
+    {
+      "name": "diff_empty_arr_to_values_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_empty_arr_to_values_v1.json"
+    },
+    {
+      "name": "diff_values_to_empty_arr_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_values_to_empty_arr_v1.json"
+    },
+    {
+      "name": "diff_null_to_object_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_null_to_object_v1.json"
+    },
+    {
+      "name": "diff_object_to_null_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_object_to_null_v1.json"
+    },
+    {
+      "name": "diff_deep_path_edit_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_deep_path_edit_v1.json"
+    },
+    {
+      "name": "diff_deep_path_add_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_deep_path_add_v1.json"
+    },
+    {
+      "name": "diff_deep_path_remove_v1",
+      "scenario": "patch_diff_apply",
+      "file": "diff_deep_path_remove_v1.json"
+    },
+    {
+      "name": "decode_error_empty_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_empty_v1.json"
+    },
+    {
+      "name": "decode_error_one_byte_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_one_byte_v1.json"
+    },
+    {
+      "name": "decode_error_two_bytes_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_two_bytes_v1.json"
+    },
+    {
+      "name": "decode_error_random_4_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_4_v1.json"
+    },
+    {
+      "name": "decode_error_random_8_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_8_v1.json"
+    },
+    {
+      "name": "decode_error_ff_16_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_ff_16_v1.json"
+    },
+    {
+      "name": "decode_error_ascii_json_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_ascii_json_v1.json"
+    },
+    {
+      "name": "decode_error_sparse_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_sparse_v1.json"
+    },
+    {
+      "name": "decode_error_short_header_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_short_header_v1.json"
+    },
+    {
+      "name": "decode_error_long_random_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_long_random_v1.json"
     }
-  ],
-  "generated_at": "2026-02-15T21:34:03.059Z"
+  ]
 }

@@ -1,0 +1,23 @@
+{
+  "fixture_version": 1,
+  "name": "diff_root_number_to_number_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72001,
+    "base": 1,
+    "next": 2
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "c1b20403f702000248800003",
+    "patch_op_count": 2,
+    "patch_span": 2,
+    "view_after_apply_json": 2,
+    "model_binary_after_apply_hex": "0000000311000201c1b20404"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

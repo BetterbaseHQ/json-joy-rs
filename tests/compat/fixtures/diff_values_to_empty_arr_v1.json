@@ -1,0 +1,27 @@
+{
+  "fixture_version": 1,
+  "name": "diff_values_to_empty_arr_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72035,
+    "base": [
+      1,
+      2,
+      3
+    ],
+    "next": []
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "e3b2040ff70181010b03",
+    "patch_op_count": 1,
+    "patch_span": 1,
+    "view_after_apply_json": [],
+    "model_binary_after_apply_hex": "000000041ec1148301e3b2040f"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

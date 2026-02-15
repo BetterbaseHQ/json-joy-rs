@@ -1,0 +1,29 @@
+{
+  "fixture_version": 1,
+  "name": "diff_long_string_insert_v1",
+  "scenario": "patch_diff_apply",
+  "input": {
+    "sid": 72028,
+    "base": {
+      "txt": "The quick brown fox jumps over the lazy dog"
+    },
+    "next": {
+      "txt": "The quick agile brown fox jumps over the lazy dog"
+    }
+  },
+  "expected": {
+    "patch_present": true,
+    "patch_binary_hex": "dcb20430f70166020c6167696c6520",
+    "patch_op_count": 1,
+    "patch_span": 6,
+    "view_after_apply_json": {
+      "txt": "The quick agile brown fox jumps over the lazy dog"
+    },
+    "model_binary_after_apply_hex": "00000046813441637478748133838132780a54686520717569636b201578066167696c65208128782162726f776e20666f78206a756d7073206f76657220746865206c617a7920646f6701dcb20435"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
