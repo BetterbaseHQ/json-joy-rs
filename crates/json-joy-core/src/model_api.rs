@@ -61,6 +61,8 @@ pub struct NativeModelApi {
     sid: u64,
     next_listener_id: u64,
     listeners: BTreeMap<u64, Box<dyn FnMut(ChangeEvent) + Send + Sync>>,
+    next_batch_listener_id: u64,
+    batch_listeners: BTreeMap<u64, Box<dyn FnMut(BatchChangeEvent) + Send + Sync>>,
 }
 
 pub struct NodeHandle<'a> {
@@ -110,6 +112,13 @@ pub struct ChangeEvent {
     pub after: Value,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BatchChangeEvent {
+    pub patch_ids: Vec<(u64, u64)>,
+    pub before: Value,
+    pub after: Value,
+}
+
 impl NativeModelApi {
     pub fn from_model_binary(data: &[u8], sid_hint: Option<u64>) -> Result<Self, ModelApiError> {
         let mut runtime = RuntimeModel::from_model_binary(data)?;
@@ -124,6 +133,8 @@ impl NativeModelApi {
             sid,
             next_listener_id: 1,
             listeners: BTreeMap::new(),
+            next_batch_listener_id: 1,
+            batch_listeners: BTreeMap::new(),
         })
     }
 
@@ -139,6 +150,8 @@ impl NativeModelApi {
             sid,
             next_listener_id: 1,
             listeners: BTreeMap::new(),
+            next_batch_listener_id: 1,
+            batch_listeners: BTreeMap::new(),
         })
     }
 
@@ -154,6 +167,20 @@ impl NativeModelApi {
 
     pub fn off_change(&mut self, listener_id: u64) -> bool {
         self.listeners.remove(&listener_id).is_some()
+    }
+
+    pub fn on_changes<F>(&mut self, listener: F) -> u64
+    where
+        F: FnMut(BatchChangeEvent) + Send + Sync + 'static,
+    {
+        let id = self.next_batch_listener_id;
+        self.next_batch_listener_id = self.next_batch_listener_id.saturating_add(1);
+        self.batch_listeners.insert(id, Box::new(listener));
+        id
+    }
+
+    pub fn off_changes(&mut self, listener_id: u64) -> bool {
+        self.batch_listeners.remove(&listener_id).is_some()
     }
 
     pub fn apply_patch(&mut self, patch: &Patch) -> Result<(), ModelApiError> {
@@ -178,8 +205,21 @@ impl NativeModelApi {
     }
 
     pub fn apply_batch(&mut self, patches: &[Patch]) -> Result<(), ModelApiError> {
+        let before = self.runtime.view_json();
+        let mut patch_ids: Vec<(u64, u64)> = Vec::with_capacity(patches.len());
         for patch in patches {
+            if let Some(id) = patch.id() {
+                patch_ids.push(id);
+            }
             self.apply_patch(patch)?;
+        }
+        let after = self.runtime.view_json();
+        if before != after {
+            self.emit_batch_change(BatchChangeEvent {
+                patch_ids,
+                before,
+                after,
+            });
         }
         Ok(())
     }
@@ -435,6 +475,12 @@ impl NativeModelApi {
 
     fn emit_change(&mut self, event: ChangeEvent) {
         for listener in self.listeners.values_mut() {
+            listener(event.clone());
+        }
+    }
+
+    fn emit_batch_change(&mut self, event: BatchChangeEvent) {
+        for listener in self.batch_listeners.values_mut() {
             listener(event.clone());
         }
     }
