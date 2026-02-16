@@ -247,10 +247,11 @@ Exit criteria:
 - Full workspace test suite remains green.
 
 Implementation note:
-- M5 compatibility layer is temporarily oracle-backed for model lifecycle
-  operations (`create/load/from_binary/diff/apply/fork/merge`) to guarantee
-  behavior parity with `json-joy@17.67.0`. Native replacement is a follow-up
-  hardening task.
+- M5 compatibility layer initially used oracle-backed lifecycle operations.
+- Native status update (M6): `apply_patch` is now fully native in
+  `crates/json-joy-core/src/less_db_compat.rs` via `RuntimeModel`
+  decode/apply/encode.
+- Remaining bridge surface is `diff_runtime`.
 
 ## M6: Python Package Hardening
 
