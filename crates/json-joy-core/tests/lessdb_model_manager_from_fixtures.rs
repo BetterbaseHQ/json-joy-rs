@@ -5,6 +5,7 @@ use json_joy_core::less_db_compat::{
     apply_patch, create_model, diff_model, fork_model, merge_with_pending_patches, model_from_binary,
     model_load, model_to_binary, view_model, CompatModel,
 };
+use json_joy_core::diff_runtime::{diff_model_to_patch_bytes, DiffError};
 use json_joy_core::patch::Patch;
 use json_joy_core::patch_log::{append_patch, deserialize_patches};
 use serde_json::Value;
@@ -276,4 +277,57 @@ fn lessdb_load_size_limit_is_enforced() {
     let err2 = model_load(&oversized, 75001).expect_err("model_load should reject oversized payload");
     let msg2 = err2.to_string();
     assert!(msg2.contains("too large"), "unexpected model_load error: {msg2}");
+}
+
+#[test]
+fn lessdb_diff_native_support_inventory() {
+    let fixtures = load_lessdb_fixtures();
+    let mut supported = 0u32;
+    let mut fallback = 0u32;
+
+    for (_name, fixture) in fixtures {
+        let workflow = fixture["input"]["workflow"]
+            .as_str()
+            .expect("input.workflow must be string");
+        match workflow {
+            "create_diff_apply" => {
+                let sid = fixture["input"]["sid"].as_u64().expect("input.sid must be u64");
+                let model = create_model(&fixture["input"]["initial_json"], sid).expect("create must succeed");
+                let ops = fixture["input"]["ops"].as_array().expect("input.ops must be array");
+                for op in ops {
+                    let kind = op["kind"].as_str().expect("op.kind must be string");
+                    if kind == "diff" {
+                        let next = &op["next_view_json"];
+                        match diff_model_to_patch_bytes(&model_to_binary(&model), next, sid) {
+                            Ok(_) => supported += 1,
+                            Err(DiffError::UnsupportedShape) => fallback += 1,
+                            Err(e) => panic!("unexpected native diff error: {e}"),
+                        }
+                    }
+                }
+            }
+            "fork_merge" => {
+                let sid = fixture["input"]["sid"].as_u64().expect("input.sid must be u64");
+                let fork_sid = fixture["input"]["ops"][0]["sid"]
+                    .as_u64()
+                    .expect("fork sid must be u64");
+                let next = &fixture["input"]["ops"][1]["next_view_json"];
+                let base = create_model(&fixture["input"]["initial_json"], sid).expect("create base must succeed");
+                let fork = fork_model(&base, Some(fork_sid)).expect("fork must succeed");
+                match diff_model_to_patch_bytes(&model_to_binary(&fork), next, fork_sid) {
+                    Ok(_) => supported += 1,
+                    Err(DiffError::UnsupportedShape) => fallback += 1,
+                    Err(e) => panic!("unexpected native diff error: {e}"),
+                }
+            }
+            "merge_idempotent" => {}
+            other => panic!("unexpected workflow: {other}"),
+        }
+    }
+
+    assert!(
+        supported >= 8,
+        "expected at least 8 lessdb diff steps to be natively supported; got {supported}"
+    );
+    assert!(fallback >= 1, "expected at least one fallback-covered diff shape");
 }

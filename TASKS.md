@@ -54,5 +54,6 @@
 - [x] Add upstream-mapped runtime-core test-port suites (`tests/upstream_port/*`).
 - [x] Add seeded differential parity suites for apply/diff/model roundtrip.
 - [x] Add property/state-machine convergence tests (idempotence/order/tombstones/clocks).
+- [x] Add less-db diff native-support inventory test to track fallback reduction over time.
 - [ ] Ensure oracle scripts are test tooling only (no production runtime dependency).
 - [ ] Update docs (`PORT_PLAN.md`, `AGENTS.md`, `ARCHITECTURE.md`) for bridge-retired runtime.
