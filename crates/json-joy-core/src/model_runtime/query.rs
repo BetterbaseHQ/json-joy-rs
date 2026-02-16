@@ -546,4 +546,78 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn upstream_port_string_find_and_interval_matrix() {
+        // Upstream reference:
+        // /Users/nchapman/Code/json-joy/packages/json-joy/src/json-crdt/model/__tests__/Model.string.spec.ts
+        let sid = 99212;
+        let mut runtime = RuntimeModel::new_logical_empty(sid);
+        let str_id = ts(sid, 1);
+        apply_ops(
+            &mut runtime,
+            sid,
+            1,
+            &[
+                DecodedOp::NewStr { id: str_id },
+                DecodedOp::InsVal {
+                    id: ts(sid, 2),
+                    obj: ts(0, 0),
+                    val: str_id,
+                },
+                DecodedOp::InsStr {
+                    id: ts(sid, 3),
+                    obj: str_id,
+                    reference: str_id,
+                    data: "abc".to_string(),
+                },
+                DecodedOp::Nop {
+                    id: ts(sid, 6),
+                    len: 123,
+                },
+                DecodedOp::InsStr {
+                    id: ts(sid, 129),
+                    obj: str_id,
+                    reference: ts(sid, 5),
+                    data: "def".to_string(),
+                },
+                DecodedOp::Nop {
+                    id: ts(sid, 132),
+                    len: 10,
+                },
+                DecodedOp::InsStr {
+                    id: ts(sid, 142),
+                    obj: str_id,
+                    reference: ts(sid, 131),
+                    data: "ghi".to_string(),
+                },
+            ],
+        );
+
+        assert_eq!(runtime.string_find(str_id, 2), Some(ts(sid, 5)));
+        assert_eq!(runtime.string_find(str_id, 6), Some(ts(sid, 142)));
+        assert_eq!(runtime.string_find(str_id, 9), None);
+
+        let spans = runtime.string_find_interval(str_id, 1, 7);
+        assert_eq!(
+            spans,
+            vec![
+                Timespan {
+                    sid,
+                    time: 4,
+                    span: 2
+                },
+                Timespan {
+                    sid,
+                    time: 129,
+                    span: 3
+                },
+                Timespan {
+                    sid,
+                    time: 142,
+                    span: 2
+                }
+            ]
+        );
+    }
 }
