@@ -418,6 +418,53 @@ impl RuntimeModel {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Val(_)))
     }
 
+    pub(crate) fn val_child(&self, id: Timestamp) -> Option<Timestamp> {
+        match self.nodes.get(&Id::from(id))? {
+            RuntimeNode::Val(child) => Some((*child).into()),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn resolve_string_node(&self, id: Timestamp) -> Option<Timestamp> {
+        if self.node_is_string(id) {
+            return Some(id);
+        }
+        let child = self.val_child(id)?;
+        self.node_is_string(child).then_some(child)
+    }
+
+    pub(crate) fn resolve_bin_node(&self, id: Timestamp) -> Option<Timestamp> {
+        if self.node_is_bin(id) {
+            return Some(id);
+        }
+        let child = self.val_child(id)?;
+        self.node_is_bin(child).then_some(child)
+    }
+
+    pub(crate) fn resolve_array_node(&self, id: Timestamp) -> Option<Timestamp> {
+        if self.node_is_array(id) {
+            return Some(id);
+        }
+        let child = self.val_child(id)?;
+        self.node_is_array(child).then_some(child)
+    }
+
+    pub(crate) fn resolve_vec_node(&self, id: Timestamp) -> Option<Timestamp> {
+        if self.node_is_vec(id) {
+            return Some(id);
+        }
+        let child = self.val_child(id)?;
+        self.node_is_vec(child).then_some(child)
+    }
+
+    pub(crate) fn resolve_object_node(&self, id: Timestamp) -> Option<Timestamp> {
+        if self.node_is_object(id) {
+            return Some(id);
+        }
+        let child = self.val_child(id)?;
+        self.node_is_object(child).then_some(child)
+    }
+
     pub(crate) fn vec_index_value(&self, id: Timestamp, index: u64) -> Option<Timestamp> {
         let node = self.nodes.get(&Id::from(id))?;
         if let RuntimeNode::Vec(map) = node {

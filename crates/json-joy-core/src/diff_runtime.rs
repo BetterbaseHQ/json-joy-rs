@@ -183,7 +183,8 @@ fn try_native_non_object_root_diff(
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
 
     match (base_view, next_view) {
-        (Value::String(old), Value::String(new)) if runtime.node_is_string(root) => {
+        (Value::String(old), Value::String(new)) if runtime.resolve_string_node(root).is_some() => {
+            let root = runtime.resolve_string_node(root).expect("checked is_some");
             let slots = match runtime.string_visible_slots(root) {
                 Some(v) => v,
                 None => return Ok(None),
@@ -247,7 +248,8 @@ fn try_native_non_object_root_diff(
                 });
             }
         }
-        (Value::Array(old), Value::Array(new)) if runtime.node_is_array(root) => {
+        (Value::Array(old), Value::Array(new)) if runtime.resolve_array_node(root).is_some() => {
+            let root = runtime.resolve_array_node(root).expect("checked is_some");
             if old.iter().any(|v| !is_array_native_supported(v))
                 || new.iter().any(|v| !is_array_native_supported(v))
             {
@@ -262,10 +264,12 @@ fn try_native_non_object_root_diff(
             }
             emit_array_delta_ops(&mut emitter, root, &slots, old, new);
         }
-        (Value::Array(_), Value::Array(new)) if runtime.node_is_vec(root) => {
+        (Value::Array(_), Value::Array(new)) if runtime.resolve_vec_node(root).is_some() => {
+            let root = runtime.resolve_vec_node(root).expect("checked is_some");
             emit_vec_delta_ops(&runtime, &mut emitter, root, new)?;
         }
-        (old, new) if runtime.node_is_bin(root) => {
+        (old, new) if runtime.resolve_bin_node(root).is_some() => {
+            let root = runtime.resolve_bin_node(root).expect("checked is_some");
             let old_bin = match parse_bin_object(old) {
                 Some(v) => v,
                 None => return Ok(None),
@@ -689,8 +693,11 @@ fn try_native_root_obj_string_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let str_node = match runtime.root_object_field(key) {
-        Some(id) if runtime.node_is_string(id) => id,
+    let str_node = match runtime
+        .root_object_field(key)
+        .and_then(|id| runtime.resolve_string_node(id))
+    {
+        Some(id) => id,
         _ => return Ok(None),
     };
     let slots = match runtime.string_visible_slots(str_node) {
@@ -764,8 +771,11 @@ fn try_native_root_obj_multi_string_delta_diff(
             Value::String(s) => s,
             _ => return Ok(None),
         };
-        let str_node = match runtime.root_object_field(k) {
-            Some(id) if runtime.node_is_string(id) => id,
+        let str_node = match runtime
+            .root_object_field(k)
+            .and_then(|id| runtime.resolve_string_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
         let slots = match runtime.string_visible_slots(str_node) {
@@ -891,8 +901,11 @@ fn try_native_root_obj_array_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let arr_node = match runtime.root_object_field(key) {
-        Some(id) if runtime.node_is_array(id) => id,
+    let arr_node = match runtime
+        .root_object_field(key)
+        .and_then(|id| runtime.resolve_array_node(id))
+    {
+        Some(id) => id,
         _ => return Ok(None),
     };
     let slots = match runtime.array_visible_slots(arr_node) {
@@ -1039,8 +1052,11 @@ fn try_native_root_obj_bin_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let bin_node = match runtime.root_object_field(key) {
-        Some(id) if runtime.node_is_bin(id) => id,
+    let bin_node = match runtime
+        .root_object_field(key)
+        .and_then(|id| runtime.resolve_bin_node(id))
+    {
+        Some(id) => id,
         _ => return Ok(None),
     };
     let slots = match runtime.bin_visible_slots(bin_node) {
@@ -1112,8 +1128,11 @@ fn try_native_root_obj_multi_bin_delta_diff(
             Some(v) => v,
             None => return Ok(None),
         };
-        let bin_node = match runtime.root_object_field(k) {
-            Some(id) if runtime.node_is_bin(id) => id,
+        let bin_node = match runtime
+            .root_object_field(k)
+            .and_then(|id| runtime.resolve_bin_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
         let slots = match runtime.bin_visible_slots(bin_node) {
@@ -1225,9 +1244,10 @@ fn try_native_nested_obj_bin_delta_diff(
             None => return Ok(None),
         };
     }
-    if !runtime.node_is_bin(node) {
-        return Ok(None);
-    }
+    node = match runtime.resolve_bin_node(node) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
     let slots = match runtime.bin_visible_slots(node) {
         Some(v) => v,
         None => return Ok(None),
@@ -1307,9 +1327,10 @@ fn try_native_multi_root_nested_bin_delta_diff(
                     None => return Ok(None),
                 };
             }
-            if !runtime.node_is_bin(node) {
-                return Ok(None);
-            }
+            node = match runtime.resolve_bin_node(node) {
+                Some(id) => id,
+                None => return Ok(None),
+            };
             let slots = match runtime.bin_visible_slots(node) {
                 Some(v) => v,
                 None => return Ok(None),
@@ -1434,8 +1455,11 @@ fn try_native_root_obj_multi_array_delta_diff(
         {
             return Ok(None);
         }
-        let arr_node = match runtime.root_object_field(key) {
-            Some(id) if runtime.node_is_array(id) => id,
+        let arr_node = match runtime
+            .root_object_field(key)
+            .and_then(|id| runtime.resolve_array_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
         let slots = match runtime.array_visible_slots(arr_node) {
@@ -1499,9 +1523,10 @@ fn try_native_nested_obj_array_delta_diff(
             None => return Ok(None),
         };
     }
-    if !runtime.node_is_array(node) {
-        return Ok(None);
-    }
+    node = match runtime.resolve_array_node(node) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
     let slots = match runtime.array_visible_slots(node) {
         Some(v) => v,
         None => return Ok(None),
@@ -1598,9 +1623,10 @@ fn try_native_multi_root_nested_array_delta_diff(
                 None => return Ok(None),
             };
         }
-        if !runtime.node_is_array(node) {
-            return Ok(None);
-        }
+        node = match runtime.resolve_array_node(node) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
         let slots = match runtime.array_visible_slots(node) {
             Some(v) => v,
             None => return Ok(None),
@@ -1798,7 +1824,10 @@ fn try_emit_child_recursive_diff(
     new_v: &Value,
 ) -> Result<bool, DiffError> {
     match old_opt {
-        Some(Value::String(old)) if matches!(new_v, Value::String(_)) && runtime.node_is_string(child) => {
+        Some(Value::String(old))
+            if matches!(new_v, Value::String(_)) && runtime.resolve_string_node(child).is_some() =>
+        {
+            let child = runtime.resolve_string_node(child).expect("checked is_some");
             let new = match new_v {
                 Value::String(v) => v,
                 _ => unreachable!(),
@@ -1867,7 +1896,8 @@ fn try_emit_child_recursive_diff(
             }
             return Ok(true);
         }
-        Some(old) if runtime.node_is_bin(child) => {
+        Some(old) if runtime.resolve_bin_node(child).is_some() => {
+            let child = runtime.resolve_bin_node(child).expect("checked is_some");
             let old_bin = match parse_bin_object(old) {
                 Some(v) => v,
                 None => return Ok(false),
@@ -1936,7 +1966,10 @@ fn try_emit_child_recursive_diff(
             }
             return Ok(true);
         }
-        Some(Value::Array(old_arr)) if matches!(new_v, Value::Array(_)) && runtime.node_is_array(child) => {
+        Some(Value::Array(old_arr))
+            if matches!(new_v, Value::Array(_)) && runtime.resolve_array_node(child).is_some() =>
+        {
+            let child = runtime.resolve_array_node(child).expect("checked is_some");
             let new_arr = match new_v {
                 Value::Array(v) => v,
                 _ => unreachable!(),
@@ -1970,14 +2003,17 @@ fn try_emit_child_recursive_diff(
                             all_changed_are_object_mutations = false;
                             break;
                         };
-                        if i >= values.len() || !runtime.node_is_object(values[i]) {
+                        if i >= values.len() || runtime.resolve_object_node(values[i]).is_none() {
                             all_changed_are_object_mutations = false;
                             break;
                         }
+                        let value_obj = runtime
+                            .resolve_object_node(values[i])
+                            .expect("checked is_some");
                         let _ = try_emit_object_recursive_diff(
                             runtime,
                             emitter,
-                            values[i],
+                            value_obj,
                             old_obj,
                             new_obj,
                         )?;
@@ -2002,7 +2038,10 @@ fn try_emit_child_recursive_diff(
             emit_array_delta_ops(emitter, child, &slots, old_arr, new_arr);
             return Ok(true);
         }
-        Some(Value::Array(_)) if matches!(new_v, Value::Array(_)) && runtime.node_is_vec(child) => {
+        Some(Value::Array(_))
+            if matches!(new_v, Value::Array(_)) && runtime.resolve_vec_node(child).is_some() =>
+        {
+            let child = runtime.resolve_vec_node(child).expect("checked is_some");
             let new_arr = match new_v {
                 Value::Array(v) => v,
                 _ => unreachable!(),
@@ -2010,7 +2049,10 @@ fn try_emit_child_recursive_diff(
             emit_vec_delta_ops(runtime, emitter, child, new_arr)?;
             return Ok(true);
         }
-        Some(Value::Object(old_obj)) if matches!(new_v, Value::Object(_)) && runtime.node_is_object(child) => {
+        Some(Value::Object(old_obj))
+            if matches!(new_v, Value::Object(_)) && runtime.resolve_object_node(child).is_some() =>
+        {
+            let child = runtime.resolve_object_node(child).expect("checked is_some");
             let new_obj = match new_v {
                 Value::Object(v) => v,
                 _ => unreachable!(),
@@ -2112,8 +2154,11 @@ fn try_native_root_obj_vec_delta_diff(
             Some(Value::Array(arr)) => arr,
             _ => return Ok(None),
         };
-        let vec_node = match runtime.root_object_field(key) {
-            Some(id) if runtime.node_is_vec(id) => id,
+        let vec_node = match runtime
+            .root_object_field(key)
+            .and_then(|id| runtime.resolve_vec_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
 
@@ -2178,8 +2223,11 @@ fn try_native_root_obj_multi_vec_delta_diff(
             Value::Array(arr) => arr,
             _ => return Ok(None),
         };
-        let vec_node = match runtime.root_object_field(k) {
-            Some(id) if runtime.node_is_vec(id) => id,
+        let vec_node = match runtime
+            .root_object_field(k)
+            .and_then(|id| runtime.resolve_vec_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
         emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst)?;
@@ -2231,9 +2279,10 @@ fn try_native_nested_obj_vec_delta_diff(
             None => return Ok(None),
         };
     }
-    if !runtime.node_is_vec(node) {
-        return Ok(None);
-    }
+    node = match runtime.resolve_vec_node(node) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
 
     let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
         Some(v) => v,
@@ -2318,9 +2367,10 @@ fn try_native_multi_root_nested_vec_delta_diff(
                 None => return Ok(None),
             };
         }
-        if !runtime.node_is_vec(node) {
-            return Ok(None);
-        }
+        node = match runtime.resolve_vec_node(node) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
         emit_vec_delta_ops(&runtime, &mut emitter, node, new)?;
     }
 
@@ -2368,11 +2418,11 @@ fn emit_vec_delta_ops(
                 old_json.as_ref().and_then(|v| v.as_object()),
                 value.as_object(),
             ) {
-                if runtime.node_is_object(child) {
+                if let Some(obj_child) = runtime.resolve_object_node(child) {
                     let _ = try_emit_object_recursive_diff(
                         runtime,
                         emitter,
-                        child,
+                        obj_child,
                         old_obj,
                         new_obj,
                     )?;
@@ -2567,8 +2617,11 @@ fn try_native_nested_obj_scalar_key_delta_diff(
 
     let target_obj = match (old, new) {
         (Value::Object(old_obj), Value::Object(new_obj)) => {
-            let obj_id = match runtime.root_object_field(root_key) {
-                Some(id) if runtime.node_is_object(id) => id,
+            let obj_id = match runtime
+                .root_object_field(root_key)
+                .and_then(|id| runtime.resolve_object_node(id))
+            {
+                Some(id) => id,
                 _ => return Ok(None),
             };
             let (_changed_key, _new_con) = match object_single_scalar_key_delta(old_obj, new_obj) {
@@ -2606,8 +2659,11 @@ fn try_native_nested_obj_scalar_key_delta_diff(
                 Some(v) => v,
                 None => return Ok(None),
             };
-            let arr_id = match runtime.root_object_field(root_key) {
-                Some(id) if runtime.node_is_array(id) => id,
+            let arr_id = match runtime
+                .root_object_field(root_key)
+                .and_then(|id| runtime.resolve_array_node(id))
+            {
+                Some(id) => id,
                 _ => return Ok(None),
             };
             let values = match runtime.array_visible_values(arr_id) {
@@ -2618,10 +2674,10 @@ fn try_native_nested_obj_scalar_key_delta_diff(
                 return Ok(None);
             }
             let obj_id = values[idx];
-            if !runtime.node_is_object(obj_id) {
-                return Ok(None);
+            match runtime.resolve_object_node(obj_id) {
+                Some(id) => id,
+                None => return Ok(None),
             }
-            obj_id
         }
         _ => return Ok(None),
     };
@@ -2712,8 +2768,11 @@ fn try_native_nested_obj_generic_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let target_obj = match runtime.root_object_field(root_key) {
-        Some(id) if runtime.node_is_object(id) => id,
+    let target_obj = match runtime
+        .root_object_field(root_key)
+        .and_then(|id| runtime.resolve_object_node(id))
+    {
+        Some(id) => id,
         _ => return Ok(None),
     };
     let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
@@ -2815,8 +2874,11 @@ fn try_native_multi_root_nested_obj_generic_delta_diff(
             Value::Object(map) => map,
             _ => return Ok(None),
         };
-        let target_obj = match runtime.root_object_field(root_key) {
-            Some(id) if runtime.node_is_object(id) => id,
+        let target_obj = match runtime
+            .root_object_field(root_key)
+            .and_then(|id| runtime.resolve_object_node(id))
+        {
+            Some(id) => id,
             _ => return Ok(None),
         };
 
@@ -2895,9 +2957,10 @@ fn try_native_nested_obj_string_delta_diff(
             None => return Ok(None),
         };
     }
-    if !runtime.node_is_string(node) {
-        return Ok(None);
-    }
+    node = match runtime.resolve_string_node(node) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
     let slots = match runtime.string_visible_slots(node) {
         Some(v) => v,
         None => return Ok(None),
@@ -2977,9 +3040,10 @@ fn try_native_multi_root_nested_string_delta_diff(
                     None => return Ok(None),
                 };
             }
-            if !runtime.node_is_string(node) {
-                return Ok(None);
-            }
+            node = match runtime.resolve_string_node(node) {
+                Some(id) => id,
+                None => return Ok(None),
+            };
             let slots = match runtime.string_visible_slots(node) {
                 Some(v) => v,
                 None => return Ok(None),
