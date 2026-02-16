@@ -77,6 +77,9 @@ pub fn diff_model_to_patch_bytes(
     if let Some(native) = try_native_nested_obj_array_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+    if let Some(native) = try_native_root_obj_multi_vec_delta_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
+    }
     if let Some(native) = try_native_root_obj_vec_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
@@ -1153,6 +1156,71 @@ fn try_native_root_obj_vec_delta_diff(
             _ => return Ok(None),
         };
 
+        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst);
+    }
+
+    if emitter.ops.is_empty() {
+        return Ok(Some(None));
+    }
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(Some(encoded)))
+}
+
+fn try_native_root_obj_multi_vec_delta_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if !map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+    if base_obj.len() != next_obj.len() {
+        return Ok(None);
+    }
+    if base_obj.keys().any(|k| !next_obj.contains_key(k)) {
+        return Ok(None);
+    }
+
+    let changed: Vec<&String> = base_obj
+        .iter()
+        .filter_map(|(k, v)| (next_obj.get(k) != Some(v)).then_some(k))
+        .collect();
+    if changed.len() < 2 {
+        return Ok(None);
+    }
+
+    let runtime = match RuntimeModel::from_model_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+
+    // Upstream diffObj destination traversal order.
+    for (k, next_v) in next_obj {
+        if base_obj.get(k) == Some(next_v) {
+            continue;
+        }
+        let dst = match next_v {
+            Value::Array(arr) => arr,
+            _ => return Ok(None),
+        };
+        let vec_node = match runtime.root_object_field(k) {
+            Some(id) if runtime.node_is_vec(id) => id,
+            _ => return Ok(None),
+        };
         emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst);
     }
 

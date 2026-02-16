@@ -507,6 +507,84 @@ fn upstream_port_diff_multi_root_bin_deltas_use_ins_bin() {
     assert_eq!(applied.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_multi_root_vec_deltas_use_ins_vec() {
+    let sid = 88010;
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    let root = Timestamp { sid, time: 1 };
+    let v1 = Timestamp { sid, time: 3 };
+    let v2 = Timestamp { sid, time: 4 };
+    let c1 = Timestamp { sid, time: 5 };
+    let c2 = Timestamp { sid, time: 6 };
+    let c3 = Timestamp { sid, time: 7 };
+    let c4 = Timestamp { sid, time: 8 };
+    let ops = vec![
+        DecodedOp::NewObj { id: root },
+        DecodedOp::InsVal {
+            id: Timestamp { sid, time: 2 },
+            obj: Timestamp { sid: 0, time: 0 },
+            val: root,
+        },
+        DecodedOp::NewVec { id: v1 },
+        DecodedOp::NewVec { id: v2 },
+        DecodedOp::NewCon {
+            id: c1,
+            value: ConValue::Json(serde_json::json!(1)),
+        },
+        DecodedOp::NewCon {
+            id: c2,
+            value: ConValue::Json(serde_json::json!(2)),
+        },
+        DecodedOp::NewCon {
+            id: c3,
+            value: ConValue::Json(serde_json::json!(3)),
+        },
+        DecodedOp::NewCon {
+            id: c4,
+            value: ConValue::Json(serde_json::json!(4)),
+        },
+        DecodedOp::InsVec {
+            id: Timestamp { sid, time: 9 },
+            obj: v1,
+            data: vec![(0, c1), (1, c2)],
+        },
+        DecodedOp::InsVec {
+            id: Timestamp { sid, time: 10 },
+            obj: v2,
+            data: vec![(0, c3), (1, c4)],
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 11 },
+            obj: root,
+            data: vec![("x".to_string(), v1), ("y".to_string(), v2)],
+        },
+    ];
+    let seed = encode_patch_from_ops(sid, 1, &ops).expect("seed patch encode must succeed");
+    let seed_patch = Patch::from_binary(&seed).expect("seed patch decode must succeed");
+    runtime.apply_patch(&seed_patch).expect("seed apply must succeed");
+    let base_model = runtime
+        .to_model_binary_like()
+        .expect("runtime model encode must succeed");
+    let next = serde_json::json!({"x": [1, 9], "y": [3, 8]});
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    let vec_ops = decoded
+        .decoded_ops()
+        .iter()
+        .filter(|op| matches!(op, DecodedOp::InsVec { .. }))
+        .count();
+    assert!(vec_ops >= 2, "expected >=2 ins_vec ops for multi-key vec delta");
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);
