@@ -54,6 +54,9 @@
 - [x] Add upstream-mapped runtime-core test-port suites (`tests/upstream_port/*`).
 - [x] Add seeded differential parity suites for apply/diff/model roundtrip.
 - [x] Add property/state-machine convergence tests (idempotence/order/tombstones/clocks).
+- [x] Raise deterministic differential seed set to 20 (`differential_runtime_seeded.rs`, `differential_codec_seeded.rs`).
+- [x] Add seeded codec differential parity suite (`differential_codec_seeded.rs`) and codec roundtrip invariant property suite (`property_codec_roundtrip_invariants.rs`).
+- [x] Add model API event convergence property suite (`property_model_api_event_convergence.rs`).
 - [x] Add less-db diff native-support inventory test to track fallback reduction over time.
 - [x] Ensure oracle scripts are test tooling only (no production runtime dependency).
 - [x] Update docs (`PORT_PLAN.md`, `AGENTS.md`, `ARCHITECTURE.md`) for bridge-retired runtime.
@@ -102,7 +105,7 @@
 - [~] Add explicit matrix/test-port coverage for `Model.ts` lifecycle helpers (`fromPatches`, `applyBatch`, schema-aware `load`).
   Lifecycle baseline now fixture-backed via `model_lifecycle_workflow` + `crates/json-joy-core/tests/model_lifecycle_from_fixtures.rs` and native `NativeModelApi::{from_patches,apply_batch,from_model_binary(load sid)}`.
   Schema-aware typing behavior remains deferred.
-- [ ] Add tracking row and decision for deferred codecs: `json-crdt/codec/indexed/*` and `json-crdt/codec/sidecar/*`.
+- [x] Port and track `json-crdt/codec/indexed/*` and `json-crdt/codec/sidecar/*` with fixture parity and differential checks.
 - [~] Add dedicated tracking/tests for `json-crdt-diff` destination-key mode (`diffDstKeys` parity or explicit defer).
   Added native entrypoint `diff_model_dst_keys_to_patch_bytes` + fixture scenario `model_diff_dst_keys` (20 deterministic cases) and parity test `crates/json-joy-core/tests/model_diff_dst_keys_from_fixtures.rs`.
 - [~] Add dedicated tracking/tests for low-level `util/diff/{str,bin,line}` parity (beyond fixture black-box coverage).

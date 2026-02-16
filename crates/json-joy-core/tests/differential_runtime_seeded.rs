@@ -17,6 +17,21 @@ fn differential_runtime_seeded_diff_and_apply_match_oracle() {
         0x0000_0000_0000_00ff_u64,
         0x0000_0000_00c0_ffee_u64,
         0x0123_4567_89ab_cdef_u64,
+        0x0000_0000_0000_1001_u64,
+        0x0000_0000_0000_2002_u64,
+        0x0000_0000_0000_3003_u64,
+        0x0000_0000_0000_4004_u64,
+        0x0000_0000_0000_5005_u64,
+        0x1111_2222_3333_4444_u64,
+        0x2222_3333_4444_5555_u64,
+        0x3333_4444_5555_6666_u64,
+        0x4444_5555_6666_7777_u64,
+        0x5555_6666_7777_8888_u64,
+        0x89ab_cdef_0123_4567_u64,
+        0xfedc_ba98_7654_3210_u64,
+        0x1357_9bdf_2468_ace0_u64,
+        0x0f0f_f0f0_55aa_aa55_u64,
+        0xa5a5_5a5a_dead_beef_u64,
     ];
 
     for (case_idx, (base_model, base_view, sid)) in base_cases.into_iter().enumerate() {
