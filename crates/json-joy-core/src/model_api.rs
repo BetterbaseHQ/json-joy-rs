@@ -12,6 +12,7 @@ use crate::model::ModelError;
 use crate::model_runtime::{ApplyError, RuntimeModel};
 use crate::patch::Patch;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,10 +47,25 @@ pub enum ModelApiError {
     PatchDecode(String),
 }
 
-#[derive(Debug, Clone)]
 pub struct NativeModelApi {
     runtime: RuntimeModel,
     sid: u64,
+    next_listener_id: u64,
+    listeners: BTreeMap<u64, Box<dyn FnMut(ChangeEvent) + Send + Sync>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChangeEventOrigin {
+    Local,
+    Remote,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChangeEvent {
+    pub origin: ChangeEventOrigin,
+    pub patch_id: Option<(u64, u64)>,
+    pub before: Value,
+    pub after: Value,
 }
 
 impl NativeModelApi {
@@ -61,7 +77,12 @@ impl NativeModelApi {
         if sid_hint.is_some() && data.first().is_some_and(|b| (b & 0x80) == 0) {
             runtime = runtime.fork_with_sid(sid);
         }
-        Ok(Self { runtime, sid })
+        Ok(Self {
+            runtime,
+            sid,
+            next_listener_id: 1,
+            listeners: BTreeMap::new(),
+        })
     }
 
     pub fn from_patches(patches: &[Patch]) -> Result<Self, ModelApiError> {
@@ -71,11 +92,43 @@ impl NativeModelApi {
         for patch in patches {
             runtime.apply_patch(patch)?;
         }
-        Ok(Self { runtime, sid })
+        Ok(Self {
+            runtime,
+            sid,
+            next_listener_id: 1,
+            listeners: BTreeMap::new(),
+        })
+    }
+
+    pub fn on_change<F>(&mut self, listener: F) -> u64
+    where
+        F: FnMut(ChangeEvent) + Send + Sync + 'static,
+    {
+        let id = self.next_listener_id;
+        self.next_listener_id = self.next_listener_id.saturating_add(1);
+        self.listeners.insert(id, Box::new(listener));
+        id
+    }
+
+    pub fn off_change(&mut self, listener_id: u64) -> bool {
+        self.listeners.remove(&listener_id).is_some()
     }
 
     pub fn apply_patch(&mut self, patch: &Patch) -> Result<(), ModelApiError> {
+        let before = self.runtime.view_json();
         self.runtime.apply_patch(patch)?;
+        let after = self.runtime.view_json();
+        let origin = match patch.id() {
+            Some((sid, _)) if sid == self.sid => ChangeEventOrigin::Local,
+            Some(_) => ChangeEventOrigin::Remote,
+            None => ChangeEventOrigin::Local,
+        };
+        self.emit_change(ChangeEvent {
+            origin,
+            patch_id: patch.id(),
+            before,
+            after,
+        });
         if let Some((sid, _)) = patch.id() {
             self.sid = self.sid.max(sid);
         }
@@ -226,6 +279,12 @@ impl NativeModelApi {
             self.apply_patch(&decoded)?;
         }
         Ok(())
+    }
+
+    fn emit_change(&mut self, event: ChangeEvent) {
+        for listener in self.listeners.values_mut() {
+            listener(event.clone());
+        }
     }
 }
 
