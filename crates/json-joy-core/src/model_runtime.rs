@@ -390,6 +390,41 @@ impl RuntimeModel {
         }
     }
 
+    // Ported from upstream Model._gcTree behavior: when a container/register
+    // is overwritten or an array value is deleted, recursively drop the old
+    // subtree from the runtime index.
+    fn gc_tree(&mut self, value: Id) {
+        if value.sid == 0 && value.time == 0 {
+            return;
+        }
+        let Some(node) = self.nodes.remove(&value) else {
+            return;
+        };
+        match node {
+            RuntimeNode::Con(_) => {}
+            RuntimeNode::Val(child) => self.gc_tree(child),
+            RuntimeNode::Obj(entries) => {
+                for (_, child) in entries {
+                    self.gc_tree(child);
+                }
+            }
+            RuntimeNode::Vec(map) => {
+                for (_, child) in map {
+                    self.gc_tree(child);
+                }
+            }
+            RuntimeNode::Str(_) => {}
+            RuntimeNode::Bin(_) => {}
+            RuntimeNode::Arr(atoms) => {
+                for atom in atoms {
+                    if let Some(child) = atom.value {
+                        self.gc_tree(child);
+                    }
+                }
+            }
+        }
+    }
+
     fn apply_op(&mut self, op: &DecodedOp) -> Result<(), ApplyError> {
         match op {
             DecodedOp::NewCon { id, value } => {
@@ -440,11 +475,21 @@ impl RuntimeModel {
                 let has_val = self.nodes.contains_key(&val);
                 if obj.sid == 0 && obj.time == 0 {
                     if has_val {
+                        let old = self.root;
                         self.root = Some(val);
+                        if let Some(old) = old {
+                            if old != val {
+                                self.gc_tree(old);
+                            }
+                        }
                     }
                 } else if let Some(RuntimeNode::Val(child)) = self.nodes.get_mut(&obj) {
                     if has_val {
+                        let old = *child;
                         *child = val;
+                        if old != val {
+                            self.gc_tree(old);
+                        }
                     }
                 }
             }
@@ -458,16 +503,24 @@ impl RuntimeModel {
                         self.nodes.contains_key(&vid).then_some(vid)
                     })
                     .collect::<Vec<_>>();
+                let mut gc = Vec::new();
                 if let Some(RuntimeNode::Obj(map)) = self.nodes.get_mut(&obj) {
                     for (k, vid) in data.iter().map(|(k, v)| (k, Id::from(*v))) {
                         if existing_ids.contains(&vid) && obj.time < vid.time {
                             if let Some((_, v)) = map.iter_mut().find(|(existing, _)| existing == k) {
+                                let old = *v;
                                 *v = vid;
+                                if old != vid {
+                                    gc.push(old);
+                                }
                             } else {
                                 map.push((k.clone(), vid));
                             }
                         }
                     }
+                }
+                for id in gc {
+                    self.gc_tree(id);
                 }
             }
             DecodedOp::InsVec { obj, data, .. } => {
@@ -479,13 +532,21 @@ impl RuntimeModel {
                         self.nodes.contains_key(&vid).then_some(vid)
                     })
                     .collect::<Vec<_>>();
+                let mut gc = Vec::new();
                 if let Some(RuntimeNode::Vec(map)) = self.nodes.get_mut(&obj) {
                     for (idx, v) in data {
                         let vid = Id::from(*v);
                         if existing_ids.contains(&vid) && obj.time < vid.time {
-                            map.insert(*idx, vid);
+                            if let Some(old) = map.insert(*idx, vid) {
+                                if old != vid {
+                                    gc.push(old);
+                                }
+                            }
                         }
                     }
+                }
+                for id in gc {
+                    self.gc_tree(id);
                 }
             }
             DecodedOp::InsStr {
@@ -594,7 +655,13 @@ impl RuntimeModel {
                 }
                 if let Some(RuntimeNode::Arr(atoms)) = self.nodes.get_mut(&obj) {
                     if let Some(atom) = atoms.iter_mut().find(|a| a.slot == reference) {
+                        let old = atom.value;
                         atom.value = Some(val);
+                        if let Some(old) = old {
+                            if old != val {
+                                self.gc_tree(old);
+                            }
+                        }
                     }
                 }
             }
@@ -627,15 +694,22 @@ impl RuntimeModel {
                             }
                         }
                         RuntimeNode::Arr(atoms) => {
+                            let mut gc = Vec::new();
                             for span in what {
                                 for t in span.time..span.time + span.span {
                                     if let Some(a) = atoms
                                         .iter_mut()
                                         .find(|a| a.slot.sid == span.sid && a.slot.time == t)
                                     {
+                                        if let Some(old) = a.value {
+                                            gc.push(old);
+                                        }
                                         a.value = None;
                                     }
                                 }
+                            }
+                            for id in gc {
+                                self.gc_tree(id);
                             }
                         }
                         _ => {}
