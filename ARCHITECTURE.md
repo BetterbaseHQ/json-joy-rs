@@ -45,9 +45,11 @@ This repository is structured as a Rust-core + bindings monorepo, following the 
 
 - Runtime-heavy modules are organized as folder modules to mirror upstream file
   families and keep porting diffs localized:
-  - `crates/json-joy-core/src/model_api/mod.rs` (+ `events.rs`, `path.rs`)
-  - `crates/json-joy-core/src/model_runtime/mod.rs` (+ `types.rs`, `rga.rs`, `apply.rs`)
-  - `crates/json-joy-core/src/diff_runtime/mod.rs`
+  - `crates/json-joy-core/src/model_api/mod.rs` (+ `types.rs`, `ops.rs`, `handles.rs`, `events.rs`, `path.rs`)
+  - `crates/json-joy-core/src/model_runtime/mod.rs` (+ `types.rs`, `rga.rs`, `apply.rs`, `view.rs`, `decode.rs`, `encode.rs`, `query.rs`)
+  - `crates/json-joy-core/src/diff_runtime/mod.rs` (+ `common.rs`, `scalar.rs`, `object.rs`, `string.rs`, `array.rs`, `bin.rs`, `vec.rs`, `dst_keys.rs`)
+  - `crates/json-joy-core/src/patch/mod.rs` (+ `types.rs`, `rewrite.rs`, `decode.rs`, `encode.rs`)
+  - `crates/json-joy-core/src/model/mod.rs` (+ `error.rs`, `view.rs`, `decode.rs`, `encode.rs`)
 - This layout is intentionally aligned with the upstream `json-crdt/model/api`,
   `json-crdt/model`, and `json-crdt-diff` families for easier side-by-side
   verification against `/Users/nchapman/Code/json-joy`.

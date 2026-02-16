@@ -77,6 +77,18 @@
     - `crates/json-joy-core/src/model_runtime/rga.rs`
   - Runtime patch-apply/GC/root-inference mutation logic is now isolated in:
     - `crates/json-joy-core/src/model_runtime/apply.rs`
+  - Runtime view/decode/encode/query logic is split into:
+    - `crates/json-joy-core/src/model_runtime/view.rs`
+    - `crates/json-joy-core/src/model_runtime/decode.rs`
+    - `crates/json-joy-core/src/model_runtime/encode.rs`
+    - `crates/json-joy-core/src/model_runtime/query.rs`
+  - Diff runtime is split by family in:
+    - `crates/json-joy-core/src/diff_runtime/{common,scalar,object,string,array,bin,vec,dst_keys}.rs`
+  - Model API internals are split in:
+    - `crates/json-joy-core/src/model_api/{types,ops,handles}.rs`
+  - Patch and model codec families are split in:
+    - `crates/json-joy-core/src/patch/{types,rewrite,decode,encode}.rs`
+    - `crates/json-joy-core/src/model/{error,view,decode,encode}.rs`
 - Fixture floors hardened:
   - `model_diff_parity >= 100`
   - `model_apply_replay >= 50`
@@ -114,5 +126,5 @@
   Native baseline added in `crates/json-joy-core/src/schema.rs` with upstream-mapped tests in
   `crates/json-joy-core/tests/upstream_port_patch_schema_matrix.rs`.
 - [x] Add upstream-mapped `Patch.ts` timeline transform baseline (`rewrite_time`/`rebase`) in
-  `crates/json-joy-core/src/patch.rs` with matrix tests in
+  `crates/json-joy-core/src/patch/mod.rs` with matrix tests in
   `crates/json-joy-core/tests/upstream_port_patch_rebase_matrix.rs`.
