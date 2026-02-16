@@ -1,0 +1,83 @@
+{
+  "fixture_version": 1,
+  "name": "patch_alt_codecs_04_v1",
+  "scenario": "patch_alt_codecs",
+  "input": {
+    "patch_binary_hex": "91c20401f704204880000165010168656c6c6f8a"
+  },
+  "expected": {
+    "compact_json": [
+      [
+        [
+          74001,
+          1
+        ]
+      ],
+      [
+        4
+      ],
+      [
+        9,
+        [
+          0,
+          0
+        ],
+        1
+      ],
+      [
+        12,
+        1,
+        1,
+        "hello"
+      ],
+      [
+        17,
+        2
+      ]
+    ],
+    "verbose_json": {
+      "id": [
+        74001,
+        1
+      ],
+      "ops": [
+        {
+          "op": "new_str"
+        },
+        {
+          "op": "ins_val",
+          "obj": [
+            0,
+            0
+          ],
+          "value": [
+            74001,
+            1
+          ]
+        },
+        {
+          "op": "ins_str",
+          "obj": [
+            74001,
+            1
+          ],
+          "after": [
+            74001,
+            1
+          ],
+          "value": "hello"
+        },
+        {
+          "op": "nop",
+          "len": 2
+        }
+      ]
+    },
+    "compact_binary_hex": "8581821a00012111018104830982000001840c01016568656c6c6f821102"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

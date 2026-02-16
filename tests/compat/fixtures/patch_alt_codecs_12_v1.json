@@ -1,0 +1,116 @@
+{
+  "fixture_version": 1,
+  "name": "patch_alt_codecs_12_v1",
+  "scenario": "patch_alt_codecs",
+  "input": {
+    "patch_binary_hex": "91c20439f706104880003900780a3064366e637562767a7500780a73756234686179387a335239626b373b626d373c89"
+  },
+  "expected": {
+    "compact_json": [
+      [
+        [
+          74001,
+          57
+        ]
+      ],
+      [
+        2
+      ],
+      [
+        9,
+        [
+          0,
+          0
+        ],
+        57
+      ],
+      [
+        0,
+        "0d6ncubvzu"
+      ],
+      [
+        0,
+        "sub4hay8z3"
+      ],
+      [
+        10,
+        57,
+        [
+          [
+            "k7",
+            59
+          ],
+          [
+            "m7",
+            60
+          ]
+        ]
+      ],
+      [
+        17
+      ]
+    ],
+    "verbose_json": {
+      "id": [
+        74001,
+        57
+      ],
+      "ops": [
+        {
+          "op": "new_obj"
+        },
+        {
+          "op": "ins_val",
+          "obj": [
+            0,
+            0
+          ],
+          "value": [
+            74001,
+            57
+          ]
+        },
+        {
+          "op": "new_con",
+          "value": "0d6ncubvzu"
+        },
+        {
+          "op": "new_con",
+          "value": "sub4hay8z3"
+        },
+        {
+          "op": "ins_obj",
+          "obj": [
+            74001,
+            57
+          ],
+          "value": [
+            [
+              "k7",
+              [
+                74001,
+                59
+              ]
+            ],
+            [
+              "m7",
+              [
+                74001,
+                60
+              ]
+            ]
+          ]
+        },
+        {
+          "op": "nop"
+        }
+      ]
+    },
+    "compact_binary_hex": "8781821a0001211118398102830982000018398200780a3064366e637562767a758200780a73756234686179387a33830a18398282626b37183b82626d37183c8111"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

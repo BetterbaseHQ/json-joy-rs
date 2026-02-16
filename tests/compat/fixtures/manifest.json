@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 787,
+  "fixture_count": 807,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -428,6 +428,106 @@
       "name": "patch_canonical_generated_16_v1",
       "scenario": "patch_canonical_encode",
       "file": "patch_canonical_generated_16_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_01_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_01_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_02_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_02_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_03_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_03_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_04_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_04_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_05_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_05_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_06_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_06_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_07_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_07_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_08_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_08_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_09_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_09_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_10_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_10_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_11_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_11_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_12_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_12_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_13_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_13_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_14_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_14_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_15_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_15_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_16_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_16_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_17_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_17_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_18_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_18_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_19_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_19_v1.json"
+    },
+    {
+      "name": "patch_alt_codecs_20_v1",
+      "scenario": "patch_alt_codecs",
+      "file": "patch_alt_codecs_20_v1.json"
     },
     {
       "name": "model_roundtrip_scalar_number_v1",

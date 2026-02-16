@@ -1,0 +1,116 @@
+{
+  "fixture_version": 1,
+  "name": "patch_alt_codecs_06_v1",
+  "scenario": "patch_alt_codecs",
+  "input": {
+    "patch_binary_hex": "91c20409f706104880000900f40065786275756f5209626b310b626d310c89"
+  },
+  "expected": {
+    "compact_json": [
+      [
+        [
+          74001,
+          9
+        ]
+      ],
+      [
+        2
+      ],
+      [
+        9,
+        [
+          0,
+          0
+        ],
+        9
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        0,
+        "xbuuo"
+      ],
+      [
+        10,
+        9,
+        [
+          [
+            "k1",
+            11
+          ],
+          [
+            "m1",
+            12
+          ]
+        ]
+      ],
+      [
+        17
+      ]
+    ],
+    "verbose_json": {
+      "id": [
+        74001,
+        9
+      ],
+      "ops": [
+        {
+          "op": "new_obj"
+        },
+        {
+          "op": "ins_val",
+          "obj": [
+            0,
+            0
+          ],
+          "value": [
+            74001,
+            9
+          ]
+        },
+        {
+          "op": "new_con",
+          "value": false
+        },
+        {
+          "op": "new_con",
+          "value": "xbuuo"
+        },
+        {
+          "op": "ins_obj",
+          "obj": [
+            74001,
+            9
+          ],
+          "value": [
+            [
+              "k1",
+              [
+                74001,
+                11
+              ]
+            ],
+            [
+              "m1",
+              [
+                74001,
+                12
+              ]
+            ]
+          ]
+        },
+        {
+          "op": "nop"
+        }
+      ]
+    },
+    "compact_binary_hex": "8781821a000121110981028309820000098200f4820065786275756f830a098282626b310b82626d310c8111"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

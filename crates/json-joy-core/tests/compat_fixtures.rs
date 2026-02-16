@@ -87,6 +87,24 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "patch_canonical_encode fixtures must define expected.patch_opcodes"
                 );
             }
+            "patch_alt_codecs" => {
+                assert!(
+                    fixture["input"]["patch_binary_hex"].is_string(),
+                    "patch_alt_codecs fixtures must define input.patch_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["compact_json"].is_array(),
+                    "patch_alt_codecs fixtures must define expected.compact_json"
+                );
+                assert!(
+                    fixture["expected"]["verbose_json"].is_object(),
+                    "patch_alt_codecs fixtures must define expected.verbose_json"
+                );
+                assert!(
+                    fixture["expected"]["compact_binary_hex"].is_string(),
+                    "patch_alt_codecs fixtures must define expected.compact_binary_hex"
+                );
+            }
             "model_roundtrip" => {
                 assert!(
                     fixture["expected"]["model_binary_hex"].is_string(),
@@ -433,6 +451,9 @@ fn manifest_contains_required_scenarios() {
     let has_decode_error = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("patch_decode_error"));
+    let has_patch_alt_codecs = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("patch_alt_codecs"));
     let has_model_roundtrip = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_roundtrip"));
@@ -528,6 +549,10 @@ fn manifest_contains_required_scenarios() {
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_decode_error"))
         .count();
+    let patch_alt_codecs_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("patch_alt_codecs"))
+        .count();
     let patch_canonical_encode_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_canonical_encode"))
@@ -538,6 +563,10 @@ fn manifest_contains_required_scenarios() {
 
     assert!(has_diff_apply, "fixtures must include patch_diff_apply scenarios");
     assert!(has_decode_error, "fixtures must include patch_decode_error scenarios");
+    assert!(
+        has_patch_alt_codecs,
+        "fixtures must include patch_alt_codecs scenarios"
+    );
     assert!(
         has_patch_canonical_encode,
         "fixtures must include patch_canonical_encode scenarios"
@@ -594,6 +623,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         patch_decode_error_count >= 25,
         "fixtures must include at least 25 patch_decode_error scenarios"
+    );
+    assert!(
+        patch_alt_codecs_count >= 20,
+        "fixtures must include at least 20 patch_alt_codecs scenarios"
     );
     assert!(
         patch_canonical_encode_count >= 20,

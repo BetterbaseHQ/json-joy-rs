@@ -13,6 +13,9 @@ const {CrdtWriter} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtWrite
 const {CrdtReader} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtReader.js');
 const {CborDecoder} = require('@jsonjoy.com/json-pack/lib/cbor/CborDecoder.js');
 const patchLib = require('json-joy/lib/json-crdt-patch/index.js');
+const patchCompactCodec = require('json-joy/lib/json-crdt-patch/codec/compact');
+const patchVerboseCodec = require('json-joy/lib/json-crdt-patch/codec/verbose');
+const patchCompactBinaryCodec = require('json-joy/lib/json-crdt-patch/codec/compact-binary');
 const {
   Patch,
   ts,
@@ -337,6 +340,42 @@ function allCanonicalEncodeFixtures() {
     );
   }
 
+  return fixtures;
+}
+
+function buildPatchAltCodecsFixture(name, patchBinaryHex) {
+  const patch = Patch.fromBinary(fromHex(patchBinaryHex));
+  return baseFixture(
+    name,
+    'patch_alt_codecs',
+    {
+      patch_binary_hex: patchBinaryHex,
+    },
+    {
+      compact_json: patchCompactCodec.encode(patch),
+      verbose_json: patchVerboseCodec.encode(patch),
+      compact_binary_hex: hex(patchCompactBinaryCodec.encode(patch)),
+    },
+  );
+}
+
+function allPatchAltCodecsFixtures() {
+  const canonical = allCanonicalEncodeFixtures();
+  const seen = new Set();
+  const fixtures = [];
+  let i = 0;
+  for (const fixture of canonical) {
+    const patchHex = fixture.expected.patch_binary_hex;
+    if (!patchHex || seen.has(patchHex)) continue;
+    seen.add(patchHex);
+    i += 1;
+    fixtures.push(
+      buildPatchAltCodecsFixture(
+        `patch_alt_codecs_${String(i).padStart(2, '0')}_v1`,
+        patchHex,
+      ),
+    );
+  }
   return fixtures;
 }
 
@@ -2576,6 +2615,7 @@ function main() {
     ...allDiffFixtures(),
     ...allDecodeErrorFixtures(),
     ...allCanonicalEncodeFixtures(),
+    ...allPatchAltCodecsFixtures(),
     ...allModelFixtures(),
     ...allModelDecodeErrorFixtures(),
     ...allModelCanonicalEncodeFixtures(),
