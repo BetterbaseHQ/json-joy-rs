@@ -1,4 +1,5 @@
 use json_joy_core::diff_runtime::diff_model_to_patch_bytes;
+use json_joy_core::less_db_compat::{create_model, model_to_binary};
 use json_joy_core::model_runtime::RuntimeModel;
 use json_joy_core::patch::Patch;
 
@@ -30,6 +31,26 @@ fn upstream_port_diff_apply_reaches_target_view() {
     let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
     runtime.apply_patch(&decoded).expect("runtime apply must succeed");
 
+    assert_eq!(runtime.view_json(), next);
+}
+
+#[test]
+fn upstream_port_diff_nested_object_delta_reaches_target_view() {
+    // Ports upstream JsonCrdtDiff.diffObj behavior for nested object edits:
+    // source-key delete writes first, then destination-key inserts/updates.
+    let sid = 88001;
+    let initial = serde_json::json!({"doc": {"a": 1, "b": "x", "c": true}});
+    let next = serde_json::json!({"doc": {"a": 2, "b": "x", "d": null}});
+    let model = create_model(&initial, sid).expect("create_model must succeed");
+    let base_model = model_to_binary(&model);
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+
+    let mut runtime = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    runtime.apply_patch(&decoded).expect("runtime apply must succeed");
     assert_eq!(runtime.view_json(), next);
 }
 
