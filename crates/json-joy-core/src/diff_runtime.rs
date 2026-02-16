@@ -1228,79 +1228,78 @@ fn try_native_multi_root_nested_bin_delta_diff(
         if base_child == next_child {
             continue;
         }
-        let (sub_path, old, new) = match (base_child.as_object(), next_child.as_object()) {
-            (Some(bm), Some(nm)) => match find_single_bin_delta_path(bm, nm) {
-                Some(v) => v,
-                None => return Ok(None),
-            },
-            _ => return Ok(None),
-        };
-        if sub_path.is_empty() {
+        let mut deltas = Vec::new();
+        if !collect_bin_delta_paths(base_child, next_child, Vec::new(), &mut deltas) {
             return Ok(None);
         }
-        let mut node = match runtime.root_object_field(root_key) {
-            Some(id) => id,
-            None => return Ok(None),
-        };
-        for seg in sub_path {
-            node = match runtime.object_field(node, &seg) {
+        if deltas.is_empty() {
+            continue;
+        }
+        for (sub_path, old, new) in deltas {
+            let mut node = match runtime.root_object_field(root_key) {
                 Some(id) => id,
                 None => return Ok(None),
             };
-        }
-        if !runtime.node_is_bin(node) {
-            return Ok(None);
-        }
-        let slots = match runtime.bin_visible_slots(node) {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-        if slots.len() != old.len() {
-            return Ok(None);
-        }
-        let mut lcp = 0usize;
-        while lcp < old.len() && lcp < new.len() && old[lcp] == new[lcp] {
-            lcp += 1;
-        }
-        let mut lcs = 0usize;
-        while lcs < (old.len() - lcp)
-            && lcs < (new.len() - lcp)
-            && old[old.len() - 1 - lcs] == new[new.len() - 1 - lcs]
-        {
-            lcs += 1;
-        }
-        let del_len = old.len().saturating_sub(lcp + lcs);
-        let ins_bytes = &new[lcp..new.len().saturating_sub(lcs)];
-        if !ins_bytes.is_empty() {
-            let reference = if lcp == 0 { node } else { slots[lcp - 1] };
-            emitter.push(DecodedOp::InsBin {
-                id: emitter.next_id(),
-                obj: node,
-                reference,
-                data: ins_bytes.to_vec(),
-            });
-        }
-        if del_len > 0 {
-            let del_slots = &slots[lcp..lcp + del_len];
-            let mut spans: Vec<crate::patch::Timespan> = Vec::new();
-            for slot in del_slots {
-                if let Some(last) = spans.last_mut() {
-                    if last.sid == slot.sid && last.time + last.span == slot.time {
-                        last.span += 1;
-                        continue;
-                    }
-                }
-                spans.push(crate::patch::Timespan {
-                    sid: slot.sid,
-                    time: slot.time,
-                    span: 1,
+            for seg in sub_path {
+                node = match runtime.object_field(node, &seg) {
+                    Some(id) => id,
+                    None => return Ok(None),
+                };
+            }
+            if !runtime.node_is_bin(node) {
+                return Ok(None);
+            }
+            let slots = match runtime.bin_visible_slots(node) {
+                Some(v) => v,
+                None => return Ok(None),
+            };
+            if slots.len() != old.len() {
+                return Ok(None);
+            }
+            let mut lcp = 0usize;
+            while lcp < old.len() && lcp < new.len() && old[lcp] == new[lcp] {
+                lcp += 1;
+            }
+            let mut lcs = 0usize;
+            while lcs < (old.len() - lcp)
+                && lcs < (new.len() - lcp)
+                && old[old.len() - 1 - lcs] == new[new.len() - 1 - lcs]
+            {
+                lcs += 1;
+            }
+            let del_len = old.len().saturating_sub(lcp + lcs);
+            let ins_bytes = &new[lcp..new.len().saturating_sub(lcs)];
+            if !ins_bytes.is_empty() {
+                let reference = if lcp == 0 { node } else { slots[lcp - 1] };
+                emitter.push(DecodedOp::InsBin {
+                    id: emitter.next_id(),
+                    obj: node,
+                    reference,
+                    data: ins_bytes.to_vec(),
                 });
             }
-            emitter.push(DecodedOp::Del {
-                id: emitter.next_id(),
-                obj: node,
-                what: spans,
-            });
+            if del_len > 0 {
+                let del_slots = &slots[lcp..lcp + del_len];
+                let mut spans: Vec<crate::patch::Timespan> = Vec::new();
+                for slot in del_slots {
+                    if let Some(last) = spans.last_mut() {
+                        if last.sid == slot.sid && last.time + last.span == slot.time {
+                            last.span += 1;
+                            continue;
+                        }
+                    }
+                    spans.push(crate::patch::Timespan {
+                        sid: slot.sid,
+                        time: slot.time,
+                        span: 1,
+                    });
+                }
+                emitter.push(DecodedOp::Del {
+                    id: emitter.next_id(),
+                    obj: node,
+                    what: spans,
+                });
+            }
         }
     }
 
@@ -2766,93 +2765,91 @@ fn try_native_multi_root_nested_string_delta_diff(
         if base_child == next_child {
             continue;
         }
-        let (sub_path, old, new) = match (base_child.as_object(), next_child.as_object()) {
-            (Some(bm), Some(nm)) => match find_single_string_delta_path(bm, nm) {
-                Some(v) => v,
-                None => return Ok(None),
-            },
-            _ => return Ok(None),
-        };
-        if sub_path.is_empty() {
+        let mut deltas = Vec::new();
+        if !collect_string_delta_paths(base_child, next_child, Vec::new(), &mut deltas) {
             return Ok(None);
         }
-        let mut node = match runtime.root_object_field(root_key) {
-            Some(id) => id,
-            None => return Ok(None),
-        };
-        for seg in sub_path {
-            node = match runtime.object_field(node, &seg) {
+        if deltas.is_empty() {
+            continue;
+        }
+        for (sub_path, old, new) in deltas {
+            let mut node = match runtime.root_object_field(root_key) {
                 Some(id) => id,
                 None => return Ok(None),
             };
-        }
-        if !runtime.node_is_string(node) {
-            return Ok(None);
-        }
-        let slots = match runtime.string_visible_slots(node) {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-        let old_chars: Vec<char> = old.chars().collect();
-        if old_chars.len() != slots.len() {
-            return Ok(None);
-        }
-        let encoded = emit_string_delta_patch(base_model_binary, patch_sid, node, &slots, old, new)?;
-        if encoded.is_none() {
-            continue;
-        }
-        // Re-emit ops directly into our shared emitter to preserve one patch.
-        let mut lcp = 0usize;
-        let new_chars: Vec<char> = new.chars().collect();
-        while lcp < old_chars.len() && lcp < new_chars.len() && old_chars[lcp] == new_chars[lcp] {
-            lcp += 1;
-        }
-        let mut lcs = 0usize;
-        while lcs < (old_chars.len() - lcp)
-            && lcs < (new_chars.len() - lcp)
-            && old_chars[old_chars.len() - 1 - lcs] == new_chars[new_chars.len() - 1 - lcs]
-        {
-            lcs += 1;
-        }
-        let del_len = old_chars.len().saturating_sub(lcp + lcs);
-        let ins: String = new_chars[lcp..new_chars.len().saturating_sub(lcs)]
-            .iter()
-            .collect();
-        let ins_len = ins.chars().count();
-        if ins_len > 0 {
-            let reference = if lcp == 0 {
-                slots.first().copied().unwrap_or(node)
-            } else {
-                slots[lcp - 1]
+            for seg in sub_path {
+                node = match runtime.object_field(node, &seg) {
+                    Some(id) => id,
+                    None => return Ok(None),
+                };
+            }
+            if !runtime.node_is_string(node) {
+                return Ok(None);
+            }
+            let slots = match runtime.string_visible_slots(node) {
+                Some(v) => v,
+                None => return Ok(None),
             };
-            emitter.push(DecodedOp::InsStr {
-                id: emitter.next_id(),
-                obj: node,
-                reference,
-                data: ins,
-            });
-        }
-        if del_len > 0 {
-            let del_slots = &slots[lcp..lcp + del_len];
-            let mut spans: Vec<crate::patch::Timespan> = Vec::new();
-            for slot in del_slots {
-                if let Some(last) = spans.last_mut() {
-                    if last.sid == slot.sid && last.time + last.span == slot.time {
-                        last.span += 1;
-                        continue;
-                    }
-                }
-                spans.push(crate::patch::Timespan {
-                    sid: slot.sid,
-                    time: slot.time,
-                    span: 1,
+            let old_chars: Vec<char> = old.chars().collect();
+            if old_chars.len() != slots.len() {
+                return Ok(None);
+            }
+            let encoded = emit_string_delta_patch(base_model_binary, patch_sid, node, &slots, &old, &new)?;
+            if encoded.is_none() {
+                continue;
+            }
+            let mut lcp = 0usize;
+            let new_chars: Vec<char> = new.chars().collect();
+            while lcp < old_chars.len() && lcp < new_chars.len() && old_chars[lcp] == new_chars[lcp] {
+                lcp += 1;
+            }
+            let mut lcs = 0usize;
+            while lcs < (old_chars.len() - lcp)
+                && lcs < (new_chars.len() - lcp)
+                && old_chars[old_chars.len() - 1 - lcs] == new_chars[new_chars.len() - 1 - lcs]
+            {
+                lcs += 1;
+            }
+            let del_len = old_chars.len().saturating_sub(lcp + lcs);
+            let ins: String = new_chars[lcp..new_chars.len().saturating_sub(lcs)]
+                .iter()
+                .collect();
+            let ins_len = ins.chars().count();
+            if ins_len > 0 {
+                let reference = if lcp == 0 {
+                    slots.first().copied().unwrap_or(node)
+                } else {
+                    slots[lcp - 1]
+                };
+                emitter.push(DecodedOp::InsStr {
+                    id: emitter.next_id(),
+                    obj: node,
+                    reference,
+                    data: ins,
                 });
             }
-            emitter.push(DecodedOp::Del {
-                id: emitter.next_id(),
-                obj: node,
-                what: spans,
-            });
+            if del_len > 0 {
+                let del_slots = &slots[lcp..lcp + del_len];
+                let mut spans: Vec<crate::patch::Timespan> = Vec::new();
+                for slot in del_slots {
+                    if let Some(last) = spans.last_mut() {
+                        if last.sid == slot.sid && last.time + last.span == slot.time {
+                            last.span += 1;
+                            continue;
+                        }
+                    }
+                    spans.push(crate::patch::Timespan {
+                        sid: slot.sid,
+                        time: slot.time,
+                        span: 1,
+                    });
+                }
+                emitter.push(DecodedOp::Del {
+                    id: emitter.next_id(),
+                    obj: node,
+                    what: spans,
+                });
+            }
         }
     }
 
@@ -3063,6 +3060,46 @@ fn find_single_string_delta_path<'a>(
     found
 }
 
+fn collect_string_delta_paths(
+    base: &Value,
+    next: &Value,
+    prefix: Vec<String>,
+    out: &mut Vec<(Vec<String>, String, String)>,
+) -> bool {
+    match (base, next) {
+        (Value::String(old), Value::String(new)) => {
+            if old != new {
+                out.push((prefix, old.clone(), new.clone()));
+            }
+            true
+        }
+        (Value::Object(bm), Value::Object(nm)) => {
+            if bm.len() != nm.len() {
+                return false;
+            }
+            if bm.keys().any(|k| !nm.contains_key(k)) {
+                return false;
+            }
+            for (k, bv) in bm {
+                let nv = match nm.get(k) {
+                    Some(v) => v,
+                    None => return false,
+                };
+                if bv == nv {
+                    continue;
+                }
+                let mut next_prefix = prefix.clone();
+                next_prefix.push(k.clone());
+                if !collect_string_delta_paths(bv, nv, next_prefix, out) {
+                    return false;
+                }
+            }
+            true
+        }
+        _ => false,
+    }
+}
+
 fn find_single_string_delta_value<'a>(
     base: &'a Value,
     next: &'a Value,
@@ -3185,6 +3222,46 @@ fn find_single_bin_delta_path(
         found = Some((path, delta.1, delta.2));
     }
     found
+}
+
+fn collect_bin_delta_paths(
+    base: &Value,
+    next: &Value,
+    prefix: Vec<String>,
+    out: &mut Vec<(Vec<String>, Vec<u8>, Vec<u8>)>,
+) -> bool {
+    if let (Some(old), Some(new)) = (parse_bin_object(base), parse_bin_object(next)) {
+        if old != new {
+            out.push((prefix, old, new));
+        }
+        return true;
+    }
+    match (base, next) {
+        (Value::Object(bm), Value::Object(nm)) => {
+            if bm.len() != nm.len() {
+                return false;
+            }
+            if bm.keys().any(|k| !nm.contains_key(k)) {
+                return false;
+            }
+            for (k, bv) in bm {
+                let nv = match nm.get(k) {
+                    Some(v) => v,
+                    None => return false,
+                };
+                if bv == nv {
+                    continue;
+                }
+                let mut next_prefix = prefix.clone();
+                next_prefix.push(k.clone());
+                if !collect_bin_delta_paths(bv, nv, next_prefix, out) {
+                    return false;
+                }
+            }
+            true
+        }
+        _ => false,
+    }
 }
 
 fn find_single_bin_delta_value(
