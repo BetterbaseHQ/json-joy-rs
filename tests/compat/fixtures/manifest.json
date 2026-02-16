@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 397,
+  "fixture_count": 417,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -1553,6 +1553,106 @@
       "name": "model_diff_parity_104_nonempty_v1",
       "scenario": "model_diff_parity",
       "file": "model_diff_parity_104_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_01_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_01_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_02_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_02_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_03_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_03_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_04_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_04_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_05_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_05_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_06_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_06_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_07_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_07_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_08_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_08_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_09_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_09_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_10_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_10_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_11_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_11_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_12_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_12_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_13_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_13_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_14_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_14_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_15_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_15_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_16_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_16_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_17_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_17_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_18_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_18_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_19_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_19_v1.json"
+    },
+    {
+      "name": "model_diff_dst_keys_20_v1",
+      "scenario": "model_diff_dst_keys",
+      "file": "model_diff_dst_keys_20_v1.json"
     },
     {
       "name": "lessdb_model_manager_01_create_diff_apply_v1",

@@ -193,6 +193,34 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "model_diff_parity fixtures must define expected.view_after_apply_json"
                 );
             }
+            "model_diff_dst_keys" => {
+                assert!(
+                    fixture["input"]["base_model_binary_hex"].is_string(),
+                    "model_diff_dst_keys fixtures must define input.base_model_binary_hex"
+                );
+                assert!(
+                    fixture["input"]["dst_keys_view_json"].is_object(),
+                    "model_diff_dst_keys fixtures must define input.dst_keys_view_json"
+                );
+                assert!(
+                    fixture["input"]["sid"].is_u64(),
+                    "model_diff_dst_keys fixtures must define input.sid"
+                );
+                assert!(
+                    fixture["expected"]["patch_present"].is_boolean(),
+                    "model_diff_dst_keys fixtures must define expected.patch_present"
+                );
+                if fixture["expected"]["patch_present"].as_bool() == Some(true) {
+                    assert!(
+                        fixture["expected"]["patch_binary_hex"].is_string(),
+                        "model_diff_dst_keys patch fixtures must define expected.patch_binary_hex"
+                    );
+                }
+                assert!(
+                    fixture["expected"].get("view_after_apply_json").is_some(),
+                    "model_diff_dst_keys fixtures must define expected.view_after_apply_json"
+                );
+            }
             "lessdb_model_manager" => {
                 assert!(
                     fixture["input"]["sid"].is_u64(),
@@ -312,6 +340,9 @@ fn manifest_contains_required_scenarios() {
     let has_model_diff_parity = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_diff_parity"));
+    let has_model_diff_dst_keys = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("model_diff_dst_keys"));
     let has_lessdb_model_manager = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("lessdb_model_manager"));
@@ -340,6 +371,10 @@ fn manifest_contains_required_scenarios() {
     let model_diff_parity_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_diff_parity"))
+        .count();
+    let model_diff_dst_keys_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("model_diff_dst_keys"))
         .count();
     let lessdb_model_manager_count = fixtures
         .iter()
@@ -381,6 +416,10 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include model_diff_parity scenarios"
     );
     assert!(
+        has_model_diff_dst_keys,
+        "fixtures must include model_diff_dst_keys scenarios"
+    );
+    assert!(
         has_lessdb_model_manager,
         "fixtures must include lessdb_model_manager scenarios"
     );
@@ -411,6 +450,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         model_diff_parity_count >= 100,
         "fixtures must include at least 100 model_diff_parity scenarios"
+    );
+    assert!(
+        model_diff_dst_keys_count >= 20,
+        "fixtures must include at least 20 model_diff_dst_keys scenarios"
     );
     assert!(
         lessdb_model_manager_count >= 50,

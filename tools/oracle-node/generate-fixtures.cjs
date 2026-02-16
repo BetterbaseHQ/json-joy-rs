@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {Model} = require('json-joy/lib/json-crdt/index.js');
+const {JsonCrdtDiff} = require('json-joy/lib/json-crdt-diff/JsonCrdtDiff.js');
 const patchLib = require('json-joy/lib/json-crdt-patch/index.js');
 const {
   Patch,
@@ -1178,6 +1179,88 @@ function allModelDiffParityFixtures() {
   return fixtures;
 }
 
+function buildModelDiffDstKeysFixture(name, sid, baseView, dstKeysView) {
+  const base = mkModel(baseView, sid);
+  const baseBinary = base.toBinary();
+  const model = Model.load(baseBinary, sid);
+  const differ = new JsonCrdtDiff(model);
+  const rootObj = model.api.obj().node;
+  const patch = differ.diffDstKeys(rootObj, dstKeysView);
+
+  if (!patch || patch.ops.length === 0) {
+    return baseFixture(name, 'model_diff_dst_keys', {
+      base_model_binary_hex: hex(baseBinary),
+      dst_keys_view_json: dstKeysView,
+      sid,
+    }, {
+      patch_present: false,
+      view_after_apply_json: normalizeView(model.view()),
+      model_binary_after_apply_hex: hex(model.toBinary()),
+    });
+  }
+
+  const patchBinary = patch.toBinary();
+  const decoded = Patch.fromBinary(patchBinary);
+  const patchId = decoded.getId();
+  model.applyPatch(patch);
+
+  return baseFixture(name, 'model_diff_dst_keys', {
+    base_model_binary_hex: hex(baseBinary),
+    dst_keys_view_json: dstKeysView,
+    sid,
+  }, {
+    patch_present: true,
+    patch_binary_hex: hex(patchBinary),
+    patch_op_count: decoded.ops.length,
+    patch_opcodes: decoded.ops.map((op) => OPCODE_BY_NAME[op.name()]),
+    patch_span: decoded.span(),
+    patch_id_sid: patchId ? patchId.sid : null,
+    patch_id_time: patchId ? patchId.time : null,
+    patch_next_time: decoded.nextTime(),
+    view_after_apply_json: normalizeView(model.view()),
+    model_binary_after_apply_hex: hex(model.toBinary()),
+  });
+}
+
+function allModelDiffDstKeysFixtures() {
+  const fixtures = [];
+  const cases = [
+    [{a: 1, b: 2}, {a: 9}],
+    [{a: 1, b: 2}, {b: 3}],
+    [{doc: {title: 'a', body: 'b'}, n: 1}, {doc: {title: 'A', body: 'b'}}],
+    [{txt: 'abc', meta: {x: 1}}, {txt: 'abZc'}],
+    [{arr: [1, 2], score: 1}, {arr: [1, 2, 3]}],
+    [{arr: [1, 2, 3], score: 1}, {arr: [1, 3]}],
+    [{obj: {x: 1, y: 2}, flag: true}, {obj: {x: 1, y: 3}}],
+    [{obj: {x: 1, y: 2}, flag: true}, {flag: false}],
+    [{name: 'ab', list: [1], ok: true}, {name: 'aZb', list: [1, 2]}],
+    [{deep: {a: {b: 1}}, c: 1}, {deep: {a: {b: 2}}}],
+    [{a: 0, b: 1, c: 2}, {a: 1, c: 3}],
+    [{title: 'x', body: 'y', score: 1}, {title: 'xy'}],
+    [{title: 'xy', body: 'y', score: 1}, {title: 'x'}],
+    [{list: [1], keep: true}, {list: [1, 2]}],
+    [{list: [1, 2], keep: true}, {list: [2]}],
+    [{obj: {k: 1}, keep: 'v'}, {obj: {k: 2}}],
+    [{obj: {k: 1}, keep: 'v'}, {obj: {k: 1, z: 3}}],
+    [{n: null, keep: 1}, {n: 1}],
+    [{n: 1, keep: 1}, {n: null}],
+    [{flag: false, keep: 1}, {flag: true}],
+  ];
+  let idx = 1;
+  for (const [base, dst] of cases) {
+    fixtures.push(
+      buildModelDiffDstKeysFixture(
+        `model_diff_dst_keys_${String(idx).padStart(2, '0')}_v1`,
+        77500 + idx,
+        base,
+        dst,
+      ),
+    );
+    idx++;
+  }
+  return fixtures;
+}
+
 function normalizeView(view) {
   return view === undefined ? null : view;
 }
@@ -1927,6 +2010,7 @@ function main() {
     ...allModelCanonicalEncodeFixtures(),
     ...allModelApplyReplayFixtures(),
     ...allModelDiffParityFixtures(),
+    ...allModelDiffDstKeysFixtures(),
     ...allLessdbModelManagerFixtures(),
     ...allModelApiWorkflowFixtures(),
     ...allModelLifecycleFixtures(),
