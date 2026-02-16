@@ -6,17 +6,17 @@
     "sid": 79015,
     "initial_json": {
       "doc": {
-        "seed": "v",
+        "seed": 31.2,
         "nested": {
-          "v": 15
+          "v": 4
         }
       },
-      "title": "qbwvur",
+      "title": "z6g896g4",
       "list": [
-        5
+        6
       ]
     },
-    "base_model_binary_hex": "0000004681154363646f6381144264736565648113818112617678066e657374656481114161768110000f657469746c651d811c7806716277767572646c69737416c11201152014000501a7e90416",
+    "base_model_binary_hex": "0000004d81164363646f638115426473656564811400fb403f33333333333378066e6573746564811341617681120004657469746c651f811e78087a36673839366734646c69737416c11201152014000601a7e90417",
     "ops": [
       {
         "kind": "find",
@@ -30,21 +30,44 @@
           "doc"
         ],
         "key": "k11",
-        "value_json": -28.1
+        "value_json": "ljbiqi5xwy"
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n11"
+        ],
+        "value_json": null
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 64
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
         "path": [
           "list"
         ],
-        "value_json": 77
+        "value_json": 79
       },
       {
         "kind": "str_ins",
         "path": [
           "title"
         ],
-        "pos": 1,
+        "pos": 0,
         "text": "x"
       },
       {
@@ -52,14 +75,7 @@
         "path": [
           "doc"
         ],
-        "value_json": null
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "a7e90420f71210102051216530676e7a632200f600f400fb405733333333333354207809736f616961646e7867216432616f722461702578086432323178726b722662090f6e3881090c0462091d356f62090a317781090a0100084819300007481132510163646f6320",
-          "a7e90435f70d00f5640929346b6763620928376185092d021d012b020b012801000448193d000348113f08000648410142017110144101510163646f6335"
-        ]
+        "value_json": "8"
       }
     ]
   },
@@ -70,21 +86,71 @@
         "path": [
           "title"
         ],
-        "value_json": "qbwvur"
+        "value_json": "z6g896g4"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": "v",
+            "seed": 31.2,
             "nested": {
-              "v": 15
+              "v": 4
             },
-            "k11": -28.1
+            "k11": "ljbiqi5xwy"
           },
-          "title": "qbwvur",
+          "title": "z6g896g4",
           "list": [
-            5
+            6
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": 31.2,
+            "nested": {
+              "v": 4
+            },
+            "k11": "ljbiqi5xwy",
+            "n11": null
+          },
+          "title": "z6g896g4",
+          "list": [
+            6
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": 31.2,
+            "nested": {
+              "v": 4
+            },
+            "k11": "ljbiqi5xwy",
+            "n11": null
+          },
+          "title": "z6g896g4",
+          "list": [
+            64
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 4
+            },
+            "k11": "ljbiqi5xwy",
+            "n11": null
+          },
+          "title": "z6g896g4",
+          "list": [
+            64
           ]
         }
       },
@@ -92,16 +158,16 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": "v",
             "nested": {
-              "v": 15
+              "v": 4
             },
-            "k11": -28.1
+            "k11": "ljbiqi5xwy",
+            "n11": null
           },
-          "title": "qbwvur",
+          "title": "z6g896g4",
           "list": [
-            5,
-            77
+            64,
+            79
           ]
         }
       },
@@ -109,53 +175,40 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": "v",
             "nested": {
-              "v": 15
+              "v": 4
             },
-            "k11": -28.1
+            "k11": "ljbiqi5xwy",
+            "n11": null
           },
-          "title": "qxbwvur",
+          "title": "xz6g896g4",
           "list": [
-            5,
-            77
+            64,
+            79
           ]
         }
       },
       {
         "kind": "set",
         "view_json": {
-          "doc": null,
-          "title": "qxbwvur",
+          "doc": "8",
+          "title": "xz6g896g4",
           "list": [
-            5,
-            77
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": true,
-          "title": "7a84kgc",
-          "list": [
-            3,
-            6,
-            4
+            64,
+            79
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": true,
-      "title": "7a84kgc",
+      "doc": "8",
+      "title": "xz6g896g4",
       "list": [
-        3,
-        6,
-        4
+        64,
+        79
       ]
     },
-    "final_model_binary_hex": "0000005581444363646f63811000f5657469746c65813c89813b01811802812801811a02813a05811d011b623761811c61381f64346b6763646c6973748135c381310181342016000311011420130006812901812c2018000401a7e90445"
+    "final_model_binary_hex": "0000003e81304363646f631281116138657469746c65812982136178812878087a36673839366734646c6973748120c2811c01811f201b001840140117201600184f01a7e90431"
   },
   "meta": {
     "upstream_package": "json-joy",

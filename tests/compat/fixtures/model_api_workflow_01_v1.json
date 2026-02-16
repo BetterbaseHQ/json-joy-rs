@@ -22,6 +22,22 @@
         ]
       },
       {
+        "kind": "add",
+        "path": [
+          "doc",
+          "subtitle"
+        ],
+        "value_json": "s"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "doc",
+          "subtitle"
+        ],
+        "value_json": "S"
+      },
+      {
         "kind": "obj_put",
         "path": [
           "doc"
@@ -36,6 +52,13 @@
           "items"
         ],
         "value_json": 2
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "subtitle"
+        ]
       },
       {
         "kind": "set",
@@ -58,6 +81,30 @@
         "value_json": "a"
       },
       {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "title": "a",
+            "items": [
+              1
+            ],
+            "subtitle": "s"
+          }
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "title": "a",
+            "items": [
+              1
+            ],
+            "subtitle": "S"
+          }
+        }
+      },
+      {
         "kind": "obj_put",
         "view_json": {
           "doc": {
@@ -65,12 +112,27 @@
             "items": [
               1
             ],
+            "subtitle": "S",
             "flag": true
           }
         }
       },
       {
         "kind": "arr_push",
+        "view_json": {
+          "doc": {
+            "title": "a",
+            "items": [
+              1,
+              2
+            ],
+            "subtitle": "S",
+            "flag": true
+          }
+        }
+      },
+      {
+        "kind": "remove",
         "view_json": {
           "doc": {
             "title": "a",
@@ -106,7 +168,7 @@
         "flag": true
       }
     },
-    "final_model_binary_hex": "0000003781134163646f63811243657469746c65811182811001116141656974656d731fc21b011e201d00011201152014000264666c61671700f50199e90414"
+    "final_model_binary_hex": "00000048811a4163646f63811944657469746c65811882811701116141656974656d738116c2811201811520811400011401172016000278087375627469746c651300f764666c61671900f50199e9041b"
   },
   "meta": {
     "upstream_package": "json-joy",

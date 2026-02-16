@@ -22,6 +22,29 @@
         "text": "Z"
       },
       {
+        "kind": "add",
+        "path": [
+          "list",
+          1
+        ],
+        "value_json": 9
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 7
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "list",
+          2
+        ]
+      },
+      {
         "kind": "find",
         "path": [
           "name"
@@ -49,6 +72,38 @@
         }
       },
       {
+        "kind": "add",
+        "view_json": {
+          "name": "aZb",
+          "list": [
+            1,
+            9,
+            2
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "name": "aZb",
+          "list": [
+            7,
+            9,
+            2
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "name": "aZb",
+          "list": [
+            7,
+            9
+          ]
+        }
+      },
+      {
         "kind": "find",
         "path": [
           "name"
@@ -60,8 +115,8 @@
         "view_json": {
           "name": "aZb",
           "list": [
-            1,
-            2,
+            7,
+            9,
             3
           ]
         }
@@ -70,12 +125,12 @@
     "final_view_json": {
       "name": "aZb",
       "list": [
-        1,
-        2,
+        7,
+        9,
         3
       ]
     },
-    "final_model_binary_hex": "00000030811342646e616d658112838111616114615a81106162646c6973741fc218021e201d00011b201a000210011320120003019ae90414"
+    "final_model_binary_hex": "00000036811a42646e616d65811983811861611b615a81176162646c6973748116c41f0181152016000717011a20190009100113201200031e81019ae9041b"
   },
   "meta": {
     "upstream_package": "json-joy",

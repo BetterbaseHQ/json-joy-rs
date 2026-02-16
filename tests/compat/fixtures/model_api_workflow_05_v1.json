@@ -6,17 +6,30 @@
     "sid": 79005,
     "initial_json": {
       "doc": {
-        "seed": true,
+        "seed": [
+          [
+            true,
+            "8121j3hjr",
+            true,
+            -95.4
+          ],
+          [
+            "351ixvgzgleh2kas",
+            "ccvj0sm6kjwo4",
+            "kb2nr",
+            null
+          ]
+        ],
         "nested": {
-          "v": 33
+          "v": 18
         }
       },
-      "title": "t5e",
+      "title": "zlnovglj",
       "list": [
         6
       ]
     },
-    "base_model_binary_hex": "0000003d81114363646f6381104264736565641f00f578066e65737465641e4161761d001821657469746c651a811963743565646c69737416c112011520140006019de90412",
+    "base_model_binary_hex": "000000bd815d4363646f63815c426473656564815bc1811502815ac1814604815920815800f581568181557809383132316a33686a72814c20814b00f5814920814800fbc057d9999999999a8142c181190481418181407810333531697876677a676c6568326b6173813081812f780d6363766a30736d366b6a776f348122818121656b62326e72811c20811b00f678066e6573746564811341617681120012657469746c651f811e78087a6c6e6f76676c6a646c69737416c112011520140006019de9045e",
     "ops": [
       {
         "kind": "find",
@@ -30,7 +43,30 @@
           "doc"
         ],
         "key": "k1",
-        "value_json": 85.1
+        "value_json": false
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n1"
+        ],
+        "value_json": "1u"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 92
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
@@ -61,13 +97,6 @@
           },
           "v7di"
         ]
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "9de90444f70800f661080b768308090119010a020008481547010004480d4901510163646f634401",
-          "9de9044cf70a00f462084501793181084501010003481550010800094852015301710c105201510163646f634c01"
-        ]
       }
     ]
   },
@@ -78,21 +107,110 @@
         "path": [
           "title"
         ],
-        "value_json": "t5e"
+        "value_json": "zlnovglj"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": true,
+            "seed": [
+              [
+                true,
+                "8121j3hjr",
+                true,
+                -95.4
+              ],
+              [
+                "351ixvgzgleh2kas",
+                "ccvj0sm6kjwo4",
+                "kb2nr",
+                null
+              ]
+            ],
             "nested": {
-              "v": 33
+              "v": 18
             },
-            "k1": 85.1
+            "k1": false
           },
-          "title": "t5e",
+          "title": "zlnovglj",
           "list": [
             6
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": [
+              [
+                true,
+                "8121j3hjr",
+                true,
+                -95.4
+              ],
+              [
+                "351ixvgzgleh2kas",
+                "ccvj0sm6kjwo4",
+                "kb2nr",
+                null
+              ]
+            ],
+            "nested": {
+              "v": 18
+            },
+            "k1": false,
+            "n1": "1u"
+          },
+          "title": "zlnovglj",
+          "list": [
+            6
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": [
+              [
+                true,
+                "8121j3hjr",
+                true,
+                -95.4
+              ],
+              [
+                "351ixvgzgleh2kas",
+                "ccvj0sm6kjwo4",
+                "kb2nr",
+                null
+              ]
+            ],
+            "nested": {
+              "v": 18
+            },
+            "k1": false,
+            "n1": "1u"
+          },
+          "title": "zlnovglj",
+          "list": [
+            92
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 18
+            },
+            "k1": false,
+            "n1": "1u"
+          },
+          "title": "zlnovglj",
+          "list": [
+            92
           ]
         }
       },
@@ -100,15 +218,15 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": true,
             "nested": {
-              "v": 33
+              "v": 18
             },
-            "k1": 85.1
+            "k1": false,
+            "n1": "1u"
           },
-          "title": "t5e",
+          "title": "zlnovglj",
           "list": [
-            6,
+            92,
             92
           ]
         }
@@ -117,15 +235,15 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": true,
             "nested": {
-              "v": 33
+              "v": 18
             },
-            "k1": 85.1
+            "k1": false,
+            "n1": "1u"
           },
-          "title": "tx5e",
+          "title": "zxlnovglj",
           "list": [
-            6,
+            92,
             92
           ]
         }
@@ -142,36 +260,31 @@
             },
             "v7di"
           ],
-          "title": "tx5e",
+          "title": "zxlnovglj",
           "list": [
-            6,
+            92,
             92
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": false,
-          "title": "y1",
-          "list": [
-            4,
-            9,
-            3
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": false,
-      "title": "y1",
+      "doc": [
+        "2aip",
+        {
+          "20gf5sl": "24rcy7d1",
+          "0qqimst": "tkbzz1gak8cwvz",
+          "49jifav2q": null
+        },
+        "v7di"
+      ],
+      "title": "zxlnovglj",
       "list": [
-        4,
-        9,
-        3
+        92,
+        92
       ]
     },
-    "final_model_binary_hex": "0000004481554363646f631a00f4657469746c65814e85814d01813d01814c0281110119627931646c697374814ac38146018149201d000411011420130009813e01814120160003019de90456"
+    "final_model_binary_hex": "000000a08196014363646f638129c113038128818127643261697081234378073230676635736c8122818121780832347263793764317807307171696d73748119818118780e746b627a7a3167616b386377767a780934396a6966617632711a00f61881176476376469657469746c658148838147617a812a6178814678076c6e6f76676c6a646c697374813fc2813b01813e20813200185c812b01812e20812d00185c019de9049701"
   },
   "meta": {
     "upstream_package": "json-joy",

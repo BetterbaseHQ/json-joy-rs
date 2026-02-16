@@ -6,17 +6,17 @@
     "sid": 79007,
     "initial_json": {
       "doc": {
-        "seed": "2g9",
+        "seed": 63.6,
         "nested": {
-          "v": 33
+          "v": 11
         }
       },
-      "title": "3cymic",
+      "title": "j6t277j",
       "list": [
-        7
+        0
       ]
     },
-    "base_model_binary_hex": "0000004981174363646f63811642647365656481158181146332673978066e657374656481114161768110001821657469746c651d811c78063363796d6963646c69737416c112011520140007019fe90418",
+    "base_model_binary_hex": "0000004c81154363646f638114426473656564811300fb404fcccccccccccd78066e657374656481124161768111000b657469746c651e811d78076a36743237376a646c69737416c112011520140000019fe90416",
     "ops": [
       {
         "kind": "find",
@@ -30,21 +30,44 @@
           "doc"
         ],
         "key": "k3",
+        "value_json": null
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n3"
+        ],
         "value_json": false
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 29
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
         "path": [
           "list"
         ],
-        "value_json": 34
+        "value_json": 44
       },
       {
         "kind": "str_ins",
         "path": [
           "title"
         ],
-        "pos": 0,
+        "pos": 1,
         "text": "x"
       },
       {
@@ -52,22 +75,7 @@
         "path": [
           "doc"
         ],
-        "value_json": [
-          -38.1,
-          {},
-          "ifg9063o2wz8dm",
-          [
-            "0u10",
-            null
-          ]
-        ]
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "9fe90444f70600fb402d99999999999a610b117a820b1f010c060001481b4701510163646f634401",
-          "9fe9044af70c1000f6514a017807356475637369694b01670b450167756f79766434810b4501010006481b550108000948570158017112165701510163646f634a01"
-        ]
+        "value_json": "zc4ipp"
       }
     ]
   },
@@ -78,21 +86,71 @@
         "path": [
           "title"
         ],
-        "value_json": "3cymic"
+        "value_json": "j6t277j"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": "2g9",
+            "seed": 63.6,
             "nested": {
-              "v": 33
+              "v": 11
             },
-            "k3": false
+            "k3": null
           },
-          "title": "3cymic",
+          "title": "j6t277j",
           "list": [
-            7
+            0
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": 63.6,
+            "nested": {
+              "v": 11
+            },
+            "k3": null,
+            "n3": false
+          },
+          "title": "j6t277j",
+          "list": [
+            0
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": 63.6,
+            "nested": {
+              "v": 11
+            },
+            "k3": null,
+            "n3": false
+          },
+          "title": "j6t277j",
+          "list": [
+            29
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 11
+            },
+            "k3": null,
+            "n3": false
+          },
+          "title": "j6t277j",
+          "list": [
+            29
           ]
         }
       },
@@ -100,16 +158,16 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": "2g9",
             "nested": {
-              "v": 33
+              "v": 11
             },
-            "k3": false
+            "k3": null,
+            "n3": false
           },
-          "title": "3cymic",
+          "title": "j6t277j",
           "list": [
-            7,
-            34
+            29,
+            44
           ]
         }
       },
@@ -117,65 +175,40 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": "2g9",
             "nested": {
-              "v": 33
+              "v": 11
             },
-            "k3": false
+            "k3": null,
+            "n3": false
           },
-          "title": "x3cymic",
+          "title": "jx6t277j",
           "list": [
-            7,
-            34
+            29,
+            44
           ]
         }
       },
       {
         "kind": "set",
         "view_json": {
-          "doc": [
-            -38.1,
-            {},
-            "ifg9063o2wz8dm",
-            [
-              "0u10",
-              null
-            ]
-          ],
-          "title": "x3cymic",
+          "doc": "zc4ipp",
+          "title": "jx6t277j",
           "list": [
-            7,
-            34
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": {
-            "5ducsii": null
-          },
-          "title": "guoyvd4",
-          "list": [
-            7,
-            9,
-            6
+            29,
+            44
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": {
-        "5ducsii": null
-      },
-      "title": "guoyvd4",
+      "doc": "zc4ipp",
+      "title": "jx6t277j",
       "list": [
-        7,
-        9,
-        6
+        29,
+        44
       ]
     },
-    "final_model_binary_hex": "00000055815a4363646f63811141780735647563736969811000f6657469746c65815084813c01814f068116011e780767756f79766434646c6973748149c38145018148208147000711011420130009813d01814020160006019fe9045b"
+    "final_model_binary_hex": "00000047812a4363646f6317811678067a6334697070657469746c658123838122616a1861788121780636743237376a646c697374811bc2811701811a20811000181d19011c201b00182c019fe9042b"
   },
   "meta": {
     "upstream_package": "json-joy",

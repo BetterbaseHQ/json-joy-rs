@@ -6,17 +6,19 @@
     "sid": 79017,
     "initial_json": {
       "doc": {
-        "seed": "jgw",
+        "seed": [
+          null
+        ],
         "nested": {
-          "v": 10
+          "v": 27
         }
       },
-      "title": "3nbw33qb",
+      "title": "3rkri7y8",
       "list": [
         3
       ]
     },
-    "base_model_binary_hex": "0000004a81194363646f6381184264736565648117818116636a677778066e657374656481134161768112000a657469746c651f811e7808336e627733337162646c69737416c11201152014000301a9e9041a",
+    "base_model_binary_hex": "0000004f811a4363646f6381194264736565648118c1811401811720811600f678066e65737465648113416176811200181b657469746c651f811e780833726b7269377938646c69737416c11201152014000301a9e9041b",
     "ops": [
       {
         "kind": "find",
@@ -30,21 +32,44 @@
           "doc"
         ],
         "key": "k13",
-        "value_json": "vhplfskpwba7ww3"
+        "value_json": null
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n13"
+        ],
+        "value_json": "iypi37mz4e"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 68
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
         "path": [
           "list"
         ],
-        "value_json": 27
+        "value_json": 82
       },
       {
         "kind": "str_ins",
         "path": [
           "title"
         ],
-        "pos": 2,
+        "pos": 1,
         "text": "x"
       },
       {
@@ -52,14 +77,7 @@
         "path": [
           "doc"
         ],
-        "value_json": "zn6bvabsd14x"
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "a9e9043ff70a63313d6f7a32813138066231366b3881313205670b133736686f727370830b0c0230010e060000482c4e01000648155001",
-          "a9e90452f70f3020600e530153016d3565313769766b75757077656271520152015301610b4c0167810b4601070009482c65010009481567010800094869016a017114186901510163646f635201"
-        ]
+        "value_json": "uvznnwb"
       }
     ]
   },
@@ -70,21 +88,77 @@
         "path": [
           "title"
         ],
-        "value_json": "3nbw33qb"
+        "value_json": "3rkri7y8"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": "jgw",
+            "seed": [
+              null
+            ],
             "nested": {
-              "v": 10
+              "v": 27
             },
-            "k13": "vhplfskpwba7ww3"
+            "k13": null
           },
-          "title": "3nbw33qb",
+          "title": "3rkri7y8",
           "list": [
             3
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": [
+              null
+            ],
+            "nested": {
+              "v": 27
+            },
+            "k13": null,
+            "n13": "iypi37mz4e"
+          },
+          "title": "3rkri7y8",
+          "list": [
+            3
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": [
+              null
+            ],
+            "nested": {
+              "v": 27
+            },
+            "k13": null,
+            "n13": "iypi37mz4e"
+          },
+          "title": "3rkri7y8",
+          "list": [
+            68
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 27
+            },
+            "k13": null,
+            "n13": "iypi37mz4e"
+          },
+          "title": "3rkri7y8",
+          "list": [
+            68
           ]
         }
       },
@@ -92,16 +166,16 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": "jgw",
             "nested": {
-              "v": 10
+              "v": 27
             },
-            "k13": "vhplfskpwba7ww3"
+            "k13": null,
+            "n13": "iypi37mz4e"
           },
-          "title": "3nbw33qb",
+          "title": "3rkri7y8",
           "list": [
-            3,
-            27
+            68,
+            82
           ]
         }
       },
@@ -109,57 +183,40 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": "jgw",
             "nested": {
-              "v": 10
+              "v": 27
             },
-            "k13": "vhplfskpwba7ww3"
+            "k13": null,
+            "n13": "iypi37mz4e"
           },
-          "title": "3nxbw33qb",
+          "title": "3xrkri7y8",
           "list": [
-            3,
-            27
+            68,
+            82
           ]
         }
       },
       {
         "kind": "set",
         "view_json": {
-          "doc": "zn6bvabsd14x",
-          "title": "3nxbw33qb",
+          "doc": "uvznnwb",
+          "title": "3xrkri7y8",
           "list": [
-            3,
-            27
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": [
-            "m5e17ivkuupweb"
-          ],
-          "title": "g",
-          "list": [
-            9,
-            9,
-            9
+            68,
+            82
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": [
-        "m5e17ivkuupweb"
-      ],
-      "title": "g",
+      "doc": "uvznnwb",
+      "title": "3xrkri7y8",
       "list": [
-        9,
-        9,
-        9
+        68,
+        82
       ]
     },
-    "final_model_binary_hex": "0000005a816c4363646f63811bc11b01811a818119780e6d3565313769766b757570776562657469746c65816285816102813d01815f068127071a6167646c6973748159c381550181582016000911011420130009813e0181412018000901a9e9046d"
+    "final_model_binary_hex": "00000049813a4363646f63188117780775767a6e6e7762657469746c65812f83812e6133196178812d7807726b7269377938646c6973748126c281220181252081110018441a011d201c00185201a9e9043b"
   },
   "meta": {
     "upstream_package": "json-joy",

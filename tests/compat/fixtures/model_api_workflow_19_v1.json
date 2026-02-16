@@ -6,17 +6,17 @@
     "sid": 79019,
     "initial_json": {
       "doc": {
-        "seed": -75.1,
+        "seed": "cbwso4t",
         "nested": {
-          "v": 27
+          "v": 8
         }
       },
-      "title": "s",
+      "title": "ed",
       "list": [
-        1
+        0
       ]
     },
-    "base_model_binary_hex": "000000411f4363646f631e4264736565641d00fbc052c6666666666678066e65737465641c4161761b00181b657469746c651881176173646c69737416c11201152014000101abe90410",
+    "base_model_binary_hex": "0000004681174363646f63811642647365656481158181147807636277736f347478066e65737465641d4161761c0008657469746c65198118626564646c69737416c11201152014000001abe90418",
     "ops": [
       {
         "kind": "find",
@@ -30,21 +30,44 @@
           "doc"
         ],
         "key": "k15",
-        "value_json": "b5xklme5ij"
+        "value_json": -36.6
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n15"
+        ],
+        "value_json": "0e8sx7vozbmd31d"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 22
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
         "path": [
           "list"
         ],
-        "value_json": 92
+        "value_json": 9
       },
       {
         "kind": "str_ins",
         "path": [
           "title"
         ],
-        "pos": 1,
+        "pos": 0,
         "text": "x"
       },
       {
@@ -52,18 +75,7 @@
         "path": [
           "doc"
         ],
-        "value_json": [
-          [
-            null
-          ]
-        ]
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "abe9042af71420672a2a6464726964343948242a2064333339377934712228330800f548393a712222390800f5483d3e7122223d660821746b617a33768208090121010009481d48010004480b4a01",
-          "abe9044cf70c00f5670846016e71676777753981084101060004481d55010005480b57010800004859015a01710a0e5901510163646f634c01"
-        ]
+        "value_json": null
       }
     ]
   },
@@ -74,21 +86,71 @@
         "path": [
           "title"
         ],
-        "value_json": "s"
+        "value_json": "ed"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": -75.1,
+            "seed": "cbwso4t",
             "nested": {
-              "v": 27
+              "v": 8
             },
-            "k15": "b5xklme5ij"
+            "k15": -36.6
           },
-          "title": "s",
+          "title": "ed",
           "list": [
-            1
+            0
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": "cbwso4t",
+            "nested": {
+              "v": 8
+            },
+            "k15": -36.6,
+            "n15": "0e8sx7vozbmd31d"
+          },
+          "title": "ed",
+          "list": [
+            0
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": "cbwso4t",
+            "nested": {
+              "v": 8
+            },
+            "k15": -36.6,
+            "n15": "0e8sx7vozbmd31d"
+          },
+          "title": "ed",
+          "list": [
+            22
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 8
+            },
+            "k15": -36.6,
+            "n15": "0e8sx7vozbmd31d"
+          },
+          "title": "ed",
+          "list": [
+            22
           ]
         }
       },
@@ -96,16 +158,16 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": -75.1,
             "nested": {
-              "v": 27
+              "v": 8
             },
-            "k15": "b5xklme5ij"
+            "k15": -36.6,
+            "n15": "0e8sx7vozbmd31d"
           },
-          "title": "s",
+          "title": "ed",
           "list": [
-            1,
-            92
+            22,
+            9
           ]
         }
       },
@@ -113,57 +175,40 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": -75.1,
             "nested": {
-              "v": 27
+              "v": 8
             },
-            "k15": "b5xklme5ij"
+            "k15": -36.6,
+            "n15": "0e8sx7vozbmd31d"
           },
-          "title": "sx",
+          "title": "xed",
           "list": [
-            1,
-            92
+            22,
+            9
           ]
         }
       },
       {
         "kind": "set",
         "view_json": {
-          "doc": [
-            [
-              null
-            ]
-          ],
-          "title": "sx",
+          "doc": null,
+          "title": "xed",
           "list": [
-            1,
-            92
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": true,
-          "title": "nqggwu9",
-          "list": [
-            5,
-            0,
-            4
+            22,
+            9
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": true,
-      "title": "nqggwu9",
+      "doc": null,
+      "title": "xed",
       "list": [
-        5,
-        0,
-        4
+        22,
+        9
       ]
     },
-    "final_model_binary_hex": "00000049815c4363646f63811100f5657469746c65815584815401813c01811c06811078076e716767777539646c6973748153c3814f0181522016000511011420130000813d0181402018000401abe9045d"
+    "final_model_binary_hex": "0000003381354363646f631100f6657469746c658127821261788126626564646c6973748124c28120018123201a00161301162015000901abe90436"
   },
   "meta": {
     "upstream_package": "json-joy",

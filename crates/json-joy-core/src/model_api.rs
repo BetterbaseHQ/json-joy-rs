@@ -34,6 +34,8 @@ pub enum ModelApiError {
     NotArray,
     #[error("path does not point to string")]
     NotString,
+    #[error("invalid path operation")]
+    InvalidPathOp,
     #[error("model encode/decode failed: {0}")]
     Model(#[from] ModelError),
     #[error("patch apply failed: {0}")]
@@ -156,6 +158,65 @@ impl NativeModelApi {
         self.apply_target_view(next)
     }
 
+    pub fn add(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
+        if path.is_empty() {
+            return Err(ModelApiError::InvalidPathOp);
+        }
+        let mut next = self.runtime.view_json();
+        let (parent, leaf) = split_parent(path)?;
+        let target = if parent.is_empty() {
+            &mut next
+        } else {
+            get_path_mut(&mut next, parent).ok_or(ModelApiError::PathNotFound)?
+        };
+        match (target, leaf) {
+            (Value::Object(map), PathStep::Key(key)) => {
+                map.insert(key.clone(), value);
+            }
+            (Value::Array(arr), PathStep::Index(idx)) => {
+                let i = (*idx).min(arr.len());
+                arr.insert(i, value);
+            }
+            _ => return Err(ModelApiError::InvalidPathOp),
+        }
+        self.apply_target_view(next)
+    }
+
+    pub fn replace(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
+        if path.is_empty() {
+            return self.apply_target_view(value);
+        }
+        let mut next = self.runtime.view_json();
+        let target = get_path_mut(&mut next, path).ok_or(ModelApiError::PathNotFound)?;
+        *target = value;
+        self.apply_target_view(next)
+    }
+
+    pub fn remove(&mut self, path: &[PathStep]) -> Result<(), ModelApiError> {
+        if path.is_empty() {
+            return Err(ModelApiError::InvalidPathOp);
+        }
+        let mut next = self.runtime.view_json();
+        let (parent, leaf) = split_parent(path)?;
+        let target = if parent.is_empty() {
+            &mut next
+        } else {
+            get_path_mut(&mut next, parent).ok_or(ModelApiError::PathNotFound)?
+        };
+        match (target, leaf) {
+            (Value::Object(map), PathStep::Key(key)) => {
+                map.remove(key);
+            }
+            (Value::Array(arr), PathStep::Index(idx)) => {
+                if *idx < arr.len() {
+                    arr.remove(*idx);
+                }
+            }
+            _ => return Err(ModelApiError::InvalidPathOp),
+        }
+        self.apply_target_view(next)
+    }
+
     fn apply_target_view(&mut self, next: Value) -> Result<(), ModelApiError> {
         let base = self.runtime.to_model_binary_like()?;
         let patch = diff_model_to_patch_bytes(&base, &next, self.sid)?;
@@ -182,4 +243,12 @@ fn get_path_mut<'a>(value: &'a mut Value, path: &[PathStep]) -> Option<&'a mut V
         }
     }
     Some(cur)
+}
+
+fn split_parent(path: &[PathStep]) -> Result<(&[PathStep], &PathStep), ModelApiError> {
+    if path.is_empty() {
+        return Err(ModelApiError::InvalidPathOp);
+    }
+    let (parent, leaf) = path.split_at(path.len() - 1);
+    Ok((parent, &leaf[0]))
 }

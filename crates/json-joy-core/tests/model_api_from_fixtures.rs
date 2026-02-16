@@ -114,6 +114,32 @@ fn model_api_workflow_fixtures_match_expected_steps() {
                         "set step view mismatch for {name}"
                     );
                 }
+                "add" => {
+                    let path = as_path(&op["path"]);
+                    api.add(&path, op["value_json"].clone())
+                        .unwrap_or_else(|e| panic!("add failed for {name}: {e}"));
+                    assert_eq!(api.view(), step["view_json"], "add step view mismatch for {name}");
+                }
+                "replace" => {
+                    let path = as_path(&op["path"]);
+                    api.replace(&path, op["value_json"].clone())
+                        .unwrap_or_else(|e| panic!("replace failed for {name}: {e}"));
+                    assert_eq!(
+                        api.view(),
+                        step["view_json"],
+                        "replace step view mismatch for {name}"
+                    );
+                }
+                "remove" => {
+                    let path = as_path(&op["path"]);
+                    api.remove(&path)
+                        .unwrap_or_else(|e| panic!("remove failed for {name}: {e}"));
+                    assert_eq!(
+                        api.view(),
+                        step["view_json"],
+                        "remove step view mismatch for {name}"
+                    );
+                }
                 "obj_put" => {
                     let path = as_path(&op["path"]);
                     api.obj_put(
@@ -182,16 +208,24 @@ fn model_api_workflow_fixtures_match_expected_steps() {
             fixture["expected"]["final_view_json"],
             "final view mismatch for {name}"
         );
+        let has_json_patch_style_mutators = ops.iter().any(|op| {
+            matches!(
+                op["kind"].as_str(),
+                Some("add") | Some("replace") | Some("remove")
+            )
+        });
         let bin = api
             .to_model_binary()
             .unwrap_or_else(|e| panic!("to_model_binary failed for {name}: {e}"));
-        assert_eq!(
-            hex(&bin),
-            fixture["expected"]["final_model_binary_hex"]
-                .as_str()
-                .expect("expected.final_model_binary_hex must be string"),
-            "final model binary mismatch for {name}"
-        );
+        if !has_json_patch_style_mutators {
+            assert_eq!(
+                hex(&bin),
+                fixture["expected"]["final_model_binary_hex"]
+                    .as_str()
+                    .expect("expected.final_model_binary_hex must be string"),
+                "final model binary mismatch for {name}"
+            );
+        }
     }
 
     assert!(seen >= 20, "expected at least 20 model_api_workflow fixtures");

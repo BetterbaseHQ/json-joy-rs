@@ -6,24 +6,17 @@
     "sid": 79016,
     "initial_json": {
       "doc": {
-        "seed": {
-          "2": [
-            "gmwk",
-            false
-          ],
-          "onhng4": null,
-          "ecvp65kcue": {}
-        },
+        "seed": "49ev83ck4f",
         "nested": {
-          "v": 22
+          "v": 43
         }
       },
-      "title": "mzxhpv3",
+      "title": "nr1m",
       "list": [
-        8
+        4
       ]
     },
-    "base_model_binary_hex": "0000007781234363646f63812242647365656481214361328120c1811702811f81811e64676d776b811a20811900f478066f6e686e6734811500f6780a6563767036356b63756581144078066e6573746564811241617681110016657469746c651e811d78076d7a7868707633646c69737416c11201152014000801a8e90424",
+    "base_model_binary_hex": "0000004c811c4363646f63811b426473656564811a818119780a343965763833636b346678066e65737465641f4161761e00182b657469746c651b811a646e72316d646c69737416c11201152014000401a8e9041d",
     "ops": [
       {
         "kind": "find",
@@ -37,21 +30,44 @@
           "doc"
         ],
         "key": "k12",
-        "value_json": false
+        "value_json": "xg2aqy67"
+      },
+      {
+        "kind": "add",
+        "path": [
+          "doc",
+          "n12"
+        ],
+        "value_json": "6gk0"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "list",
+          0
+        ],
+        "value_json": 49
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "doc",
+          "seed"
+        ]
       },
       {
         "kind": "arr_push",
         "path": [
           "list"
         ],
-        "value_json": 18
+        "value_json": 77
       },
       {
         "kind": "str_ins",
         "path": [
           "title"
         ],
-        "pos": 1,
+        "pos": 2,
         "text": "x"
       },
       {
@@ -59,14 +75,16 @@
         "path": [
           "doc"
         ],
-        "value_json": {}
-      },
-      {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "a8e90430f70a00fbc05293333333333361161d3281161b0361161936831617012b01180200014827350003481f37510163646f6330",
-          "a8e9043af70d20600a3a3a6668347563726472363762163139648116310161163337811633010007481f4a01080009484c014d01711e1e4c01510163646f633a"
-        ]
+        "value_json": {
+          "ayqk": {
+            "956": "4",
+            "zbk19bjawg": "4m2",
+            "yyor5wijrx": null,
+            "r": 90.1
+          },
+          "iqm7kk7": "rjvz1nwrix",
+          "tn1uj": true
+        }
       }
     ]
   },
@@ -77,28 +95,71 @@
         "path": [
           "title"
         ],
-        "value_json": "mzxhpv3"
+        "value_json": "nr1m"
       },
       {
         "kind": "obj_put",
         "view_json": {
           "doc": {
-            "seed": {
-              "2": [
-                "gmwk",
-                false
-              ],
-              "onhng4": null,
-              "ecvp65kcue": {}
-            },
+            "seed": "49ev83ck4f",
             "nested": {
-              "v": 22
+              "v": 43
             },
-            "k12": false
+            "k12": "xg2aqy67"
           },
-          "title": "mzxhpv3",
+          "title": "nr1m",
           "list": [
-            8
+            4
+          ]
+        }
+      },
+      {
+        "kind": "add",
+        "view_json": {
+          "doc": {
+            "seed": "49ev83ck4f",
+            "nested": {
+              "v": 43
+            },
+            "k12": "xg2aqy67",
+            "n12": "6gk0"
+          },
+          "title": "nr1m",
+          "list": [
+            4
+          ]
+        }
+      },
+      {
+        "kind": "replace",
+        "view_json": {
+          "doc": {
+            "seed": "49ev83ck4f",
+            "nested": {
+              "v": 43
+            },
+            "k12": "xg2aqy67",
+            "n12": "6gk0"
+          },
+          "title": "nr1m",
+          "list": [
+            49
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "doc": {
+            "nested": {
+              "v": 43
+            },
+            "k12": "xg2aqy67",
+            "n12": "6gk0"
+          },
+          "title": "nr1m",
+          "list": [
+            49
           ]
         }
       },
@@ -106,23 +167,16 @@
         "kind": "arr_push",
         "view_json": {
           "doc": {
-            "seed": {
-              "2": [
-                "gmwk",
-                false
-              ],
-              "onhng4": null,
-              "ecvp65kcue": {}
-            },
             "nested": {
-              "v": 22
+              "v": 43
             },
-            "k12": false
+            "k12": "xg2aqy67",
+            "n12": "6gk0"
           },
-          "title": "mzxhpv3",
+          "title": "nr1m",
           "list": [
-            8,
-            18
+            49,
+            77
           ]
         }
       },
@@ -130,60 +184,58 @@
         "kind": "str_ins",
         "view_json": {
           "doc": {
-            "seed": {
-              "2": [
-                "gmwk",
-                false
-              ],
-              "onhng4": null,
-              "ecvp65kcue": {}
-            },
             "nested": {
-              "v": 22
+              "v": 43
             },
-            "k12": false
+            "k12": "xg2aqy67",
+            "n12": "6gk0"
           },
-          "title": "mxzxhpv3",
+          "title": "nrx1m",
           "list": [
-            8,
-            18
+            49,
+            77
           ]
         }
       },
       {
         "kind": "set",
         "view_json": {
-          "doc": {},
-          "title": "mxzxhpv3",
+          "doc": {
+            "ayqk": {
+              "956": "4",
+              "zbk19bjawg": "4m2",
+              "yyor5wijrx": null,
+              "r": 90.1
+            },
+            "iqm7kk7": "rjvz1nwrix",
+            "tn1uj": true
+          },
+          "title": "nrx1m",
           "list": [
-            8,
-            18
-          ]
-        }
-      },
-      {
-        "kind": "apply_batch",
-        "view_json": {
-          "doc": "fh4ucrdr67",
-          "title": "7h9d",
-          "list": [
-            9,
-            7,
-            1
+            49,
+            77
           ]
         }
       }
     ],
     "final_view_json": {
-      "doc": "fh4ucrdr67",
-      "title": "7h9d",
+      "doc": {
+        "ayqk": {
+          "956": "4",
+          "zbk19bjawg": "4m2",
+          "yyor5wijrx": null,
+          "r": 90.1
+        },
+        "iqm7kk7": "rjvz1nwrix",
+        "tn1uj": true
+      },
+      "title": "nrx1m",
       "list": [
-        9,
-        7,
-        1
+        49,
+        77
       ]
     },
-    "final_model_binary_hex": "00000060814f4363646f638116818115780a66683475637264723637657469746c65813a89813901812501813802811d0118613781366168813503811f011b623964646c6973748132c311011420130009812e01813120160007812601812920811b000101a8e90450"
+    "final_model_binary_hex": "000000c9814f4363646f63814e476473656564812000f778066e6573746564811900f7636b3132811800f7636e3132811700f7646179716b8116446339353681158181146134780a7a626b3139626a617767811381811263346d32780a79796f723577696a72781f00f661721e00fb4056866666666666780769716d376b6b371c811b780a726a767a316e7772697865746e31756a1100f5657469746c65813e83813d626e72811a6178813b62316d646c6973748139c28135018138208122001831811b01811e20811d00184d01a8e90450"
   },
   "meta": {
     "upstream_package": "json-joy",

@@ -30,10 +30,26 @@
         ]
       },
       {
-        "kind": "apply_batch",
-        "patches_binary_hex": [
-          "9be9040df7020002510261760d",
-          "9be9040ff70500f55102626f6b0f206111117971050811"
+        "kind": "add",
+        "path": [
+          "meta",
+          "note"
+        ],
+        "value_json": "n"
+      },
+      {
+        "kind": "replace",
+        "path": [
+          "meta",
+          "v"
+        ],
+        "value_json": 2
+      },
+      {
+        "kind": "remove",
+        "path": [
+          "meta",
+          "note"
         ]
       }
     ]
@@ -61,15 +77,40 @@
         "value_json": false
       },
       {
-        "kind": "apply_batch",
+        "kind": "add",
+        "view_json": {
+          "meta": {
+            "v": 1,
+            "ok": false,
+            "note": "n"
+          },
+          "tags": [
+            "x"
+          ]
+        }
+      },
+      {
+        "kind": "replace",
         "view_json": {
           "meta": {
             "v": 2,
-            "ok": true
+            "ok": false,
+            "note": "n"
           },
           "tags": [
-            "x",
-            "y"
+            "x"
+          ]
+        }
+      },
+      {
+        "kind": "remove",
+        "view_json": {
+          "meta": {
+            "v": 2,
+            "ok": false
+          },
+          "tags": [
+            "x"
           ]
         }
       }
@@ -77,14 +118,13 @@
     "final_view_json": {
       "meta": {
         "v": 2,
-        "ok": true
+        "ok": false
       },
       "tags": [
-        "x",
-        "y"
+        "x"
       ]
     },
-    "final_model_binary_hex": "0000002b811242646d6574618111426176160002626f6b1400f564746167731ec21b011d811c617810011281116179019be90413"
+    "final_model_binary_hex": "0000002c811242646d6574618111436176130002626f6b1800f4646e6f74651100f764746167731ec11b011d811c6178019be90413"
   },
   "meta": {
     "upstream_package": "json-joy",

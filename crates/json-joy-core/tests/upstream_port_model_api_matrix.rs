@@ -150,14 +150,26 @@ fn upstream_port_model_api_mutator_matrix() {
         .expect("obj_put must succeed");
     api.obj_put(&[], "list", json!([1]))
         .expect("obj_put must succeed");
+    api.add(&[PathStep::Key("list".into()), PathStep::Index(1)], json!(9))
+        .expect("add must succeed");
+    api.replace(&[PathStep::Key("list".into()), PathStep::Index(0)], json!(7))
+        .expect("replace must succeed");
+    api.remove(&[PathStep::Key("list".into()), PathStep::Index(2)])
+        .expect("remove must succeed");
     api.arr_push(&[PathStep::Key("list".into())], json!(2))
         .expect("arr_push must succeed");
     api.obj_put(&[], "name", json!("ab"))
         .expect("obj_put must succeed");
     api.str_ins(&[PathStep::Key("name".into())], 1, "Z")
         .expect("str_ins must succeed");
+    api.add(&[PathStep::Key("subtitle".into())], json!("s"))
+        .expect("add on object must succeed");
+    api.replace(&[PathStep::Key("subtitle".into())], json!("S"))
+        .expect("replace on object must succeed");
+    api.remove(&[PathStep::Key("subtitle".into())])
+        .expect("remove on object must succeed");
     api.set(&[PathStep::Key("title".into())], json!("world"))
         .expect("set must succeed");
 
-    assert_eq!(api.view(), json!({"title":"world","list":[1,2],"name":"aZb"}));
+    assert_eq!(api.view(), json!({"title":"world","list":[7,9,2],"name":"aZb"}));
 }

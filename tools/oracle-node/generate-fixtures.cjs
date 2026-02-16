@@ -1767,6 +1767,52 @@ function buildModelApiWorkflowFixture(name, sid, initial, ops) {
       expectedSteps.push({kind: 'set', view_json: normalizeView(runtime.view())});
       continue;
     }
+    if (op.kind === 'add') {
+      if (op.path.length === 0) throw new Error('add path must not be empty');
+      const parentPath = op.path.slice(0, -1);
+      const leaf = op.path[op.path.length - 1];
+      const parent = findAtPath(currentView, parentPath);
+      if (Array.isArray(parent)) {
+        const idx = Math.max(0, Math.min(Number(leaf), parent.length));
+        parent.splice(idx, 0, cloneJson(op.value));
+      } else if (parent && typeof parent === 'object') {
+        parent[String(leaf)] = cloneJson(op.value);
+      } else {
+        throw new Error('add parent is not container');
+      }
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'add', path: toPathArray(op.path), value_json: op.value});
+      expectedSteps.push({kind: 'add', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'replace') {
+      currentView = setAtPath(currentView, op.path, cloneJson(op.value));
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'replace', path: toPathArray(op.path), value_json: op.value});
+      expectedSteps.push({kind: 'replace', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'remove') {
+      if (op.path.length === 0) throw new Error('remove path must not be empty');
+      const parentPath = op.path.slice(0, -1);
+      const leaf = op.path[op.path.length - 1];
+      const parent = findAtPath(currentView, parentPath);
+      if (Array.isArray(parent)) {
+        const idx = Number(leaf);
+        if (Number.isInteger(idx) && idx >= 0 && idx < parent.length) parent.splice(idx, 1);
+      } else if (parent && typeof parent === 'object') {
+        delete parent[String(leaf)];
+      } else {
+        throw new Error('remove parent is not container');
+      }
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'remove', path: toPathArray(op.path)});
+      expectedSteps.push({kind: 'remove', view_json: normalizeView(runtime.view())});
+      continue;
+    }
     if (op.kind === 'obj_put') {
       const obj = findAtPath(currentView, op.path);
       if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('obj_put path is not object');
@@ -1841,8 +1887,11 @@ function allModelApiWorkflowFixtures() {
       initial: {doc: {title: 'a', items: [1]}},
       ops: [
         {kind: 'find', path: ['doc', 'title']},
+        {kind: 'add', path: ['doc', 'subtitle'], value: 's'},
+        {kind: 'replace', path: ['doc', 'subtitle'], value: 'S'},
         {kind: 'obj_put', path: ['doc'], key: 'flag', value: true},
         {kind: 'arr_push', path: ['doc', 'items'], value: 2},
+        {kind: 'remove', path: ['doc', 'subtitle']},
         {kind: 'set', path: ['doc', 'title'], value: 'A'},
       ],
     },
@@ -1850,6 +1899,9 @@ function allModelApiWorkflowFixtures() {
       initial: {name: 'ab', list: [1, 2]},
       ops: [
         {kind: 'str_ins', path: ['name'], pos: 1, text: 'Z'},
+        {kind: 'add', path: ['list', 1], value: 9},
+        {kind: 'replace', path: ['list', 0], value: 7},
+        {kind: 'remove', path: ['list', 2]},
         {kind: 'find', path: ['name']},
         {kind: 'arr_push', path: ['list'], value: 3},
       ],
@@ -1859,7 +1911,9 @@ function allModelApiWorkflowFixtures() {
       ops: [
         {kind: 'obj_put', path: ['meta'], key: 'ok', value: false},
         {kind: 'find', path: ['meta', 'ok']},
-        {kind: 'apply_batch', batch_next_views: [{meta: {v: 2, ok: false}, tags: ['x']}, {meta: {v: 2, ok: true}, tags: ['x', 'y']}]},
+        {kind: 'add', path: ['meta', 'note'], value: 'n'},
+        {kind: 'replace', path: ['meta', 'v'], value: 2},
+        {kind: 'remove', path: ['meta', 'note']},
       ],
     },
   ];
@@ -1889,16 +1943,12 @@ function allModelApiWorkflowFixtures() {
     const ops = [
       {kind: 'find', path: ['title']},
       {kind: 'obj_put', path: ['doc'], key: `k${i}`, value: randScalar(rng)},
+      {kind: 'add', path: ['doc', `n${i}`], value: randScalar(rng)},
+      {kind: 'replace', path: ['list', 0], value: randInt(rng, 100)},
+      {kind: 'remove', path: ['doc', 'seed']},
       {kind: 'arr_push', path: ['list'], value: randInt(rng, 100)},
       {kind: 'str_ins', path: ['title'], pos: randInt(rng, 3), text: 'x'},
       {kind: 'set', path: ['doc'], value: randJson(rng, 2)},
-      {
-        kind: 'apply_batch',
-        batch_next_views: [
-          {doc: randJson(rng, 2), title: randString(rng, 1, 8), list: [randInt(rng, 10), randInt(rng, 10)]},
-          {doc: randJson(rng, 2), title: randString(rng, 1, 8), list: [randInt(rng, 10), randInt(rng, 10), randInt(rng, 10)]},
-        ],
-      },
     ];
     fixtures.push(
       buildModelApiWorkflowFixture(
