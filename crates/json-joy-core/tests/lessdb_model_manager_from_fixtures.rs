@@ -325,9 +325,14 @@ fn lessdb_diff_native_support_inventory() {
         }
     }
 
+    eprintln!(
+        "lessdb native diff inventory: supported={}, fallback={}",
+        supported, fallback
+    );
+
     assert!(
-        supported >= 8,
-        "expected at least 8 lessdb diff steps to be natively supported; got {supported}"
+        supported >= 10,
+        "expected at least 10 lessdb diff steps to be natively supported; got {supported}"
     );
     assert!(fallback >= 1, "expected at least one fallback-covered diff shape");
 }

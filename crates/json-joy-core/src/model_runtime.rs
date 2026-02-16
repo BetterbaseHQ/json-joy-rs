@@ -45,6 +45,15 @@ impl From<Timestamp> for Id {
     }
 }
 
+impl From<Id> for Timestamp {
+    fn from(v: Id) -> Self {
+        Self {
+            sid: v.sid,
+            time: v.time,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 enum RuntimeNode {
     Con(ConCell),
@@ -163,6 +172,43 @@ impl RuntimeModel {
             return encode_server(self, server_time);
         }
         encode_logical(self)
+    }
+
+    pub(crate) fn root_object_field(&self, key: &str) -> Option<Timestamp> {
+        let root = self.root?;
+        match self.nodes.get(&root)? {
+            RuntimeNode::Obj(entries) => entries
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, id)| (*id).into()),
+            RuntimeNode::Val(child) => match self.nodes.get(child)? {
+                RuntimeNode::Obj(entries) => entries
+                    .iter()
+                    .find(|(k, _)| k == key)
+                    .map(|(_, id)| (*id).into()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub(crate) fn node_is_string(&self, id: Timestamp) -> bool {
+        matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Str(_)))
+    }
+
+    pub(crate) fn string_visible_slots(&self, id: Timestamp) -> Option<Vec<Timestamp>> {
+        let node = self.nodes.get(&Id::from(id))?;
+        if let RuntimeNode::Str(atoms) = node {
+            let mut out = Vec::new();
+            for atom in atoms {
+                if atom.ch.is_some() {
+                    out.push(atom.slot.into());
+                }
+            }
+            Some(out)
+        } else {
+            None
+        }
     }
 
     fn maybe_infer_root_obj(&mut self, obj: Id) {
