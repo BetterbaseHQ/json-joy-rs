@@ -52,7 +52,7 @@ fn load_diff_fixtures() -> Vec<(String, Value)> {
 #[test]
 fn model_diff_parity_fixtures_match_oracle_patch_binary() {
     let fixtures = load_diff_fixtures();
-    assert!(fixtures.len() >= 50, "expected at least 50 model_diff_parity fixtures");
+    assert!(fixtures.len() >= 100, "expected at least 100 model_diff_parity fixtures");
 
     for (name, fixture) in fixtures {
         let base_bytes = decode_hex(

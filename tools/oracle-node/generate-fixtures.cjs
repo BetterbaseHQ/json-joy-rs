@@ -926,6 +926,115 @@ function allModelCanonicalEncodeFixtures() {
         ],
       },
     }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_logical_arr_nested_v1', {
+      mode: 'logical',
+      clock_table: clockTable,
+      root: {
+        id: [sid, 1],
+        kind: 'arr',
+        chunks: [
+          {
+            id: [sid, 2],
+            values: [
+              {id: [sid, 3], kind: 'con', value: 1},
+              {
+                id: [sid, 4],
+                kind: 'obj',
+                entries: [{key: 'k', value: {id: [sid, 5], kind: 'con', value: 'v'}}],
+              },
+            ],
+          },
+        ],
+      },
+    }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_logical_str_tombstone_v1', {
+      mode: 'logical',
+      clock_table: clockTable,
+      root: {
+        id: [sid, 1],
+        kind: 'str',
+        chunks: [
+          {id: [sid, 2], text: 'abcd'},
+          {id: [sid, 6], deleted: 1},
+          {id: [sid, 7], text: 'Z'},
+        ],
+      },
+    }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_logical_bin_multi_chunk_v1', {
+      mode: 'logical',
+      clock_table: clockTable,
+      root: {
+        id: [sid, 1],
+        kind: 'bin',
+        chunks: [
+          {id: [sid, 2], bytes_hex: '0102'},
+          {id: [sid, 4], deleted: 1},
+          {id: [sid, 5], bytes_hex: '0a0b0c'},
+        ],
+      },
+    }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_logical_obj_deep_v1', {
+      mode: 'logical',
+      clock_table: clockTable,
+      root: {
+        id: [sid, 1],
+        kind: 'obj',
+        entries: [
+          {
+            key: 'doc',
+            value: {
+              id: [sid, 2],
+              kind: 'obj',
+              entries: [
+                {key: 'title', value: {id: [sid, 3], kind: 'con', value: 'Hello'}},
+                {
+                  key: 'tags',
+                  value: {
+                    id: [sid, 4],
+                    kind: 'arr',
+                    chunks: [{id: [sid, 5], values: [{id: [sid, 6], kind: 'con', value: 'x'}]}],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_server_obj_nested_v1', {
+      mode: 'server',
+      server_time: 14,
+      root: {
+        id: [1, 10],
+        kind: 'obj',
+        entries: [
+          {key: 'a', value: {id: [1, 11], kind: 'con', value: 1}},
+          {
+            key: 'b',
+            value: {
+              id: [1, 12],
+              kind: 'arr',
+              chunks: [{id: [1, 13], values: [{id: [1, 14], kind: 'con', value: 2}]}],
+            },
+          },
+        ],
+      },
+    }),
+    buildModelCanonicalEncodeFixture('model_canonical_encode_server_vec_sparse_v1', {
+      mode: 'server',
+      server_time: 22,
+      root: {
+        id: [1, 20],
+        kind: 'vec',
+        values: [
+          {id: [1, 21], kind: 'con', value: 'x'},
+          null,
+          {id: [1, 22], kind: 'con', value: true},
+          null,
+          {id: [1, 23], kind: 'con', value: null},
+        ],
+      },
+    }),
   ];
 }
 
@@ -1035,6 +1144,32 @@ function allModelDiffParityFixtures() {
         `model_diff_parity_${String(deterministicCases.length + i + 1).padStart(2, '0')}_rnd_v1`,
         sid,
         base,
+        nextView,
+      ),
+    );
+  }
+
+  // Expanded non-empty-base corpus to avoid overfitting empty-root transitions.
+  for (let i = 0; i < 40; i++) {
+    const sid = sidBase + deterministicCases.length + 30 + i + 1;
+    const baseView = {
+      a: i,
+      b: i + 1,
+      t: `v${i}`,
+      flag: i % 2 === 0,
+    };
+    const nextView = {
+      a: i + 1,
+      b: i + 1,
+      t: `v${i}-next`,
+      flag: i % 3 === 0,
+      c: i * 2,
+    };
+    fixtures.push(
+      buildModelDiffParityFixture(
+        `model_diff_parity_${String(deterministicCases.length + 30 + i + 1).padStart(2, '0')}_nonempty_v1`,
+        sid,
+        baseView,
         nextView,
       ),
     );
@@ -1179,6 +1314,10 @@ function allModelApplyReplayFixtures() {
     {name: 'in_order', replay: [0, 1, 2]},
     {name: 'out_of_order', replay: [2, 0, 1]},
     {name: 'interleaved_dup', replay: [0, 2, 0, 1, 2]},
+    {name: 'dup_tail', replay: [0, 1, 2, 2, 2]},
+    {name: 'dup_head', replay: [0, 0, 0, 1, 2]},
+    {name: 'dup_middle', replay: [0, 1, 1, 1, 2]},
+    {name: 'full_cycle_twice', replay: [0, 1, 2, 0, 1, 2]},
   ];
 
   let idx = 1;
@@ -1385,6 +1524,21 @@ function allLessdbModelManagerFixtures() {
     [{tags: ['a']}, {tags: ['a', 'b']}],
     [{tags: ['a', 'b']}, {tags: ['b']}],
     [{flag: true}, {flag: false}],
+    [{a: 10}, {a: 11}],
+    [{title: 'x'}, {title: 'xy'}],
+    [{title: 'xy'}, {title: 'x'}],
+    [{arr: [1]}, {arr: [1, 2]}],
+    [{arr: [1, 2]}, {arr: [2]}],
+    [{obj: {x: 1}}, {obj: {x: 2}}],
+    [{obj: {x: 1}}, {obj: {x: 1, z: 3}}],
+    [{n: 0}, {n: 1}],
+    [{n: 1}, {n: 0}],
+    [{flag: false}, {flag: true}],
+    [{tags: ['x']}, {tags: ['x', 'y']}],
+    [{tags: ['x', 'y']}, {tags: ['y']}],
+    [{doc: {title: 'm', body: 'n'}}, {doc: {title: 'M', body: 'n'}}],
+    [{doc: {title: 'm', body: 'n'}}, {doc: {title: 'm', body: 'N'}}],
+    [{score: 3}, {score: 3}],
   ];
 
   for (const [initial, next] of createCases) {
@@ -1405,6 +1559,11 @@ function allLessdbModelManagerFixtures() {
     [{arr: [1]}, {arr: [1, 2]}],
     [{obj: {k: 1}}, {obj: {k: 2}}],
     [{txt: 'abc'}, {txt: 'abZc'}],
+    [{title: 'b'}, {title: 'B'}],
+    [{body: 'q'}, {body: 'q!'}],
+    [{arr: [2]}, {arr: [2, 3]}],
+    [{obj: {k: 3}}, {obj: {k: 4}}],
+    [{txt: 'aba'}, {txt: 'abZa'}],
   ];
   for (const [initial, nextFork] of forkCases) {
     fixtures.push(
@@ -1425,6 +1584,11 @@ function allLessdbModelManagerFixtures() {
     [{arr: [1, 2]}, {arr: [2, 1]}],
     [{txt: 'abc'}, {txt: 'axbc'}],
     [{obj: {a: 1}}, {obj: {a: 1, b: 2}}],
+    [{title: 'b'}, {title: 'B'}],
+    [{score: 2}, {score: 3}],
+    [{arr: [3, 4]}, {arr: [4, 3]}],
+    [{txt: 'hello'}, {txt: 'hello!'}],
+    [{obj: {a: 2}}, {obj: {a: 2, b: 3}}],
   ];
   for (const [initial, next] of mergeCases) {
     fixtures.push(

@@ -125,6 +125,22 @@ pub fn diff_model_to_patch_bytes(
     Err(DiffError::UnsupportedShape)
 }
 
+fn choose_sequence_insert_reference(
+    slots: &[Timestamp],
+    container: Timestamp,
+    lcp: usize,
+    del_len: usize,
+    old_len: usize,
+) -> Timestamp {
+    if lcp > 0 {
+        return slots[lcp - 1];
+    }
+    if old_len > 0 && del_len == old_len {
+        return slots[old_len - 1];
+    }
+    slots.first().copied().unwrap_or(container)
+}
+
 fn try_native_non_object_root_diff(
     base_model_binary: &[u8],
     next_view: &Value,
@@ -180,11 +196,8 @@ fn try_native_non_object_root_diff(
                 .iter()
                 .collect();
             if !ins.is_empty() {
-                let reference = if lcp == 0 {
-                    slots.first().copied().unwrap_or(root)
-                } else {
-                    slots[lcp - 1]
-                };
+                let reference =
+                    choose_sequence_insert_reference(&slots, root, lcp, del_len, old_chars.len());
                 emitter.push(DecodedOp::InsStr {
                     id: emitter.next_id(),
                     obj: root,
@@ -263,7 +276,8 @@ fn try_native_non_object_root_diff(
             let del_len = old_bin.len().saturating_sub(lcp + lcs);
             let ins_bytes = &new_bin[lcp..new_bin.len().saturating_sub(lcs)];
             if !ins_bytes.is_empty() {
-                let reference = if lcp == 0 { root } else { slots[lcp - 1] };
+                let reference =
+                    choose_sequence_insert_reference(&slots, root, lcp, del_len, old_bin.len());
                 emitter.push(DecodedOp::InsBin {
                     id: emitter.next_id(),
                     obj: root,
@@ -756,11 +770,13 @@ fn try_native_root_obj_multi_string_delta_diff(
             .collect();
         let ins_len = ins.chars().count();
         if ins_len > 0 {
-            let reference = if lcp == 0 {
-                slots.first().copied().unwrap_or(str_node)
-            } else {
-                slots[lcp - 1]
-            };
+            let reference = choose_sequence_insert_reference(
+                &slots,
+                str_node,
+                lcp,
+                del_len,
+                old_chars.len(),
+            );
             emitter.push(DecodedOp::InsStr {
                 id: emitter.next_id(),
                 obj: str_node,
@@ -857,6 +873,10 @@ fn try_native_root_obj_array_delta_diff(
         Some(v) => v,
         None => return Ok(None),
     };
+    let values = match runtime.array_visible_values(arr_node) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
     if slots.len() != old.len() {
         return Ok(None);
     }
@@ -885,6 +905,14 @@ fn try_native_root_obj_array_delta_diff(
         None => return Ok(None),
     };
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+
+    if try_emit_array_indexwise_diff(&runtime, &mut emitter, arr_node, &slots, &values, old, new)? {
+        if emitter.ops.is_empty() {
+            return Ok(Some(None));
+        }
+        let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+        return Ok(Some(Some(encoded)));
+    }
 
     if !ins_items.is_empty() {
         let mut ids = Vec::with_capacity(ins_items.len());
@@ -1085,7 +1113,8 @@ fn try_native_root_obj_multi_bin_delta_diff(
         let del_len = old.len().saturating_sub(lcp + lcs);
         let ins_bytes = &new[lcp..new.len().saturating_sub(lcs)];
         if !ins_bytes.is_empty() {
-            let reference = if lcp == 0 { bin_node } else { slots[lcp - 1] };
+            let reference =
+                choose_sequence_insert_reference(&slots, bin_node, lcp, del_len, old.len());
             emitter.push(DecodedOp::InsBin {
                 id: emitter.next_id(),
                 obj: bin_node,
@@ -1270,7 +1299,8 @@ fn try_native_multi_root_nested_bin_delta_diff(
             let del_len = old.len().saturating_sub(lcp + lcs);
             let ins_bytes = &new[lcp..new.len().saturating_sub(lcs)];
             if !ins_bytes.is_empty() {
-                let reference = if lcp == 0 { node } else { slots[lcp - 1] };
+                let reference =
+                    choose_sequence_insert_reference(&slots, node, lcp, del_len, old.len());
                 emitter.push(DecodedOp::InsBin {
                     id: emitter.next_id(),
                     obj: node,
@@ -1622,6 +1652,106 @@ fn emit_array_delta_ops(
     }
 }
 
+fn try_emit_array_indexwise_diff(
+    runtime: &RuntimeModel,
+    emitter: &mut NativeEmitter,
+    arr_node: Timestamp,
+    slots: &[Timestamp],
+    values: &[Timestamp],
+    old: &[Value],
+    new: &[Value],
+) -> Result<bool, DiffError> {
+    if old.len() != values.len() || old.len() != slots.len() {
+        return Ok(false);
+    }
+    // Keep this path aligned to append-or-update semantics only. For shrinking
+    // arrays upstream diff tends to emit direct deletions rather than index
+    // rewrites plus tail delete.
+    if new.len() < old.len() {
+        return Ok(false);
+    }
+    let mut changed = false;
+    let overlap = old.len().min(new.len());
+
+    for i in 0..overlap {
+        if old[i] == new[i] {
+            continue;
+        }
+        let child = values[i];
+        if runtime.node_is_val(child) {
+            let val = emitter.emit_value(&new[i]);
+            emitter.push(DecodedOp::InsVal {
+                id: emitter.next_id(),
+                obj: child,
+                val,
+            });
+            changed = true;
+            continue;
+        }
+        if try_emit_child_recursive_diff(runtime, emitter, child, Some(&old[i]), &new[i])? {
+            changed = true;
+            continue;
+        }
+        return Ok(false);
+    }
+
+    if new.len() > old.len() {
+        let extras = &new[old.len()..];
+        if !extras.is_empty() {
+            let mut ids = Vec::with_capacity(extras.len());
+            for item in extras {
+                if is_con_scalar(item) {
+                    let val_id = emitter.next_id();
+                    emitter.push(DecodedOp::NewVal { id: val_id });
+                    let con_id = emitter.emit_value(item);
+                    emitter.push(DecodedOp::InsVal {
+                        id: emitter.next_id(),
+                        obj: val_id,
+                        val: con_id,
+                    });
+                    ids.push(val_id);
+                } else {
+                    ids.push(emitter.emit_value(item));
+                }
+            }
+            let reference = slots.last().copied().unwrap_or(arr_node);
+            emitter.push(DecodedOp::InsArr {
+                id: emitter.next_id(),
+                obj: arr_node,
+                reference,
+                data: ids,
+            });
+            changed = true;
+        }
+    } else if old.len() > new.len() {
+        let del_slots = &slots[new.len()..old.len()];
+        if !del_slots.is_empty() {
+            let mut spans: Vec<crate::patch::Timespan> = Vec::new();
+            for slot in del_slots {
+                if let Some(last) = spans.last_mut() {
+                    if last.sid == slot.sid && last.time + last.span == slot.time {
+                        last.span += 1;
+                        continue;
+                    }
+                }
+                spans.push(crate::patch::Timespan {
+                    sid: slot.sid,
+                    time: slot.time,
+                    span: 1,
+                });
+            }
+            emitter.push(DecodedOp::Del {
+                id: emitter.next_id(),
+                obj: arr_node,
+                what: spans,
+            });
+            changed = true;
+        }
+    }
+
+    Ok(changed)
+}
+
 fn try_emit_child_recursive_diff(
     runtime: &RuntimeModel,
     emitter: &mut NativeEmitter,
@@ -1660,11 +1790,13 @@ fn try_emit_child_recursive_diff(
                 .iter()
                 .collect();
             if !ins.is_empty() {
-                let reference = if lcp == 0 {
-                    slots.first().copied().unwrap_or(child)
-                } else {
-                    slots[lcp - 1]
-                };
+                let reference = choose_sequence_insert_reference(
+                    &slots,
+                    child,
+                    lcp,
+                    del_len,
+                    old_chars.len(),
+                );
                 emitter.push(DecodedOp::InsStr {
                     id: emitter.next_id(),
                     obj: child,
@@ -1726,7 +1858,8 @@ fn try_emit_child_recursive_diff(
             let del_len = old_bin.len().saturating_sub(lcp + lcs);
             let ins_bytes = &new_bin[lcp..new_bin.len().saturating_sub(lcs)];
             if !ins_bytes.is_empty() {
-                let reference = if lcp == 0 { child } else { slots[lcp - 1] };
+                let reference =
+                    choose_sequence_insert_reference(&slots, child, lcp, del_len, old_bin.len());
                 emitter.push(DecodedOp::InsBin {
                     id: emitter.next_id(),
                     obj: child,
@@ -1763,6 +1896,22 @@ fn try_emit_child_recursive_diff(
                 Value::Array(v) => v,
                 _ => unreachable!(),
             };
+            if let (Some(slots), Some(values)) = (
+                runtime.array_visible_slots(child),
+                runtime.array_visible_values(child),
+            ) {
+                if try_emit_array_indexwise_diff(
+                    runtime,
+                    emitter,
+                    child,
+                    &slots,
+                    &values,
+                    old_arr,
+                    new_arr,
+                )? {
+                    return Ok(true);
+                }
+            }
             if old_arr.len() == new_arr.len() && !old_arr.is_empty() {
                 let mut any_change = false;
                 let mut all_changed_are_object_mutations = true;
@@ -2816,11 +2965,8 @@ fn try_native_multi_root_nested_string_delta_diff(
                 .collect();
             let ins_len = ins.chars().count();
             if ins_len > 0 {
-                let reference = if lcp == 0 {
-                    slots.first().copied().unwrap_or(node)
-                } else {
-                    slots[lcp - 1]
-                };
+                let reference =
+                    choose_sequence_insert_reference(&slots, node, lcp, del_len, old_chars.len());
                 emitter.push(DecodedOp::InsStr {
                     id: emitter.next_id(),
                     obj: node,
@@ -2903,11 +3049,8 @@ fn emit_string_delta_patch(
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
 
     if ins_len > 0 {
-        let reference = if lcp == 0 {
-            slots.first().copied().unwrap_or(str_node)
-        } else {
-            slots[lcp - 1]
-        };
+        let reference =
+            choose_sequence_insert_reference(slots, str_node, lcp, del_len, old_chars.len());
         emitter.push(DecodedOp::InsStr {
             id: emitter.next_id(),
             obj: str_node,
@@ -2979,7 +3122,7 @@ fn emit_bin_delta_patch(
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
 
     if !ins_bytes.is_empty() {
-        let reference = if lcp == 0 { bin_node } else { slots[lcp - 1] };
+        let reference = choose_sequence_insert_reference(slots, bin_node, lcp, del_len, old.len());
         emitter.push(DecodedOp::InsBin {
             id: emitter.next_id(),
             obj: bin_node,

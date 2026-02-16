@@ -314,19 +314,19 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include at least 20 model_decode_error scenarios"
     );
     assert!(
-        model_canonical_encode_count >= 6,
-        "fixtures must include at least 6 model_canonical_encode scenarios"
+        model_canonical_encode_count >= 12,
+        "fixtures must include at least 12 model_canonical_encode scenarios"
     );
     assert!(
-        model_apply_replay_count >= 30,
-        "fixtures must include at least 30 model_apply_replay scenarios"
+        model_apply_replay_count >= 50,
+        "fixtures must include at least 50 model_apply_replay scenarios"
     );
     assert!(
-        model_diff_parity_count >= 50,
-        "fixtures must include at least 50 model_diff_parity scenarios"
+        model_diff_parity_count >= 100,
+        "fixtures must include at least 100 model_diff_parity scenarios"
     );
     assert!(
-        lessdb_model_manager_count >= 30,
-        "fixtures must include at least 30 lessdb_model_manager scenarios"
+        lessdb_model_manager_count >= 50,
+        "fixtures must include at least 50 lessdb_model_manager scenarios"
     );
 }

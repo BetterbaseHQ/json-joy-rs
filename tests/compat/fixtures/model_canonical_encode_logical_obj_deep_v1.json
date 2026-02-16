@@ -1,0 +1,84 @@
+{
+  "fixture_version": 1,
+  "name": "model_canonical_encode_logical_obj_deep_v1",
+  "scenario": "model_canonical_encode",
+  "input": {
+    "mode": "logical",
+    "clock_table": [
+      [
+        74111,
+        1
+      ]
+    ],
+    "root": {
+      "id": [
+        74111,
+        1
+      ],
+      "kind": "obj",
+      "entries": [
+        {
+          "key": "doc",
+          "value": {
+            "id": [
+              74111,
+              2
+            ],
+            "kind": "obj",
+            "entries": [
+              {
+                "key": "title",
+                "value": {
+                  "id": [
+                    74111,
+                    3
+                  ],
+                  "kind": "con",
+                  "value": "Hello"
+                }
+              },
+              {
+                "key": "tags",
+                "value": {
+                  "id": [
+                    74111,
+                    4
+                  ],
+                  "kind": "arr",
+                  "chunks": [
+                    {
+                      "id": [
+                        74111,
+                        5
+                      ],
+                      "values": [
+                        {
+                          "id": [
+                            74111,
+                            6
+                          ],
+                          "kind": "con",
+                          "value": "x"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "model_binary_hex": "00000023004163646f630142657469746c6502006548656c6c6f647461677303c104010500617801ffc20401",
+    "view_json": null,
+    "decode_error_message": "NO_ERROR"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

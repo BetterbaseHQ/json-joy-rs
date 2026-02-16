@@ -894,8 +894,8 @@ fn upstream_port_diff_mixed_root_recursive_emits_child_and_root_ops() {
         decoded
             .decoded_ops()
             .iter()
-            .any(|op| matches!(op, DecodedOp::InsArr { .. })),
-        "expected child ins_arr op"
+            .any(|op| matches!(op, DecodedOp::InsArr { .. } | DecodedOp::InsVal { .. })),
+        "expected child array mutation op (ins_arr or ins_val)"
     );
     assert!(
         decoded
@@ -953,8 +953,8 @@ fn upstream_port_diff_inside_out_recursive_object_mutation() {
         decoded
             .decoded_ops()
             .iter()
-            .any(|op| matches!(op, DecodedOp::InsArr { .. })),
-        "expected deep ins_arr op"
+            .any(|op| matches!(op, DecodedOp::InsArr { .. } | DecodedOp::InsVal { .. })),
+        "expected deep array mutation op (ins_arr or ins_val)"
     );
 
     let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");

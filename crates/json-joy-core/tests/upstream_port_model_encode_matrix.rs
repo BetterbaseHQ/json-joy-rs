@@ -117,7 +117,7 @@ fn upstream_port_model_encode_inventory_from_apply_replay() {
     );
     eprintln!("model encode mismatches: {}", mismatch_names.join(", "));
 
-    assert!(seen >= 30, "expected at least 30 model_apply_replay fixtures");
+    assert!(seen >= 50, "expected at least 50 model_apply_replay fixtures");
     assert!(
         mismatch_ids.is_empty(),
         "expected exact binary parity for all apply_replay fixtures; mismatches: {}",

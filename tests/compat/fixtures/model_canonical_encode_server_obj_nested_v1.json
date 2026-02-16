@@ -1,0 +1,72 @@
+{
+  "fixture_version": 1,
+  "name": "model_canonical_encode_server_obj_nested_v1",
+  "scenario": "model_canonical_encode",
+  "input": {
+    "mode": "server",
+    "server_time": 14,
+    "root": {
+      "id": [
+        1,
+        10
+      ],
+      "kind": "obj",
+      "entries": [
+        {
+          "key": "a",
+          "value": {
+            "id": [
+              1,
+              11
+            ],
+            "kind": "con",
+            "value": 1
+          }
+        },
+        {
+          "key": "b",
+          "value": {
+            "id": [
+              1,
+              12
+            ],
+            "kind": "arr",
+            "chunks": [
+              {
+                "id": [
+                  1,
+                  13
+                ],
+                "values": [
+                  {
+                    "id": [
+                      1,
+                      14
+                    ],
+                    "kind": "con",
+                    "value": 2
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "model_binary_hex": "800e0a4261610b000161620cc10d010e0002",
+    "view_json": {
+      "a": 1,
+      "b": [
+        2
+      ]
+    },
+    "decode_error_message": "NO_ERROR"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 274,
+  "fixture_count": 365,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -755,6 +755,36 @@
       "file": "model_canonical_encode_server_arr_v1.json"
     },
     {
+      "name": "model_canonical_encode_logical_arr_nested_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_logical_arr_nested_v1.json"
+    },
+    {
+      "name": "model_canonical_encode_logical_str_tombstone_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_logical_str_tombstone_v1.json"
+    },
+    {
+      "name": "model_canonical_encode_logical_bin_multi_chunk_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_logical_bin_multi_chunk_v1.json"
+    },
+    {
+      "name": "model_canonical_encode_logical_obj_deep_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_logical_obj_deep_v1.json"
+    },
+    {
+      "name": "model_canonical_encode_server_obj_nested_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_server_obj_nested_v1.json"
+    },
+    {
+      "name": "model_canonical_encode_server_vec_sparse_v1",
+      "scenario": "model_canonical_encode",
+      "file": "model_canonical_encode_server_vec_sparse_v1.json"
+    },
+    {
       "name": "model_apply_replay_01_obj_dup_single_v1",
       "scenario": "model_apply_replay",
       "file": "model_apply_replay_01_obj_dup_single_v1.json"
@@ -785,124 +815,224 @@
       "file": "model_apply_replay_06_obj_interleaved_dup_v1.json"
     },
     {
-      "name": "model_apply_replay_07_arr_dup_single_v1",
+      "name": "model_apply_replay_07_obj_dup_tail_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_07_arr_dup_single_v1.json"
+      "file": "model_apply_replay_07_obj_dup_tail_v1.json"
     },
     {
-      "name": "model_apply_replay_08_arr_dup_batch_v1",
+      "name": "model_apply_replay_08_obj_dup_head_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_08_arr_dup_batch_v1.json"
+      "file": "model_apply_replay_08_obj_dup_head_v1.json"
     },
     {
-      "name": "model_apply_replay_09_arr_stale_order_v1",
+      "name": "model_apply_replay_09_obj_dup_middle_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_09_arr_stale_order_v1.json"
+      "file": "model_apply_replay_09_obj_dup_middle_v1.json"
     },
     {
-      "name": "model_apply_replay_10_arr_in_order_v1",
+      "name": "model_apply_replay_10_obj_full_cycle_twice_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_10_arr_in_order_v1.json"
+      "file": "model_apply_replay_10_obj_full_cycle_twice_v1.json"
     },
     {
-      "name": "model_apply_replay_11_arr_out_of_order_v1",
+      "name": "model_apply_replay_11_arr_dup_single_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_11_arr_out_of_order_v1.json"
+      "file": "model_apply_replay_11_arr_dup_single_v1.json"
     },
     {
-      "name": "model_apply_replay_12_arr_interleaved_dup_v1",
+      "name": "model_apply_replay_12_arr_dup_batch_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_12_arr_interleaved_dup_v1.json"
+      "file": "model_apply_replay_12_arr_dup_batch_v1.json"
     },
     {
-      "name": "model_apply_replay_13_str_dup_single_v1",
+      "name": "model_apply_replay_13_arr_stale_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_13_str_dup_single_v1.json"
+      "file": "model_apply_replay_13_arr_stale_order_v1.json"
     },
     {
-      "name": "model_apply_replay_14_str_dup_batch_v1",
+      "name": "model_apply_replay_14_arr_in_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_14_str_dup_batch_v1.json"
+      "file": "model_apply_replay_14_arr_in_order_v1.json"
     },
     {
-      "name": "model_apply_replay_15_str_stale_order_v1",
+      "name": "model_apply_replay_15_arr_out_of_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_15_str_stale_order_v1.json"
+      "file": "model_apply_replay_15_arr_out_of_order_v1.json"
     },
     {
-      "name": "model_apply_replay_16_str_in_order_v1",
+      "name": "model_apply_replay_16_arr_interleaved_dup_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_16_str_in_order_v1.json"
+      "file": "model_apply_replay_16_arr_interleaved_dup_v1.json"
     },
     {
-      "name": "model_apply_replay_17_str_out_of_order_v1",
+      "name": "model_apply_replay_17_arr_dup_tail_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_17_str_out_of_order_v1.json"
+      "file": "model_apply_replay_17_arr_dup_tail_v1.json"
     },
     {
-      "name": "model_apply_replay_18_str_interleaved_dup_v1",
+      "name": "model_apply_replay_18_arr_dup_head_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_18_str_interleaved_dup_v1.json"
+      "file": "model_apply_replay_18_arr_dup_head_v1.json"
     },
     {
-      "name": "model_apply_replay_19_bin_dup_single_v1",
+      "name": "model_apply_replay_19_arr_dup_middle_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_19_bin_dup_single_v1.json"
+      "file": "model_apply_replay_19_arr_dup_middle_v1.json"
     },
     {
-      "name": "model_apply_replay_20_bin_dup_batch_v1",
+      "name": "model_apply_replay_20_arr_full_cycle_twice_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_20_bin_dup_batch_v1.json"
+      "file": "model_apply_replay_20_arr_full_cycle_twice_v1.json"
     },
     {
-      "name": "model_apply_replay_21_bin_stale_order_v1",
+      "name": "model_apply_replay_21_str_dup_single_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_21_bin_stale_order_v1.json"
+      "file": "model_apply_replay_21_str_dup_single_v1.json"
     },
     {
-      "name": "model_apply_replay_22_bin_in_order_v1",
+      "name": "model_apply_replay_22_str_dup_batch_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_22_bin_in_order_v1.json"
+      "file": "model_apply_replay_22_str_dup_batch_v1.json"
     },
     {
-      "name": "model_apply_replay_23_bin_out_of_order_v1",
+      "name": "model_apply_replay_23_str_stale_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_23_bin_out_of_order_v1.json"
+      "file": "model_apply_replay_23_str_stale_order_v1.json"
     },
     {
-      "name": "model_apply_replay_24_bin_interleaved_dup_v1",
+      "name": "model_apply_replay_24_str_in_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_24_bin_interleaved_dup_v1.json"
+      "file": "model_apply_replay_24_str_in_order_v1.json"
     },
     {
-      "name": "model_apply_replay_25_vec_dup_single_v1",
+      "name": "model_apply_replay_25_str_out_of_order_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_25_vec_dup_single_v1.json"
+      "file": "model_apply_replay_25_str_out_of_order_v1.json"
     },
     {
-      "name": "model_apply_replay_26_vec_dup_batch_v1",
+      "name": "model_apply_replay_26_str_interleaved_dup_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_26_vec_dup_batch_v1.json"
+      "file": "model_apply_replay_26_str_interleaved_dup_v1.json"
     },
     {
-      "name": "model_apply_replay_27_vec_stale_order_v1",
+      "name": "model_apply_replay_27_str_dup_tail_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_27_vec_stale_order_v1.json"
+      "file": "model_apply_replay_27_str_dup_tail_v1.json"
     },
     {
-      "name": "model_apply_replay_28_vec_in_order_v1",
+      "name": "model_apply_replay_28_str_dup_head_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_28_vec_in_order_v1.json"
+      "file": "model_apply_replay_28_str_dup_head_v1.json"
     },
     {
-      "name": "model_apply_replay_29_vec_out_of_order_v1",
+      "name": "model_apply_replay_29_str_dup_middle_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_29_vec_out_of_order_v1.json"
+      "file": "model_apply_replay_29_str_dup_middle_v1.json"
     },
     {
-      "name": "model_apply_replay_30_vec_interleaved_dup_v1",
+      "name": "model_apply_replay_30_str_full_cycle_twice_v1",
       "scenario": "model_apply_replay",
-      "file": "model_apply_replay_30_vec_interleaved_dup_v1.json"
+      "file": "model_apply_replay_30_str_full_cycle_twice_v1.json"
+    },
+    {
+      "name": "model_apply_replay_31_bin_dup_single_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_31_bin_dup_single_v1.json"
+    },
+    {
+      "name": "model_apply_replay_32_bin_dup_batch_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_32_bin_dup_batch_v1.json"
+    },
+    {
+      "name": "model_apply_replay_33_bin_stale_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_33_bin_stale_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_34_bin_in_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_34_bin_in_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_35_bin_out_of_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_35_bin_out_of_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_36_bin_interleaved_dup_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_36_bin_interleaved_dup_v1.json"
+    },
+    {
+      "name": "model_apply_replay_37_bin_dup_tail_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_37_bin_dup_tail_v1.json"
+    },
+    {
+      "name": "model_apply_replay_38_bin_dup_head_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_38_bin_dup_head_v1.json"
+    },
+    {
+      "name": "model_apply_replay_39_bin_dup_middle_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_39_bin_dup_middle_v1.json"
+    },
+    {
+      "name": "model_apply_replay_40_bin_full_cycle_twice_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_40_bin_full_cycle_twice_v1.json"
+    },
+    {
+      "name": "model_apply_replay_41_vec_dup_single_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_41_vec_dup_single_v1.json"
+    },
+    {
+      "name": "model_apply_replay_42_vec_dup_batch_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_42_vec_dup_batch_v1.json"
+    },
+    {
+      "name": "model_apply_replay_43_vec_stale_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_43_vec_stale_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_44_vec_in_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_44_vec_in_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_45_vec_out_of_order_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_45_vec_out_of_order_v1.json"
+    },
+    {
+      "name": "model_apply_replay_46_vec_interleaved_dup_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_46_vec_interleaved_dup_v1.json"
+    },
+    {
+      "name": "model_apply_replay_47_vec_dup_tail_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_47_vec_dup_tail_v1.json"
+    },
+    {
+      "name": "model_apply_replay_48_vec_dup_head_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_48_vec_dup_head_v1.json"
+    },
+    {
+      "name": "model_apply_replay_49_vec_dup_middle_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_49_vec_dup_middle_v1.json"
+    },
+    {
+      "name": "model_apply_replay_50_vec_full_cycle_twice_v1",
+      "scenario": "model_apply_replay",
+      "file": "model_apply_replay_50_vec_full_cycle_twice_v1.json"
     },
     {
       "name": "model_diff_parity_01_det_v1",
@@ -1225,6 +1355,206 @@
       "file": "model_diff_parity_64_rnd_v1.json"
     },
     {
+      "name": "model_diff_parity_65_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_65_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_66_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_66_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_67_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_67_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_68_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_68_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_69_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_69_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_70_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_70_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_71_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_71_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_72_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_72_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_73_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_73_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_74_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_74_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_75_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_75_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_76_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_76_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_77_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_77_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_78_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_78_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_79_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_79_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_80_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_80_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_81_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_81_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_82_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_82_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_83_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_83_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_84_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_84_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_85_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_85_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_86_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_86_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_87_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_87_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_88_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_88_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_89_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_89_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_90_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_90_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_91_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_91_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_92_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_92_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_93_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_93_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_94_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_94_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_95_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_95_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_96_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_96_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_97_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_97_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_98_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_98_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_99_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_99_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_100_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_100_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_101_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_101_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_102_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_102_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_103_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_103_nonempty_v1.json"
+    },
+    {
+      "name": "model_diff_parity_104_nonempty_v1",
+      "scenario": "model_diff_parity",
+      "file": "model_diff_parity_104_nonempty_v1.json"
+    },
+    {
       "name": "lessdb_model_manager_01_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
       "file": "lessdb_model_manager_01_create_diff_apply_v1.json"
@@ -1325,54 +1655,179 @@
       "file": "lessdb_model_manager_20_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_21_fork_merge_v1",
+      "name": "lessdb_model_manager_21_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_21_fork_merge_v1.json"
+      "file": "lessdb_model_manager_21_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_22_fork_merge_v1",
+      "name": "lessdb_model_manager_22_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_22_fork_merge_v1.json"
+      "file": "lessdb_model_manager_22_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_23_fork_merge_v1",
+      "name": "lessdb_model_manager_23_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_23_fork_merge_v1.json"
+      "file": "lessdb_model_manager_23_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_24_fork_merge_v1",
+      "name": "lessdb_model_manager_24_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_24_fork_merge_v1.json"
+      "file": "lessdb_model_manager_24_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_25_fork_merge_v1",
+      "name": "lessdb_model_manager_25_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_25_fork_merge_v1.json"
+      "file": "lessdb_model_manager_25_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_26_merge_idempotent_v1",
+      "name": "lessdb_model_manager_26_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_26_merge_idempotent_v1.json"
+      "file": "lessdb_model_manager_26_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_27_merge_idempotent_v1",
+      "name": "lessdb_model_manager_27_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_27_merge_idempotent_v1.json"
+      "file": "lessdb_model_manager_27_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_28_merge_idempotent_v1",
+      "name": "lessdb_model_manager_28_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_28_merge_idempotent_v1.json"
+      "file": "lessdb_model_manager_28_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_29_merge_idempotent_v1",
+      "name": "lessdb_model_manager_29_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_29_merge_idempotent_v1.json"
+      "file": "lessdb_model_manager_29_create_diff_apply_v1.json"
     },
     {
-      "name": "lessdb_model_manager_30_merge_idempotent_v1",
+      "name": "lessdb_model_manager_30_create_diff_apply_v1",
       "scenario": "lessdb_model_manager",
-      "file": "lessdb_model_manager_30_merge_idempotent_v1.json"
+      "file": "lessdb_model_manager_30_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_31_create_diff_apply_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_31_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_32_create_diff_apply_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_32_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_33_create_diff_apply_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_33_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_34_create_diff_apply_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_34_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_35_create_diff_apply_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_35_create_diff_apply_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_36_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_36_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_37_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_37_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_38_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_38_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_39_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_39_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_40_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_40_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_41_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_41_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_42_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_42_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_43_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_43_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_44_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_44_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_45_fork_merge_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_45_fork_merge_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_46_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_46_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_47_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_47_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_48_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_48_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_49_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_49_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_50_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_50_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_51_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_51_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_52_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_52_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_53_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_53_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_54_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_54_merge_idempotent_v1.json"
+    },
+    {
+      "name": "lessdb_model_manager_55_merge_idempotent_v1",
+      "scenario": "lessdb_model_manager",
+      "file": "lessdb_model_manager_55_merge_idempotent_v1.json"
     }
   ]
 }

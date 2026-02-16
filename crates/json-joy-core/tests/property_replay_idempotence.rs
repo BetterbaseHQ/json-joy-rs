@@ -8,7 +8,7 @@ use serde_json::Value;
 #[test]
 fn property_replay_applying_same_sequence_twice_is_stable() {
     let fixtures = load_apply_replay_fixtures();
-    assert!(fixtures.len() >= 30, "expected >=30 apply replay fixtures");
+    assert!(fixtures.len() >= 50, "expected >=50 apply replay fixtures");
 
     for fixture in fixtures {
         let label = fixture["input"]["label"].as_str().unwrap_or_default();

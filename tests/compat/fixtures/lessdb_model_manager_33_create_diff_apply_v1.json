@@ -1,0 +1,84 @@
+{
+  "fixture_version": 1,
+  "name": "lessdb_model_manager_33_create_diff_apply_v1",
+  "scenario": "lessdb_model_manager",
+  "input": {
+    "workflow": "create_diff_apply",
+    "sid": 78033,
+    "initial_json": {
+      "doc": {
+        "title": "m",
+        "body": "n"
+      }
+    },
+    "ops": [
+      {
+        "kind": "diff",
+        "next_view_json": {
+          "doc": {
+            "title": "M",
+            "body": "n"
+          }
+        }
+      },
+      {
+        "kind": "apply_last_diff"
+      },
+      {
+        "kind": "patch_log_append_last_diff"
+      },
+      {
+        "kind": "patch_log_deserialize"
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "diff",
+        "patch_present": true,
+        "patch_binary_hex": "d1e1040af7026103044d81030401",
+        "patch_op_count": 2,
+        "patch_opcodes": [
+          12,
+          16
+        ],
+        "patch_span": 2,
+        "patch_id_sid": 78033,
+        "patch_id_time": 10,
+        "patch_next_time": 12
+      },
+      {
+        "kind": "apply_last_diff",
+        "view_json": {
+          "doc": {
+            "title": "M",
+            "body": "n"
+          }
+        },
+        "model_binary_hex": "0000001f1a4163646f631942657469746c651882170111614d64626f6479168115616e01d1e1040b"
+      },
+      {
+        "kind": "patch_log_append_last_diff",
+        "pending_patch_log_hex": "010000000ed1e1040af7026103044d81030401"
+      },
+      {
+        "kind": "patch_log_deserialize",
+        "patch_count": 1
+      }
+    ],
+    "final_view_json": {
+      "doc": {
+        "title": "M",
+        "body": "n"
+      }
+    },
+    "final_model_binary_hex": "0000001f1a4163646f631942657469746c651882170111614d64626f6479168115616e01d1e1040b",
+    "final_pending_patch_log_hex": "010000000ed1e1040af7026103044d81030401"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

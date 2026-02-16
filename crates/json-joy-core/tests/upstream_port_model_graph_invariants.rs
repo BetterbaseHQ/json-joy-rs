@@ -82,5 +82,5 @@ fn upstream_port_model_graph_invariants_hold_during_replay_matrix() {
         }
     }
 
-    assert!(seen >= 30, "expected at least 30 model_apply_replay fixtures");
+    assert!(seen >= 50, "expected at least 50 model_apply_replay fixtures");
 }

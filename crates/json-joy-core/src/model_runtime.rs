@@ -414,6 +414,10 @@ impl RuntimeModel {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Vec(_)))
     }
 
+    pub(crate) fn node_is_val(&self, id: Timestamp) -> bool {
+        matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Val(_)))
+    }
+
     pub(crate) fn vec_index_value(&self, id: Timestamp, index: u64) -> Option<Timestamp> {
         let node = self.nodes.get(&Id::from(id))?;
         if let RuntimeNode::Vec(map) = node {

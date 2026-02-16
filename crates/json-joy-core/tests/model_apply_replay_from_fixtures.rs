@@ -51,7 +51,7 @@ fn load_apply_replay_fixtures() -> Vec<(String, Value)> {
 #[test]
 fn apply_replay_fixtures_match_oracle_view() {
     let fixtures = load_apply_replay_fixtures();
-    assert!(fixtures.len() >= 30, "expected at least 30 model_apply_replay fixtures");
+    assert!(fixtures.len() >= 50, "expected at least 50 model_apply_replay fixtures");
 
     for (name, fixture) in fixtures {
         let base_bytes = decode_hex(

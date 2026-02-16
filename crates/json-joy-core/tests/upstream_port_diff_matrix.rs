@@ -111,5 +111,5 @@ fn upstream_port_diff_matrix_binary_and_apply_parity() {
         }
     }
 
-    assert!(seen >= 60, "expected at least 60 model_diff_parity fixtures");
+    assert!(seen >= 100, "expected at least 100 model_diff_parity fixtures");
 }

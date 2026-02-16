@@ -1,0 +1,60 @@
+{
+  "fixture_version": 1,
+  "name": "model_canonical_encode_server_vec_sparse_v1",
+  "scenario": "model_canonical_encode",
+  "input": {
+    "mode": "server",
+    "server_time": 22,
+    "root": {
+      "id": [
+        1,
+        20
+      ],
+      "kind": "vec",
+      "values": [
+        {
+          "id": [
+            1,
+            21
+          ],
+          "kind": "con",
+          "value": "x"
+        },
+        null,
+        {
+          "id": [
+            1,
+            22
+          ],
+          "kind": "con",
+          "value": true
+        },
+        null,
+        {
+          "id": [
+            1,
+            23
+          ],
+          "kind": "con",
+          "value": null
+        }
+      ]
+    }
+  },
+  "expected": {
+    "model_binary_hex": "8016146515006178001600f5001700f6",
+    "view_json": [
+      "x",
+      null,
+      true,
+      null,
+      null
+    ],
+    "decode_error_message": "NO_ERROR"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

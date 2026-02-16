@@ -334,7 +334,7 @@ fn model_canonical_encode_fixtures_match_oracle_binary() {
         );
     }
 
-    assert!(seen >= 6, "expected at least 6 model_canonical_encode fixtures");
+    assert!(seen >= 12, "expected at least 12 model_canonical_encode fixtures");
     assert!(seen_logical >= 3, "expected at least 3 logical canonical encode fixtures");
     assert!(seen_server >= 2, "expected at least 2 server canonical encode fixtures");
 }

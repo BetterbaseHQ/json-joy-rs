@@ -88,5 +88,5 @@ fn upstream_port_model_apply_matrix_replay_view_parity() {
         );
     }
 
-    assert!(seen >= 30, "expected at least 30 model_apply_replay fixtures");
+    assert!(seen >= 50, "expected at least 50 model_apply_replay fixtures");
 }
