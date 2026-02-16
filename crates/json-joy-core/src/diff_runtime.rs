@@ -53,6 +53,9 @@ pub fn diff_model_to_patch_bytes(
     if let Some(native) = try_native_root_obj_string_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+    if let Some(native) = try_native_nested_obj_string_delta_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
+    }
     if let Some(native) = try_native_root_obj_array_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
@@ -258,86 +261,20 @@ fn try_native_root_obj_string_delta_diff(
         Some(id) if runtime.node_is_string(id) => id,
         _ => return Ok(None),
     };
-    if str_node.sid != patch_sid {
-        return Ok(None);
-    }
     let slots = match runtime.string_visible_slots(str_node) {
         Some(v) => v,
         None => return Ok(None),
     };
 
     let old_chars: Vec<char> = old.chars().collect();
-    let new_chars: Vec<char> = new.chars().collect();
     if old_chars.len() != slots.len() {
         return Ok(None);
     }
 
-    let mut lcp = 0usize;
-    while lcp < old_chars.len() && lcp < new_chars.len() && old_chars[lcp] == new_chars[lcp] {
-        lcp += 1;
-    }
-    let mut lcs = 0usize;
-    while lcs < (old_chars.len() - lcp)
-        && lcs < (new_chars.len() - lcp)
-        && old_chars[old_chars.len() - 1 - lcs] == new_chars[new_chars.len() - 1 - lcs]
-    {
-        lcs += 1;
-    }
-
-    let del_len = old_chars.len().saturating_sub(lcp + lcs);
-    let ins: String = new_chars[lcp..new_chars.len().saturating_sub(lcs)]
-        .iter()
-        .collect();
-    let ins_len = ins.chars().count();
-
-    if del_len == 0 && ins_len == 0 {
-        return Ok(Some(None));
-    }
-
-    let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+    let encoded = match emit_string_delta_patch(base_model_binary, patch_sid, str_node, &slots, old, new)? {
         Some(v) => v,
-        None => return Ok(None),
+        None => return Ok(Some(None)),
     };
-    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
-
-    // Upstream tends to emit insertion before deletion on replace cases.
-    if ins_len > 0 {
-        let reference = if lcp == 0 {
-            str_node
-        } else {
-            slots[lcp - 1]
-        };
-        emitter.push(DecodedOp::InsStr {
-            id: emitter.next_id(),
-            obj: str_node,
-            reference,
-            data: ins,
-        });
-    }
-    if del_len > 0 {
-        let del_slots = &slots[lcp..lcp + del_len];
-        let mut spans: Vec<crate::patch::Timespan> = Vec::new();
-        for slot in del_slots {
-            if let Some(last) = spans.last_mut() {
-                if last.sid == slot.sid && last.time + last.span == slot.time {
-                    last.span += 1;
-                    continue;
-                }
-            }
-            spans.push(crate::patch::Timespan {
-                sid: slot.sid,
-                time: slot.time,
-                span: 1,
-            });
-        }
-        emitter.push(DecodedOp::Del {
-            id: emitter.next_id(),
-            obj: str_node,
-            what: spans,
-        });
-    }
-
-    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
     Ok(Some(Some(encoded)))
 }
 
@@ -395,9 +332,6 @@ fn try_native_root_obj_array_delta_diff(
         Some(id) if runtime.node_is_array(id) => id,
         _ => return Ok(None),
     };
-    if arr_node.sid != patch_sid {
-        return Ok(None);
-    }
     let slots = match runtime.array_visible_slots(arr_node) {
         Some(v) => v,
         None => return Ok(None),
@@ -596,4 +530,203 @@ fn is_con_scalar(value: &Value) -> bool {
 
 fn is_array_native_supported(value: &Value) -> bool {
     is_con_scalar(value) || matches!(value, Value::String(_))
+}
+
+fn try_native_nested_obj_string_delta_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if !map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+
+    let (path, old, new) = match find_single_string_delta_path(base_obj, next_obj) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    if path.is_empty() {
+        return Ok(None);
+    }
+
+    let runtime = match RuntimeModel::from_model_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+
+    let mut node = match runtime.root_object_field(&path[0]) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
+    for seg in path.iter().skip(1) {
+        node = match runtime.object_field(node, seg) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+    }
+    if !runtime.node_is_string(node) {
+        return Ok(None);
+    }
+    let slots = match runtime.string_visible_slots(node) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    let encoded = match emit_string_delta_patch(base_model_binary, patch_sid, node, &slots, old, new)? {
+        Some(v) => v,
+        None => return Ok(Some(None)),
+    };
+    Ok(Some(Some(encoded)))
+}
+
+fn emit_string_delta_patch(
+    base_model_binary: &[u8],
+    patch_sid: u64,
+    str_node: Timestamp,
+    slots: &[Timestamp],
+    old: &str,
+    new: &str,
+) -> Result<Option<Vec<u8>>, DiffError> {
+    let old_chars: Vec<char> = old.chars().collect();
+    let new_chars: Vec<char> = new.chars().collect();
+    if old_chars.len() != slots.len() {
+        return Ok(None);
+    }
+
+    let mut lcp = 0usize;
+    while lcp < old_chars.len() && lcp < new_chars.len() && old_chars[lcp] == new_chars[lcp] {
+        lcp += 1;
+    }
+    let mut lcs = 0usize;
+    while lcs < (old_chars.len() - lcp)
+        && lcs < (new_chars.len() - lcp)
+        && old_chars[old_chars.len() - 1 - lcs] == new_chars[new_chars.len() - 1 - lcs]
+    {
+        lcs += 1;
+    }
+
+    let del_len = old_chars.len().saturating_sub(lcp + lcs);
+    let ins: String = new_chars[lcp..new_chars.len().saturating_sub(lcs)]
+        .iter()
+        .collect();
+    let ins_len = ins.chars().count();
+
+    if del_len == 0 && ins_len == 0 {
+        return Ok(None);
+    }
+
+    let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+
+    if ins_len > 0 {
+        let reference = if lcp == 0 {
+            slots.first().copied().unwrap_or(str_node)
+        } else {
+            slots[lcp - 1]
+        };
+        emitter.push(DecodedOp::InsStr {
+            id: emitter.next_id(),
+            obj: str_node,
+            reference,
+            data: ins,
+        });
+    }
+    if del_len > 0 {
+        let del_slots = &slots[lcp..lcp + del_len];
+        let mut spans: Vec<crate::patch::Timespan> = Vec::new();
+        for slot in del_slots {
+            if let Some(last) = spans.last_mut() {
+                if last.sid == slot.sid && last.time + last.span == slot.time {
+                    last.span += 1;
+                    continue;
+                }
+            }
+            spans.push(crate::patch::Timespan {
+                sid: slot.sid,
+                time: slot.time,
+                span: 1,
+            });
+        }
+        emitter.push(DecodedOp::Del {
+            id: emitter.next_id(),
+            obj: str_node,
+            what: spans,
+        });
+    }
+
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(encoded))
+}
+
+fn find_single_string_delta_path<'a>(
+    base: &'a serde_json::Map<String, Value>,
+    next: &'a serde_json::Map<String, Value>,
+) -> Option<(Vec<String>, &'a str, &'a str)> {
+    if base.len() != next.len() {
+        return None;
+    }
+    if base.keys().any(|k| !next.contains_key(k)) {
+        return None;
+    }
+
+    let mut found: Option<(Vec<String>, &str, &str)> = None;
+    for (k, base_v) in base {
+        let next_v = next.get(k)?;
+        if base_v == next_v {
+            continue;
+        }
+        let delta = find_single_string_delta_value(base_v, next_v)?;
+        if found.is_some() {
+            return None;
+        }
+        let mut path = vec![k.clone()];
+        path.extend(delta.0);
+        found = Some((path, delta.1, delta.2));
+    }
+    found
+}
+
+fn find_single_string_delta_value<'a>(
+    base: &'a Value,
+    next: &'a Value,
+) -> Option<(Vec<String>, &'a str, &'a str)> {
+    match (base, next) {
+        (Value::String(old), Value::String(new)) => Some((Vec::new(), old, new)),
+        (Value::Object(bm), Value::Object(nm)) => {
+            if bm.len() != nm.len() {
+                return None;
+            }
+            if bm.keys().any(|k| !nm.contains_key(k)) {
+                return None;
+            }
+
+            let mut found: Option<(Vec<String>, &str, &str)> = None;
+            for (k, bv) in bm {
+                let nv = nm.get(k)?;
+                if bv == nv {
+                    continue;
+                }
+                let delta = find_single_string_delta_value(bv, nv)?;
+                if found.is_some() {
+                    return None;
+                }
+                let mut path = vec![k.clone()];
+                path.extend(delta.0);
+                found = Some((path, delta.1, delta.2));
+            }
+            found
+        }
+        _ => None,
+    }
 }

@@ -192,6 +192,23 @@ impl RuntimeModel {
         }
     }
 
+    pub(crate) fn object_field(&self, obj: Timestamp, key: &str) -> Option<Timestamp> {
+        match self.nodes.get(&Id::from(obj))? {
+            RuntimeNode::Obj(entries) => entries
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, id)| (*id).into()),
+            RuntimeNode::Val(child) => match self.nodes.get(child)? {
+                RuntimeNode::Obj(entries) => entries
+                    .iter()
+                    .find(|(k, _)| k == key)
+                    .map(|(_, id)| (*id).into()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub(crate) fn node_is_string(&self, id: Timestamp) -> bool {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Str(_)))
     }

@@ -346,8 +346,8 @@ fn lessdb_diff_native_support_inventory() {
     eprintln!("lessdb fallback steps: {}", fallback_names.join(", "));
 
     assert!(
-        supported >= 14,
-        "expected at least 14 lessdb diff steps to be natively supported; got {supported}"
+        supported >= 21,
+        "expected at least 21 lessdb diff steps to be natively supported; got {supported}"
     );
     assert!(fallback >= 1, "expected at least one fallback-covered diff shape");
 }
