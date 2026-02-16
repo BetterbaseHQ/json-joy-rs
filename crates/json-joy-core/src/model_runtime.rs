@@ -360,11 +360,13 @@ impl RuntimeModel {
         match self.nodes.get(&root)? {
             RuntimeNode::Obj(entries) => entries
                 .iter()
+                .rev()
                 .find(|(k, _)| k == key)
                 .map(|(_, id)| (*id).into()),
             RuntimeNode::Val(child) => match self.nodes.get(child)? {
                 RuntimeNode::Obj(entries) => entries
                     .iter()
+                    .rev()
                     .find(|(k, _)| k == key)
                     .map(|(_, id)| (*id).into()),
                 _ => None,
@@ -381,11 +383,13 @@ impl RuntimeModel {
         match self.nodes.get(&Id::from(obj))? {
             RuntimeNode::Obj(entries) => entries
                 .iter()
+                .rev()
                 .find(|(k, _)| k == key)
                 .map(|(_, id)| (*id).into()),
             RuntimeNode::Val(child) => match self.nodes.get(child)? {
                 RuntimeNode::Obj(entries) => entries
                     .iter()
+                    .rev()
                     .find(|(k, _)| k == key)
                     .map(|(_, id)| (*id).into()),
                 _ => None,
@@ -431,6 +435,28 @@ impl RuntimeModel {
         }
         let child = self.val_child(id)?;
         self.node_is_string(child).then_some(child)
+    }
+
+    pub(crate) fn find_string_node_by_value(&self, expected: &str) -> Option<Timestamp> {
+        let mut found: Option<Id> = None;
+        for (id, node) in &self.nodes {
+            let RuntimeNode::Str(atoms) = node else {
+                continue;
+            };
+            let mut s = String::new();
+            for atom in atoms {
+                if let Some(ch) = atom.ch {
+                    s.push(ch);
+                }
+            }
+            if s == expected {
+                if found.is_some() {
+                    return None;
+                }
+                found = Some(*id);
+            }
+        }
+        found.map(Into::into)
     }
 
     pub(crate) fn resolve_bin_node(&self, id: Timestamp) -> Option<Timestamp> {

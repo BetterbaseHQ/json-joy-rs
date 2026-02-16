@@ -9,8 +9,8 @@ use serde_json::Value;
 #[test]
 fn upstream_port_diff_nonempty_scalar_matrix_matches_oracle_bytes() {
     let bases = [
-        serde_json::json!({"a": 1, "flag": true, "n": null}),
-        serde_json::json!({"score": 3, "ok": false, "count": 7}),
+        serde_json::json!({"a": 1, "flag": true, "n": null, "title": "hello"}),
+        serde_json::json!({"score": 3, "ok": false, "count": 7, "name": "world"}),
     ];
     let seeds = [0x51u64, 0x5eed_c0de, 0xc0ffee, 0x1234_5678_9abc_def0];
 
@@ -92,7 +92,7 @@ fn mutate_scalar_object(rng: &mut Lcg, base: &Value) -> Value {
             Value::Null => Value::Number(serde_json::Number::from(rng.range(10) as i64)),
             Value::Bool(b) => Value::Bool(!b),
             Value::Number(_) => Value::Number(serde_json::Number::from((rng.range(50) as i64) - 10)),
-            Value::String(_) => Value::String(format!("s{}", rng.range(100))),
+            Value::String(s) => mutate_string(rng, &s),
             Value::Object(_) => Value::Object(serde_json::Map::from_iter([(
                 "id".to_string(),
                 Value::String(format!("d{}", rng.range(100))),
@@ -112,6 +112,31 @@ fn mutate_scalar_object(rng: &mut Lcg, base: &Value) -> Value {
         out.remove(&key);
     }
     Value::Object(out)
+}
+
+fn mutate_string(rng: &mut Lcg, s: &str) -> Value {
+    if s.is_empty() {
+        return Value::String(format!("s{}", rng.range(100)));
+    }
+    let mut chars: Vec<char> = s.chars().collect();
+    match rng.range(3) {
+        0 => {
+            let idx = rng.range(chars.len() as u64) as usize;
+            chars[idx] = (b'a' + (rng.range(26) as u8)) as char;
+        }
+        1 => {
+            let idx = rng.range(chars.len() as u64) as usize;
+            chars.remove(idx);
+            if chars.is_empty() {
+                chars.push((b'a' + (rng.range(26) as u8)) as char);
+            }
+        }
+        _ => {
+            let idx = rng.range((chars.len() as u64) + 1) as usize;
+            chars.insert(idx, (b'a' + (rng.range(26) as u8)) as char);
+        }
+    }
+    Value::String(chars.into_iter().collect())
 }
 
 struct Lcg {
