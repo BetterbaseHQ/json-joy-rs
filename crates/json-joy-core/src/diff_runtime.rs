@@ -68,6 +68,9 @@ pub fn diff_model_to_patch_bytes(
     if let Some(native) = try_native_root_obj_vec_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+    if let Some(native) = try_native_nested_obj_vec_delta_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
+    }
     if let Some(native) = try_native_nested_obj_scalar_key_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
@@ -767,55 +770,7 @@ fn try_native_root_obj_vec_delta_diff(
             _ => return Ok(None),
         };
 
-        let src_len = runtime
-            .vec_max_index(vec_node)
-            .map(|m| m.saturating_add(1) as usize)
-            .unwrap_or(0);
-        let dst_len = dst.len();
-        let min = src_len.min(dst_len);
-        let mut edits: Vec<(u64, Timestamp)> = Vec::new();
-
-        // Upstream diffVec: trim trailing src indexes by writing `undefined`.
-        for i in dst_len..src_len {
-            if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
-                if runtime.node_is_deleted_or_missing(child) {
-                    continue;
-                }
-                let undef = emitter.next_id();
-                emitter.push(DecodedOp::NewCon {
-                    id: undef,
-                    value: ConValue::Undef,
-                });
-                edits.push((i as u64, undef));
-            }
-        }
-
-        // Upstream diffVec: update common indexes where recursive diff fails.
-        for (i, value) in dst.iter().take(min).enumerate() {
-            if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
-                if runtime
-                    .node_json_value(child)
-                    .as_ref()
-                    .is_some_and(|v| v == value)
-                {
-                    continue;
-                }
-            }
-            edits.push((i as u64, emitter.emit_value(value)));
-        }
-
-        // Upstream diffVec: append new tail indexes.
-        for (i, value) in dst.iter().enumerate().skip(src_len) {
-            edits.push((i as u64, emitter.emit_value(value)));
-        }
-
-        if !edits.is_empty() {
-            emitter.push(DecodedOp::InsVec {
-                id: emitter.next_id(),
-                obj: vec_node,
-                data: edits,
-            });
-        }
+        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst);
     }
 
     if emitter.ops.is_empty() {
@@ -823,6 +778,120 @@ fn try_native_root_obj_vec_delta_diff(
     }
     let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
     Ok(Some(Some(encoded)))
+}
+
+fn try_native_nested_obj_vec_delta_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if !map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+    let (path, _old, new) = match find_single_array_delta_path(base_obj, next_obj) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    if path.is_empty() {
+        return Ok(None);
+    }
+
+    let runtime = match RuntimeModel::from_model_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let mut node = match runtime.root_object_field(&path[0]) {
+        Some(id) => id,
+        None => return Ok(None),
+    };
+    for seg in path.iter().skip(1) {
+        node = match runtime.object_field(node, seg) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+    }
+    if !runtime.node_is_vec(node) {
+        return Ok(None);
+    }
+
+    let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+    emit_vec_delta_ops(&runtime, &mut emitter, node, new);
+    if emitter.ops.is_empty() {
+        return Ok(Some(None));
+    }
+
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(Some(encoded)))
+}
+
+fn emit_vec_delta_ops(
+    runtime: &RuntimeModel,
+    emitter: &mut NativeEmitter,
+    vec_node: Timestamp,
+    dst: &[Value],
+) {
+    let src_len = runtime
+        .vec_max_index(vec_node)
+        .map(|m| m.saturating_add(1) as usize)
+        .unwrap_or(0);
+    let dst_len = dst.len();
+    let min = src_len.min(dst_len);
+    let mut edits: Vec<(u64, Timestamp)> = Vec::new();
+
+    // Upstream diffVec: trim trailing src indexes by writing `undefined`.
+    for i in dst_len..src_len {
+        if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
+            if runtime.node_is_deleted_or_missing(child) {
+                continue;
+            }
+            let undef = emitter.next_id();
+            emitter.push(DecodedOp::NewCon {
+                id: undef,
+                value: ConValue::Undef,
+            });
+            edits.push((i as u64, undef));
+        }
+    }
+
+    // Upstream diffVec: update common indexes where recursive diff fails.
+    for (i, value) in dst.iter().take(min).enumerate() {
+        if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
+            if runtime
+                .node_json_value(child)
+                .as_ref()
+                .is_some_and(|v| v == value)
+            {
+                continue;
+            }
+        }
+        edits.push((i as u64, emitter.emit_value(value)));
+    }
+
+    // Upstream diffVec: append new tail indexes.
+    for (i, value) in dst.iter().enumerate().skip(src_len) {
+        edits.push((i as u64, emitter.emit_value(value)));
+    }
+
+    if !edits.is_empty() {
+        emitter.push(DecodedOp::InsVec {
+            id: emitter.next_id(),
+            obj: vec_node,
+            data: edits,
+        });
+    }
 }
 
 struct NativeEmitter {
@@ -1453,6 +1522,68 @@ fn find_single_string_delta_value<'a>(
                     continue;
                 }
                 let delta = find_single_string_delta_value(bv, nv)?;
+                if found.is_some() {
+                    return None;
+                }
+                let mut path = vec![k.clone()];
+                path.extend(delta.0);
+                found = Some((path, delta.1, delta.2));
+            }
+            found
+        }
+        _ => None,
+    }
+}
+
+fn find_single_array_delta_path<'a>(
+    base: &'a serde_json::Map<String, Value>,
+    next: &'a serde_json::Map<String, Value>,
+) -> Option<(Vec<String>, &'a Vec<Value>, &'a Vec<Value>)> {
+    if base.len() != next.len() {
+        return None;
+    }
+    if base.keys().any(|k| !next.contains_key(k)) {
+        return None;
+    }
+
+    let mut found: Option<(Vec<String>, &Vec<Value>, &Vec<Value>)> = None;
+    for (k, base_v) in base {
+        let next_v = next.get(k)?;
+        if base_v == next_v {
+            continue;
+        }
+        let delta = find_single_array_delta_value(base_v, next_v)?;
+        if found.is_some() {
+            return None;
+        }
+        let mut path = vec![k.clone()];
+        path.extend(delta.0);
+        found = Some((path, delta.1, delta.2));
+    }
+    found
+}
+
+fn find_single_array_delta_value<'a>(
+    base: &'a Value,
+    next: &'a Value,
+) -> Option<(Vec<String>, &'a Vec<Value>, &'a Vec<Value>)> {
+    match (base, next) {
+        (Value::Array(old), Value::Array(new)) => Some((Vec::new(), old, new)),
+        (Value::Object(bm), Value::Object(nm)) => {
+            if bm.len() != nm.len() {
+                return None;
+            }
+            if bm.keys().any(|k| !nm.contains_key(k)) {
+                return None;
+            }
+
+            let mut found: Option<(Vec<String>, &Vec<Value>, &Vec<Value>)> = None;
+            for (k, bv) in bm {
+                let nv = nm.get(k)?;
+                if bv == nv {
+                    continue;
+                }
+                let delta = find_single_array_delta_value(bv, nv)?;
                 if found.is_some() {
                     return None;
                 }
