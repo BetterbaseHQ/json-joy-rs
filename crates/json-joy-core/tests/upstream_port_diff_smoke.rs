@@ -1045,6 +1045,47 @@ fn upstream_port_diff_root_type_replace_uses_origin_ins_val() {
     assert_eq!(applied.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_inside_out_array_object_mutation() {
+    let sid = 88021;
+    let initial = serde_json::json!({
+        "doc": {
+            "items": [
+                {"id": 1, "name": "a"},
+                {"id": 2, "name": "b"}
+            ]
+        }
+    });
+    let next = serde_json::json!({
+        "doc": {
+            "items": [
+                {"id": 1, "name": "aa"},
+                {"id": 2, "name": "b"}
+            ]
+        }
+    });
+    let model = create_model(&initial, sid).expect("create_model must succeed");
+    let base_model = model_to_binary(&model);
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsObj { .. })),
+        "expected nested ins_obj mutation for array element object"
+    );
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);

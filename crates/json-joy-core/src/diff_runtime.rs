@@ -1764,6 +1764,38 @@ fn try_emit_child_recursive_diff(
                 Value::Array(v) => v,
                 _ => unreachable!(),
             };
+            if old_arr.len() == new_arr.len() && !old_arr.is_empty() {
+                let mut changed_idx: Option<usize> = None;
+                for i in 0..old_arr.len() {
+                    if old_arr[i] != new_arr[i] {
+                        if changed_idx.is_some() {
+                            changed_idx = Some(usize::MAX);
+                            break;
+                        }
+                        changed_idx = Some(i);
+                    }
+                }
+                if let Some(idx) = changed_idx {
+                    if idx != usize::MAX {
+                        if let (Some(old_obj), Some(new_obj)) =
+                            (old_arr[idx].as_object(), new_arr[idx].as_object())
+                        {
+                            if let Some(values) = runtime.array_visible_values(child) {
+                                if idx < values.len() && runtime.node_is_object(values[idx]) {
+                                    let _ = try_emit_object_recursive_diff(
+                                        runtime,
+                                        emitter,
+                                        values[idx],
+                                        old_obj,
+                                        new_obj,
+                                    )?;
+                                    return Ok(true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             if old_arr.iter().any(|v| !is_array_native_supported(v))
                 || new_arr.iter().any(|v| !is_array_native_supported(v))
             {
