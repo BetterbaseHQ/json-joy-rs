@@ -27,6 +27,20 @@ fn choose_sequence_insert_reference(
     slots.first().copied().unwrap_or(container)
 }
 
+fn as_object(value: &Value) -> Option<&serde_json::Map<String, Value>> {
+    match value {
+        Value::Object(map) => Some(map),
+        _ => None,
+    }
+}
+
+fn as_nonempty_object(value: &Value) -> Option<&serde_json::Map<String, Value>> {
+    match value {
+        Value::Object(map) if !map.is_empty() => Some(map),
+        _ => None,
+    }
+}
+
 
 fn try_emit_child_recursive_diff(
     runtime: &RuntimeModel,

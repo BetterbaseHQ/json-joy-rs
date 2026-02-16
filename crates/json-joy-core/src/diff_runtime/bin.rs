@@ -7,13 +7,13 @@ fn try_native_root_obj_bin_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let base_obj = match model.view() {
-        Value::Object(map) if !map.is_empty() => map,
-        _ => return Ok(None),
+    let base_obj = match as_nonempty_object(model.view()) {
+        Some(map) => map,
+        None => return Ok(None),
     };
-    let next_obj = match next_view {
-        Value::Object(map) => map,
-        _ => return Ok(None),
+    let next_obj = match as_object(next_view) {
+        Some(map) => map,
+        None => return Ok(None),
     };
     if base_obj.len() != next_obj.len() {
         return Ok(None);
@@ -75,13 +75,13 @@ fn try_native_root_obj_multi_bin_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let base_obj = match model.view() {
-        Value::Object(map) if !map.is_empty() => map,
-        _ => return Ok(None),
+    let base_obj = match as_nonempty_object(model.view()) {
+        Some(map) => map,
+        None => return Ok(None),
     };
-    let next_obj = match next_view {
-        Value::Object(map) => map,
-        _ => return Ok(None),
+    let next_obj = match as_object(next_view) {
+        Some(map) => map,
+        None => return Ok(None),
     };
     if base_obj.len() != next_obj.len() {
         return Ok(None);
@@ -205,13 +205,13 @@ fn try_native_nested_obj_bin_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let base_obj = match model.view() {
-        Value::Object(map) if !map.is_empty() => map,
-        _ => return Ok(None),
+    let base_obj = match as_nonempty_object(model.view()) {
+        Some(map) => map,
+        None => return Ok(None),
     };
-    let next_obj = match next_view {
-        Value::Object(map) => map,
-        _ => return Ok(None),
+    let next_obj = match as_object(next_view) {
+        Some(map) => map,
+        None => return Ok(None),
     };
 
     let (path, old, new) = match find_single_bin_delta_path(base_obj, next_obj) {
@@ -260,13 +260,13 @@ fn try_native_multi_root_nested_bin_delta_diff(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    let base_obj = match model.view() {
-        Value::Object(map) if !map.is_empty() => map,
-        _ => return Ok(None),
+    let base_obj = match as_nonempty_object(model.view()) {
+        Some(map) => map,
+        None => return Ok(None),
     };
-    let next_obj = match next_view {
-        Value::Object(map) => map,
-        _ => return Ok(None),
+    let next_obj = match as_object(next_view) {
+        Some(map) => map,
+        None => return Ok(None),
     };
     if base_obj.len() != next_obj.len() {
         return Ok(None);
