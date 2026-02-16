@@ -142,6 +142,9 @@ fn choose_sequence_insert_reference(
             return slots[idx];
         }
     }
+    if lcp == 0 && del_len == 0 {
+        return container;
+    }
     if lcp > 0 && lcp - 1 < slots.len() {
         return slots[lcp - 1];
     }
