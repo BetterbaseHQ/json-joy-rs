@@ -59,6 +59,26 @@ pub fn create_model(data: &Value, sid: u64) -> Result<CompatModel, CompatError> 
     })
 }
 
+pub fn create_model_with_schema(
+    schema: &crate::schema::SchemaNode,
+    sid: u64,
+    use_global_session: bool,
+) -> Result<CompatModel, CompatError> {
+    if !is_valid_session_id(sid) {
+        return Err(CompatError::InvalidSessionId(sid));
+    }
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    apply_schema_if_new_document(&mut runtime, sid, schema, use_global_session)?;
+    let model_binary = runtime
+        .to_model_binary_like()
+        .map_err(|e| CompatError::ProcessFailure(format!("create model encode failed: {e}")))?;
+    Ok(CompatModel {
+        model_binary,
+        view: runtime.view_json(),
+        sid,
+    })
+}
+
 pub fn diff_model(model: &CompatModel, next: &Value) -> Result<Option<PatchBytes>, CompatError> {
     diff_runtime::diff_model_to_patch_bytes(&model.model_binary, next, model.sid)
         .map_err(|e| CompatError::ProcessFailure(e.to_string()))
@@ -207,6 +227,37 @@ pub fn model_load(data: &[u8], sid: u64) -> Result<CompatModel, CompatError> {
     })
 }
 
+pub fn model_load_with_schema(
+    data: &[u8],
+    sid: u64,
+    schema: &crate::schema::SchemaNode,
+    use_global_session: bool,
+) -> Result<CompatModel, CompatError> {
+    if !is_valid_session_id(sid) {
+        return Err(CompatError::InvalidSessionId(sid));
+    }
+    if data.len() > MAX_CRDT_BINARY_SIZE {
+        return Err(CompatError::ModelBinaryTooLarge {
+            actual: data.len(),
+            max: MAX_CRDT_BINARY_SIZE,
+        });
+    }
+    let mut runtime = RuntimeModel::from_model_binary(data)
+        .map_err(|e| CompatError::ProcessFailure(format!("model decode failed: {e}")))?;
+    if data.first().is_some_and(|b| (b & 0x80) == 0) {
+        runtime = runtime.fork_with_sid(sid);
+    }
+    apply_schema_if_new_document(&mut runtime, sid, schema, use_global_session)?;
+    let model_binary = runtime
+        .to_model_binary_like()
+        .map_err(|e| CompatError::ProcessFailure(format!("model encode failed: {e}")))?;
+    Ok(CompatModel {
+        model_binary,
+        view: runtime.view_json(),
+        sid,
+    })
+}
+
 pub fn merge_with_pending_patches(
     model: &mut CompatModel,
     patches: &[PatchBytes],
@@ -232,6 +283,26 @@ fn primary_sid_from_model_binary(data: &[u8]) -> Option<u64> {
         return Some(1);
     }
     first_logical_clock_sid_time(data).map(|(sid, _)| sid)
+}
+
+fn apply_schema_if_new_document(
+    runtime: &mut RuntimeModel,
+    sid: u64,
+    schema: &crate::schema::SchemaNode,
+    use_global_session: bool,
+) -> Result<(), CompatError> {
+    let is_new_doc = runtime.root.is_none() && runtime.nodes.is_empty();
+    if !is_new_doc {
+        return Ok(());
+    }
+    let schema_sid = if use_global_session { 2 } else { sid };
+    let patch = schema
+        .to_patch(schema_sid, 1)
+        .map_err(|e| CompatError::ProcessFailure(format!("schema patch build failed: {e}")))?;
+    runtime
+        .apply_patch(&patch)
+        .map_err(|e| CompatError::ProcessFailure(format!("schema patch apply failed: {e}")))?;
+    Ok(())
 }
 
 fn build_create_ops(data: &Value, sid: u64, start_time: u64) -> Vec<DecodedOp> {

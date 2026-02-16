@@ -135,6 +135,17 @@ These are deliberate and should not be "simplified" without fixture/differential
   - `/Users/nchapman/Drive/Code/json-joy-rs/crates/json-joy-core/src/codec_sidecar_binary/{encode,decode}.rs`
 - Rationale: one canonical clock-table binary implementation reduces drift risk across patch/indexed/sidecar families.
 
+11. Schema-aware load seeding:
+- Rust now mirrors upstream `Model.setSchema(schema, useGlobalSession)` new-doc-only behavior in:
+  - `/Users/nchapman/Drive/Code/json-joy-rs/crates/json-joy-core/src/model_api/lifecycle.rs`
+  - `/Users/nchapman/Drive/Code/json-joy-rs/crates/json-joy-core/src/less_db_compat.rs`
+- Rationale: schema defaults are seeded only when loading/creating an empty document; non-empty payloads are preserved.
+
+12. Extension tuple wrapper baseline:
+- Rust model API now exposes extension tuple access baseline via:
+  - `/Users/nchapman/Drive/Code/json-joy-rs/crates/json-joy-core/src/model_api/handles.rs` (`as_ext`, `ExtHandle`)
+- Rationale: mirrors upstream `NodeApi.asExt()` behavior envelope for runtime-core tuple-shaped extension nodes without introducing JS proxy/constructor coupling.
+
 ## Organization/Documentation Notes
 
 1. Core module split is now upstream-aligned by family and should stay that way:

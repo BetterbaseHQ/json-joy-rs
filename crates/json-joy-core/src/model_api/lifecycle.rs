@@ -1,4 +1,22 @@
 impl NativeModelApi {
+    pub fn create_with_schema(
+        schema: &crate::schema::SchemaNode,
+        sid: u64,
+        use_global_session: bool,
+    ) -> Result<Self, ModelApiError> {
+        let runtime = RuntimeModel::new_logical_empty(sid);
+        let mut api = Self {
+            runtime,
+            sid,
+            next_listener_id: 1,
+            listeners: BTreeMap::new(),
+            next_batch_listener_id: 1,
+            batch_listeners: BTreeMap::new(),
+        };
+        api.apply_schema_if_new_document(schema, use_global_session)?;
+        Ok(api)
+    }
+
     pub fn from_model_binary(data: &[u8], sid_hint: Option<u64>) -> Result<Self, ModelApiError> {
         let mut runtime = RuntimeModel::from_model_binary(data)?;
         let sid = sid_hint.unwrap_or(65_536);
@@ -171,5 +189,33 @@ impl NativeModelApi {
     pub fn find_ptr(&self, ptr: &str) -> Option<Value> {
         let steps = parse_json_pointer(ptr).ok()?;
         self.find(&steps)
+    }
+
+    pub fn from_model_binary_with_schema(
+        data: &[u8],
+        sid_hint: Option<u64>,
+        schema: &crate::schema::SchemaNode,
+        use_global_session: bool,
+    ) -> Result<Self, ModelApiError> {
+        let mut api = Self::from_model_binary(data, sid_hint)?;
+        api.apply_schema_if_new_document(schema, use_global_session)?;
+        Ok(api)
+    }
+
+    fn apply_schema_if_new_document(
+        &mut self,
+        schema: &crate::schema::SchemaNode,
+        use_global_session: bool,
+    ) -> Result<(), ModelApiError> {
+        // Upstream `Model.setSchema(schema, useGlobalSession)` only seeds
+        // defaults when the document is new/empty.
+        let is_new_doc = self.runtime.root.is_none() && self.runtime.nodes.is_empty();
+        if !is_new_doc {
+            return Ok(());
+        }
+        let sid = if use_global_session { 2 } else { self.sid };
+        let patch = schema.to_patch(sid, 1)?;
+        self.runtime.apply_patch(&patch)?;
+        Ok(())
     }
 }

@@ -1,5 +1,6 @@
 use json_joy_core::model_api::{ApiOperation, ApiOperationKind, NativeModelApi, PathStep};
-use json_joy_core::patch::{DecodedOp, Patch, Timestamp};
+use json_joy_core::model_runtime::RuntimeModel;
+use json_joy_core::patch::{ConValue, DecodedOp, Patch, Timestamp};
 use json_joy_core::patch_builder::encode_patch_from_ops;
 use serde_json::json;
 
@@ -472,6 +473,99 @@ fn upstream_port_model_api_extended_typed_wrappers_matrix() {
         api.view(),
         json!({"bin":[9,8,2,3],"vec":[1,null,null,7],"con":"z"})
     );
+}
+
+#[test]
+fn upstream_port_model_api_as_ext_matrix() {
+    // Upstream mapping:
+    // - json-crdt/model/api/nodes.ts NodeApi.asExt() baseline over ext tuple shape.
+    let sid = 97071;
+    let schema = json_joy_core::schema::ext_node(7, json_joy_core::schema::str_node("hello"));
+    let patch = schema.to_patch(sid, 1).expect("schema to_patch");
+    let mut api = NativeModelApi::from_patches(&[patch]).expect("from_patches");
+
+    let ext = api.node().as_ext().expect("ext wrapper must resolve");
+    assert_eq!(ext.ext_id().expect("ext id"), 7);
+    let data = ext.data().expect("ext data");
+    assert_eq!(data.read(), Some(json!("hello")));
+    data.as_str()
+        .expect("ext data str")
+        .ins(5, "!")
+        .expect("str ins");
+    assert_eq!(api.view(), json!([[7, sid % 256, 1], "hello!"]));
+}
+
+#[test]
+fn upstream_port_model_api_schema_aware_load_matrix() {
+    // Upstream mapping:
+    // - json-crdt/model/Model.ts `setSchema(schema, useGlobalSession)` semantics:
+    //   seed only for brand-new docs and keep local sid for subsequent local ops.
+    let sid = 97072;
+    let empty_bin = RuntimeModel::new_logical_empty(sid)
+        .to_model_binary_like()
+        .expect("encode empty");
+    let schema = json_joy_core::schema::obj_node(
+        vec![
+            ("title".into(), json_joy_core::schema::str_node("Untitled")),
+            (
+                "meta".into(),
+                json_joy_core::schema::obj_node(
+                    vec![("v".into(), json_joy_core::schema::con_json(json!(1)))],
+                    Vec::new(),
+                ),
+            ),
+        ],
+        Vec::new(),
+    );
+    let api = NativeModelApi::from_model_binary_with_schema(&empty_bin, Some(sid), &schema, true)
+        .expect("load with schema");
+    assert_eq!(api.view(), json!({"title":"Untitled","meta":{"v":1}}));
+
+    let patch = api
+        .diff(&json!({"title":"Named","meta":{"v":1}}))
+        .expect("diff")
+        .expect("patch");
+    assert_eq!(patch.id().expect("patch id").0, sid);
+}
+
+#[test]
+fn upstream_port_model_api_schema_aware_load_skips_non_empty_matrix() {
+    // Upstream mapping:
+    // - schema seeding is skipped on non-empty loaded docs.
+    let sid = 97073;
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    let create = patch_from_ops(
+        sid,
+        1,
+        &[
+            DecodedOp::NewObj {
+                id: Timestamp { sid, time: 1 },
+            },
+            DecodedOp::NewCon {
+                id: Timestamp { sid, time: 2 },
+                value: ConValue::Json(json!(5)),
+            },
+            DecodedOp::InsObj {
+                id: Timestamp { sid, time: 3 },
+                obj: Timestamp { sid, time: 1 },
+                data: vec![("x".into(), Timestamp { sid, time: 2 })],
+            },
+            DecodedOp::InsVal {
+                id: Timestamp { sid, time: 4 },
+                obj: Timestamp { sid: 0, time: 0 },
+                val: Timestamp { sid, time: 1 },
+            },
+        ],
+    );
+    runtime.apply_patch(&create).expect("apply create");
+    let bin = runtime.to_model_binary_like().expect("encode model");
+    let schema = json_joy_core::schema::obj_node(
+        vec![("title".into(), json_joy_core::schema::str_node("ignored"))],
+        Vec::new(),
+    );
+    let api = NativeModelApi::from_model_binary_with_schema(&bin, Some(sid), &schema, true)
+        .expect("load");
+    assert_eq!(api.view(), json!({"x":5}));
 }
 
 #[test]

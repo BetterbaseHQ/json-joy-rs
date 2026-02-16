@@ -116,6 +116,25 @@ impl<'a> NodeHandle<'a> {
     pub fn as_con(self) -> Result<ConHandle<'a>, ModelApiError> {
         Ok(ConHandle { inner: self })
     }
+
+    /// Extension tuple baseline (`[header, data]`) used by upstream `ext` nodes.
+    /// Header shape accepted here: `[ext_id, ..]` where `ext_id` is `u8`.
+    pub fn as_ext(self) -> Result<ExtHandle<'a>, ModelApiError> {
+        match self.read() {
+            Some(Value::Array(arr)) if arr.len() >= 2 => match arr.first() {
+                Some(Value::Array(header))
+                    if header
+                        .first()
+                        .and_then(Value::as_u64)
+                        .is_some_and(|n| n <= u8::MAX as u64) =>
+                {
+                    Ok(ExtHandle { inner: self })
+                }
+                _ => Err(ModelApiError::NotExtension),
+            },
+            _ => Err(ModelApiError::NotExtension),
+        }
+    }
 }
 
 impl<'a> ObjHandle<'a> {
@@ -223,5 +242,27 @@ impl<'a> ConHandle<'a> {
 
     pub fn set(&mut self, value: Value) -> Result<(), ModelApiError> {
         self.inner.replace(value)
+    }
+}
+
+impl<'a> ExtHandle<'a> {
+    pub fn ext_id(&self) -> Result<u8, ModelApiError> {
+        let view = self.inner.read().ok_or(ModelApiError::NotExtension)?;
+        let arr = view.as_array().ok_or(ModelApiError::NotExtension)?;
+        let header = arr
+            .first()
+            .and_then(Value::as_array)
+            .ok_or(ModelApiError::NotExtension)?;
+        let id = header
+            .first()
+            .and_then(Value::as_u64)
+            .filter(|n| *n <= u8::MAX as u64)
+            .ok_or(ModelApiError::NotExtension)?;
+        Ok(id as u8)
+    }
+
+    pub fn data(mut self) -> Result<NodeHandle<'a>, ModelApiError> {
+        self.inner.path.push(PathStep::Index(1));
+        Ok(self.inner)
     }
 }

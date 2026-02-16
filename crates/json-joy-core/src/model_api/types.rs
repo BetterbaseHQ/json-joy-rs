@@ -28,6 +28,8 @@ pub enum ModelApiError {
     NotArray,
     #[error("path does not point to string")]
     NotString,
+    #[error("path does not point to extension tuple")]
+    NotExtension,
     #[error("invalid path operation")]
     InvalidPathOp,
     #[error("model encode/decode failed: {0}")]
@@ -38,6 +40,8 @@ pub enum ModelApiError {
     Diff(#[from] DiffError),
     #[error("patch decode failed: {0}")]
     PatchDecode(String),
+    #[error("schema operation failed: {0}")]
+    Schema(#[from] crate::schema::SchemaError),
 }
 
 pub struct NativeModelApi {
@@ -82,3 +86,6 @@ pub struct ConHandle<'a> {
     inner: NodeHandle<'a>,
 }
 
+pub struct ExtHandle<'a> {
+    inner: NodeHandle<'a>,
+}
