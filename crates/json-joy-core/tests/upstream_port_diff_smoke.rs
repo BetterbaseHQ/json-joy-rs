@@ -54,6 +54,31 @@ fn upstream_port_diff_nested_object_delta_reaches_target_view() {
     assert_eq!(runtime.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_multi_array_key_delta_reaches_target_view() {
+    // Ports multiple ArrNode edits in one root object diff pass.
+    let sid = 88002;
+    let initial = serde_json::json!({
+        "a": [1, "x", 2],
+        "b": ["q", 9]
+    });
+    let next = serde_json::json!({
+        "a": [1, "x", "y", 2],
+        "b": [9]
+    });
+    let model = create_model(&initial, sid).expect("create_model must succeed");
+    let base_model = model_to_binary(&model);
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+
+    let mut runtime = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    runtime.apply_patch(&decoded).expect("runtime apply must succeed");
+    assert_eq!(runtime.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);
