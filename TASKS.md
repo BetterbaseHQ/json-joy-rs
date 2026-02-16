@@ -76,3 +76,14 @@
   - `model_apply_replay >= 50`
   - `lessdb_model_manager >= 50`
   - `model_canonical_encode >= 12`
+
+### Matrix expansion follow-ups from upstream sweep (`/Users/nchapman/Drive/Code/json-joy/packages/json-joy/src`)
+
+- [ ] Add explicit matrix/test-port coverage for `json-crdt/model/api/*` (`ModelApi`, `NodeApi`, finder/proxy/events).
+- [ ] Add explicit matrix/test-port coverage for `Model.ts` lifecycle helpers (`fromPatches`, `applyBatch`, schema-aware `load`).
+- [ ] Add tracking row and decision for deferred codecs: `json-crdt/codec/indexed/*` and `json-crdt/codec/sidecar/*`.
+- [ ] Add dedicated tracking/tests for `json-crdt-diff` destination-key mode (`diffDstKeys` parity or explicit defer).
+- [ ] Add dedicated tracking/tests for low-level `util/diff/{str,bin,line}` parity (beyond fixture black-box coverage).
+- [ ] Decide and track port status for `json-crdt-patch/compaction.ts`.
+- [ ] Decide and track port status for patch alternate codecs (`compact`, `compact-binary`, `verbose`).
+- [ ] Decide and track port status for `json-crdt-patch/schema.ts`.
