@@ -66,6 +66,10 @@ pub fn diff_model_to_patch_bytes(
     if let Some(native) = try_native_root_obj_scalar_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+    // Native generic root-object delta path.
+    if let Some(native) = try_native_root_obj_generic_delta_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
+    }
     Err(DiffError::UnsupportedShape)
 }
 
@@ -188,6 +192,70 @@ fn try_native_root_obj_scalar_delta_diff(
     }
 
     // Pass 2: additions/updates in next key iteration order.
+    for (k, next_v) in next_obj {
+        if base_obj.get(k) == Some(next_v) {
+            continue;
+        }
+        let id = emitter.emit_value(next_v);
+        pairs.push((k.clone(), id));
+    }
+
+    if pairs.is_empty() {
+        return Ok(Some(None));
+    }
+
+    emitter.push(DecodedOp::InsObj {
+        id: emitter.next_id(),
+        obj: Timestamp {
+            sid: root_sid,
+            time: 1,
+        },
+        data: pairs,
+    });
+
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(Some(encoded)))
+}
+
+fn try_native_root_obj_generic_delta_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if !map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+
+    let (root_sid, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+    let mut pairs: Vec<(String, Timestamp)> = Vec::new();
+
+    // Upstream JsonCrdtDiff.diffObj ordering: first pass through source keys
+    // for deletions (undefined), then destination traversal for inserts/updates.
+    for (k, _) in base_obj {
+        if !next_obj.contains_key(k) {
+            let id = emitter.next_id();
+            emitter.push(DecodedOp::NewCon {
+                id,
+                value: ConValue::Undef,
+            });
+            pairs.push((k.clone(), id));
+        }
+    }
+
     for (k, next_v) in next_obj {
         if base_obj.get(k) == Some(next_v) {
             continue;
