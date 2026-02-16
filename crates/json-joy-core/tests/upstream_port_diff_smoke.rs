@@ -143,6 +143,67 @@ fn upstream_port_diff_vec_index_updates_use_ins_vec() {
     assert_eq!(applied.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_bin_delta_uses_ins_bin_and_del() {
+    // Ports upstream JsonCrdtDiff.diffBin behavior.
+    let sid = 88004;
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    let root = Timestamp { sid, time: 1 };
+    let bin = Timestamp { sid, time: 3 };
+    let ops = vec![
+        DecodedOp::NewObj { id: root },
+        DecodedOp::InsVal {
+            id: Timestamp { sid, time: 2 },
+            obj: Timestamp { sid: 0, time: 0 },
+            val: root,
+        },
+        DecodedOp::NewBin { id: bin },
+        DecodedOp::InsBin {
+            id: Timestamp { sid, time: 4 },
+            obj: bin,
+            reference: bin,
+            data: vec![1, 2, 3],
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 7 },
+            obj: root,
+            data: vec![("b".to_string(), bin)],
+        },
+    ];
+    let seed = encode_patch_from_ops(sid, 1, &ops).expect("seed patch encode must succeed");
+    let seed_patch = Patch::from_binary(&seed).expect("seed patch decode must succeed");
+    runtime.apply_patch(&seed_patch).expect("seed apply must succeed");
+    let base_model = runtime
+        .to_model_binary_like()
+        .expect("runtime model encode must succeed");
+    let next = serde_json::json!({"b": {"0": 1, "1": 4, "2": 3, "3": 5}});
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsBin { .. })),
+        "diff patch must contain ins_bin"
+    );
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::Del { .. })),
+        "diff patch must contain del"
+    );
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);

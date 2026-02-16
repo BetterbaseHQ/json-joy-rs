@@ -398,6 +398,10 @@ impl RuntimeModel {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Arr(_)))
     }
 
+    pub(crate) fn node_is_bin(&self, id: Timestamp) -> bool {
+        matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Bin(_)))
+    }
+
     pub(crate) fn node_is_object(&self, id: Timestamp) -> bool {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Obj(_)))
     }
@@ -474,6 +478,21 @@ impl RuntimeModel {
             for atom in atoms {
                 if let Some(value) = atom.value {
                     out.push(value.into());
+                }
+            }
+            Some(out)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn bin_visible_slots(&self, id: Timestamp) -> Option<Vec<Timestamp>> {
+        let node = self.nodes.get(&Id::from(id))?;
+        if let RuntimeNode::Bin(atoms) = node {
+            let mut out = Vec::new();
+            for atom in atoms {
+                if atom.byte.is_some() {
+                    out.push(atom.slot.into());
                 }
             }
             Some(out)
