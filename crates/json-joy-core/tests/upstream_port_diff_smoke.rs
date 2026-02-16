@@ -912,6 +912,58 @@ fn upstream_port_diff_mixed_root_recursive_emits_child_and_root_ops() {
     assert_eq!(applied.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_inside_out_recursive_object_mutation() {
+    let sid = 88017;
+    let initial = serde_json::json!({
+        "doc": {
+            "meta": {"title": "hello"},
+            "body": {"items": [1, 2]}
+        },
+        "aux": {
+            "meta": {"title": "world"},
+            "body": {"items": [3, 4]}
+        }
+    });
+    let next = serde_json::json!({
+        "doc": {
+            "meta": {"title": "hullo"},
+            "body": {"items": [1, 9]}
+        },
+        "aux": {
+            "meta": {"title": "word"},
+            "body": {"items": [3, 8]}
+        }
+    });
+    let model = create_model(&initial, sid).expect("create_model must succeed");
+    let base_model = model_to_binary(&model);
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsStr { .. })),
+        "expected deep ins_str op"
+    );
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsArr { .. })),
+        "expected deep ins_arr op"
+    );
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);

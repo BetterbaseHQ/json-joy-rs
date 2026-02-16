@@ -1600,36 +1600,54 @@ fn try_emit_child_recursive_diff(
                 Value::Object(v) => v,
                 _ => unreachable!(),
             };
-            let mut pairs: Vec<(String, Timestamp)> = Vec::new();
-            for (k, _) in old_obj {
-                if !new_obj.contains_key(k) {
-                    let id = emitter.next_id();
-                    emitter.push(DecodedOp::NewCon {
-                        id,
-                        value: ConValue::Undef,
-                    });
-                    pairs.push((k.clone(), id));
-                }
-            }
-            for (k, v) in new_obj {
-                if old_obj.get(k) == Some(v) {
-                    continue;
-                }
-                let id = emitter.emit_value(v);
-                pairs.push((k.clone(), id));
-            }
-            if !pairs.is_empty() {
-                emitter.push(DecodedOp::InsObj {
-                    id: emitter.next_id(),
-                    obj: child,
-                    data: pairs,
-                });
-            }
-            return Ok(true);
+            return try_emit_object_recursive_diff(runtime, emitter, child, old_obj, new_obj);
         }
         _ => {}
     }
     Ok(false)
+}
+
+fn try_emit_object_recursive_diff(
+    runtime: &RuntimeModel,
+    emitter: &mut NativeEmitter,
+    obj_node: Timestamp,
+    old_obj: &serde_json::Map<String, Value>,
+    new_obj: &serde_json::Map<String, Value>,
+) -> Result<bool, DiffError> {
+    let mut pairs: Vec<(String, Timestamp)> = Vec::new();
+
+    for (k, _) in old_obj {
+        if !new_obj.contains_key(k) {
+            let id = emitter.next_id();
+            emitter.push(DecodedOp::NewCon {
+                id,
+                value: ConValue::Undef,
+            });
+            pairs.push((k.clone(), id));
+        }
+    }
+
+    for (k, v) in new_obj {
+        if old_obj.get(k) == Some(v) {
+            continue;
+        }
+        if let Some(child_id) = runtime.object_field(obj_node, k) {
+            if try_emit_child_recursive_diff(runtime, emitter, child_id, old_obj.get(k), v)? {
+                continue;
+            }
+        }
+        let id = emitter.emit_value(v);
+        pairs.push((k.clone(), id));
+    }
+
+    if !pairs.is_empty() {
+        emitter.push(DecodedOp::InsObj {
+            id: emitter.next_id(),
+            obj: obj_node,
+            data: pairs,
+        });
+    }
+    Ok(true)
 }
 
 fn try_native_root_obj_vec_delta_diff(
