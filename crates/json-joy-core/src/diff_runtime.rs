@@ -499,9 +499,9 @@ fn try_native_root_obj_scalar_delta_diff(
         None => return Ok(None),
     };
 
-    // Constrain native path to scalar-only key replacements at root. If any
-    // structural/nested mutation is detected, fall back to compatibility
-    // layer oracle path for exact upstream operation-shape parity.
+    // Constrain this fast path to scalar-only key replacements at root.
+    // Structural/nested mutations are handled by broader native recursive
+    // object diff paths.
     for (k, next_v) in next_obj {
         let changed = base_obj.get(k) != Some(next_v);
         if !changed {

@@ -29,7 +29,7 @@ pub enum CompatError {
     ModelBinaryTooLarge { actual: usize, max: usize },
     #[error("unsupported shape for native compatibility path")]
     UnsupportedShape,
-    #[error("oracle process failed: {0}")]
+    #[error("compat runtime failure: {0}")]
     ProcessFailure(String),
 }
 
@@ -76,9 +76,9 @@ pub fn apply_patch(model: &mut CompatModel, patch_bytes: &[u8]) -> Result<(), Co
         // Native no-op/stale replay fast path.
         //
         // If runtime application does not change materialized view and the
-        // patch contains no `nop`, keep binary/view unchanged and avoid oracle
-        // subprocess overhead. `nop` is excluded because upstream may advance
-        // clock state even when view stays the same.
+        // patch contains no `nop`, keep binary/view unchanged. `nop` is
+        // excluded because upstream may advance clock state even when view
+        // stays the same.
         if !decoded
             .decoded_ops()
             .iter()
