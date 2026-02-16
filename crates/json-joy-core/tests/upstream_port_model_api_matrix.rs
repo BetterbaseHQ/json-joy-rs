@@ -453,3 +453,37 @@ fn upstream_port_model_api_diff_merge_matrix() {
 
     assert_eq!(api.view(), json!({"doc":{"a":2,"b":[1,2]}}));
 }
+
+#[test]
+fn upstream_port_model_api_json_pointer_matrix() {
+    // Upstream mapping:
+    // - json-crdt/model/api/nodes.ts path normalization (`toPath`) and "-" append behavior.
+    let sid = 97009;
+    let mut api = NativeModelApi::from_patches(&[patch_from_ops(
+        sid,
+        1,
+        &[
+            DecodedOp::NewObj {
+                id: Timestamp { sid, time: 1 },
+            },
+            DecodedOp::InsVal {
+                id: Timestamp { sid, time: 2 },
+                obj: Timestamp { sid: 0, time: 0 },
+                val: Timestamp { sid, time: 1 },
+            },
+        ],
+    )])
+    .expect("from_patches must succeed");
+
+    api.obj_put(&[], "doc", json!({"a/b":{"~k":[1]}}))
+        .expect("seed put must succeed");
+    assert_eq!(api.read_ptr(Some("/doc/a~1b/~0k/0")), Some(json!(1)));
+    assert_eq!(api.select_ptr(Some("doc/a~1b/~0k/0")), Some(json!(1)));
+
+    assert!(api.try_add_ptr("/doc/a~1b/~0k/-", json!(2)));
+    assert!(api.try_replace_ptr("/doc/a~1b/~0k/0", json!(7)));
+    assert!(api.try_remove_ptr("/doc/a~1b/~0k/1"));
+
+    assert_eq!(api.read_ptr(Some("/doc/a~1b/~0k")), Some(json!([7])));
+    assert!(!api.try_add_ptr("/missing/-", json!(1)));
+}

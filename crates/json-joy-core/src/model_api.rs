@@ -212,8 +212,22 @@ impl NativeModelApi {
         }
     }
 
+    pub fn read_ptr(&self, ptr: Option<&str>) -> Option<Value> {
+        match ptr {
+            None => self.read(None),
+            Some(p) => {
+                let steps = parse_json_pointer(p).ok()?;
+                self.read(Some(&steps))
+            }
+        }
+    }
+
     pub fn select(&self, path: Option<&[PathStep]>) -> Option<Value> {
         self.read(path)
+    }
+
+    pub fn select_ptr(&self, ptr: Option<&str>) -> Option<Value> {
+        self.read_ptr(ptr)
     }
 
     pub fn set(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
@@ -335,12 +349,33 @@ impl NativeModelApi {
         self.add(path, value).is_ok()
     }
 
+    pub fn try_add_ptr(&mut self, ptr: &str, value: Value) -> bool {
+        let Ok(steps) = parse_json_pointer(ptr) else {
+            return false;
+        };
+        self.try_add(&steps, value)
+    }
+
     pub fn try_replace(&mut self, path: &[PathStep], value: Value) -> bool {
         self.replace(path, value).is_ok()
     }
 
+    pub fn try_replace_ptr(&mut self, ptr: &str, value: Value) -> bool {
+        let Ok(steps) = parse_json_pointer(ptr) else {
+            return false;
+        };
+        self.try_replace(&steps, value)
+    }
+
     pub fn try_remove(&mut self, path: &[PathStep]) -> bool {
         self.remove(path).is_ok()
+    }
+
+    pub fn try_remove_ptr(&mut self, ptr: &str) -> bool {
+        let Ok(steps) = parse_json_pointer(ptr) else {
+            return false;
+        };
+        self.try_remove(&steps)
     }
 
     pub fn op(&mut self, operation: ApiOperation) -> bool {
@@ -671,4 +706,33 @@ fn split_parent(path: &[PathStep]) -> Result<(&[PathStep], &PathStep), ModelApiE
     }
     let (parent, leaf) = path.split_at(path.len() - 1);
     Ok((parent, &leaf[0]))
+}
+
+fn parse_json_pointer(path: &str) -> Result<Vec<PathStep>, ModelApiError> {
+    if path.is_empty() || path == "/" {
+        return Ok(Vec::new());
+    }
+    let normalized = if path.starts_with('/') {
+        path
+    } else {
+        // Match upstream convenience behavior: allow relative pointer strings.
+        // Example: "doc/items/0" => "/doc/items/0".
+        // This mirrors toPath normalization in model/api usage.
+        return parse_json_pointer(&format!("/{path}"));
+    };
+
+    let mut out = Vec::new();
+    for raw in normalized.split('/').skip(1) {
+        let token = raw.replace("~1", "/").replace("~0", "~");
+        if token == "-" {
+            out.push(PathStep::Append);
+            continue;
+        }
+        if let Ok(idx) = token.parse::<usize>() {
+            out.push(PathStep::Index(idx));
+        } else {
+            out.push(PathStep::Key(token));
+        }
+    }
+    Ok(out)
 }
