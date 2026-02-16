@@ -187,11 +187,15 @@ fn try_native_root_obj_scalar_delta_diff(
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
     let mut pairs: Vec<(String, Timestamp)> = Vec::new();
 
-    // Key deletion requires `undefined` constant emission, which is not yet
-    // represented in this native path. Fall back for delete cases for now.
+    // Pass 1: deletions in base key iteration order (`undefined` writes).
     for (k, _) in base_obj {
         if !next_obj.contains_key(k) {
-            return Ok(None);
+            let id = emitter.next_id();
+            emitter.push(DecodedOp::NewCon {
+                id,
+                value: ConValue::Undef,
+            });
+            pairs.push((k.clone(), id));
         }
     }
 

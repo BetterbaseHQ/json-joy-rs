@@ -156,6 +156,7 @@ impl RuntimeModel {
                 let val = match value {
                     ConValue::Json(v) => v.clone(),
                     ConValue::Ref(ts) => self.node_view(Id::from(*ts)).unwrap_or(Value::Null),
+                    ConValue::Undef => Value::Null,
                 };
                 self.nodes.entry(id).or_insert(RuntimeNode::Con(val));
             }

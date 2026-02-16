@@ -126,6 +126,10 @@ impl Writer {
                     self.write_op_len(0, 1);
                     self.encode_id(*ts);
                 }
+                ConValue::Undef => {
+                    self.bytes.push(0 << 3);
+                    self.bytes.push(0xf7);
+                }
             },
             DecodedOp::NewVal { .. } => self.bytes.push(1 << 3),
             DecodedOp::NewObj { .. } => self.bytes.push(2 << 3),

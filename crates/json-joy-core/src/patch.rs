@@ -41,6 +41,7 @@ pub struct Timespan {
 pub enum ConValue {
     Json(serde_json::Value),
     Ref(Timestamp),
+    Undef,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -433,7 +434,15 @@ fn decode_op(
         0 => {
             let low = octet & 0b111;
             let value = if low == 0 {
-                ConValue::Json(cbor_to_json(reader.read_one_cbor()?)?)
+                // CBOR undefined (0xf7) is used by json-joy diffs for object-key
+                // deletion semantics. Preserve it explicitly to allow canonical
+                // binary parity in native patch encoding.
+                if reader.remaining() >= 1 && reader.data[reader.pos] == 0xf7 {
+                    reader.u8()?;
+                    ConValue::Undef
+                } else {
+                    ConValue::Json(cbor_to_json(reader.read_one_cbor()?)?)
+                }
             } else {
                 ConValue::Ref(reader.decode_id(patch_sid)?)
             };
