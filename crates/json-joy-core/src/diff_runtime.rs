@@ -231,7 +231,7 @@ fn try_native_non_object_root_diff(
             emit_array_delta_ops(&mut emitter, root, &slots, old, new);
         }
         (Value::Array(_), Value::Array(new)) if runtime.node_is_vec(root) => {
-            emit_vec_delta_ops(&runtime, &mut emitter, root, new);
+            emit_vec_delta_ops(&runtime, &mut emitter, root, new)?;
         }
         (old, new) if runtime.node_is_bin(root) => {
             let old_bin = match parse_bin_object(old) {
@@ -1765,34 +1765,32 @@ fn try_emit_child_recursive_diff(
                 _ => unreachable!(),
             };
             if old_arr.len() == new_arr.len() && !old_arr.is_empty() {
-                let mut changed_idx: Option<usize> = None;
-                for i in 0..old_arr.len() {
-                    if old_arr[i] != new_arr[i] {
-                        if changed_idx.is_some() {
-                            changed_idx = Some(usize::MAX);
+                let mut any_change = false;
+                let mut all_changed_are_object_mutations = true;
+                if let Some(values) = runtime.array_visible_values(child) {
+                    for i in 0..old_arr.len() {
+                        if old_arr[i] == new_arr[i] {
+                            continue;
+                        }
+                        any_change = true;
+                        let (Some(old_obj), Some(new_obj)) = (old_arr[i].as_object(), new_arr[i].as_object()) else {
+                            all_changed_are_object_mutations = false;
+                            break;
+                        };
+                        if i >= values.len() || !runtime.node_is_object(values[i]) {
+                            all_changed_are_object_mutations = false;
                             break;
                         }
-                        changed_idx = Some(i);
+                        let _ = try_emit_object_recursive_diff(
+                            runtime,
+                            emitter,
+                            values[i],
+                            old_obj,
+                            new_obj,
+                        )?;
                     }
-                }
-                if let Some(idx) = changed_idx {
-                    if idx != usize::MAX {
-                        if let (Some(old_obj), Some(new_obj)) =
-                            (old_arr[idx].as_object(), new_arr[idx].as_object())
-                        {
-                            if let Some(values) = runtime.array_visible_values(child) {
-                                if idx < values.len() && runtime.node_is_object(values[idx]) {
-                                    let _ = try_emit_object_recursive_diff(
-                                        runtime,
-                                        emitter,
-                                        values[idx],
-                                        old_obj,
-                                        new_obj,
-                                    )?;
-                                    return Ok(true);
-                                }
-                            }
-                        }
+                    if any_change && all_changed_are_object_mutations {
+                        return Ok(true);
                     }
                 }
             }
@@ -1816,7 +1814,7 @@ fn try_emit_child_recursive_diff(
                 Value::Array(v) => v,
                 _ => unreachable!(),
             };
-            emit_vec_delta_ops(runtime, emitter, child, new_arr);
+            emit_vec_delta_ops(runtime, emitter, child, new_arr)?;
             return Ok(true);
         }
         Some(Value::Object(old_obj)) if matches!(new_v, Value::Object(_)) && runtime.node_is_object(child) => {
@@ -1926,7 +1924,7 @@ fn try_native_root_obj_vec_delta_diff(
             _ => return Ok(None),
         };
 
-        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst);
+        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst)?;
     }
 
     if emitter.ops.is_empty() {
@@ -1991,7 +1989,7 @@ fn try_native_root_obj_multi_vec_delta_diff(
             Some(id) if runtime.node_is_vec(id) => id,
             _ => return Ok(None),
         };
-        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst);
+        emit_vec_delta_ops(&runtime, &mut emitter, vec_node, dst)?;
     }
 
     if emitter.ops.is_empty() {
@@ -2049,7 +2047,7 @@ fn try_native_nested_obj_vec_delta_diff(
         None => return Ok(None),
     };
     let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
-    emit_vec_delta_ops(&runtime, &mut emitter, node, new);
+    emit_vec_delta_ops(&runtime, &mut emitter, node, new)?;
     if emitter.ops.is_empty() {
         return Ok(Some(None));
     }
@@ -2130,7 +2128,7 @@ fn try_native_multi_root_nested_vec_delta_diff(
         if !runtime.node_is_vec(node) {
             return Ok(None);
         }
-        emit_vec_delta_ops(&runtime, &mut emitter, node, new);
+        emit_vec_delta_ops(&runtime, &mut emitter, node, new)?;
     }
 
     if emitter.ops.is_empty() {
@@ -2145,7 +2143,7 @@ fn emit_vec_delta_ops(
     emitter: &mut NativeEmitter,
     vec_node: Timestamp,
     dst: &[Value],
-) {
+) -> Result<(), DiffError> {
     let src_len = runtime
         .vec_max_index(vec_node)
         .map(|m| m.saturating_add(1) as usize)
@@ -2172,8 +2170,23 @@ fn emit_vec_delta_ops(
     // Upstream diffVec: update common indexes where recursive diff fails.
     for (i, value) in dst.iter().take(min).enumerate() {
         if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
-            if runtime
-                .node_json_value(child)
+            let old_json = runtime.node_json_value(child);
+            if let (Some(old_obj), Some(new_obj)) = (
+                old_json.as_ref().and_then(|v| v.as_object()),
+                value.as_object(),
+            ) {
+                if runtime.node_is_object(child) {
+                    let _ = try_emit_object_recursive_diff(
+                        runtime,
+                        emitter,
+                        child,
+                        old_obj,
+                        new_obj,
+                    )?;
+                    continue;
+                }
+            }
+            if old_json
                 .as_ref()
                 .is_some_and(|v| v == value)
             {
@@ -2195,6 +2208,7 @@ fn emit_vec_delta_ops(
             data: edits,
         });
     }
+    Ok(())
 }
 
 struct NativeEmitter {

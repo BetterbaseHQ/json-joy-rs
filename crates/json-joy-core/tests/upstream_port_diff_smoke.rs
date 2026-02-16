@@ -1086,6 +1086,122 @@ fn upstream_port_diff_inside_out_array_object_mutation() {
     assert_eq!(applied.view_json(), next);
 }
 
+#[test]
+fn upstream_port_diff_inside_out_array_multi_object_mutation() {
+    let sid = 88022;
+    let initial = serde_json::json!({
+        "doc": {
+            "items": [
+                {"id": 1, "name": "a"},
+                {"id": 2, "name": "b"}
+            ]
+        }
+    });
+    let next = serde_json::json!({
+        "doc": {
+            "items": [
+                {"id": 1, "name": "aa"},
+                {"id": 2, "name": "bb"}
+            ]
+        }
+    });
+    let model = create_model(&initial, sid).expect("create_model must succeed");
+    let base_model = model_to_binary(&model);
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    let obj_ops = decoded
+        .decoded_ops()
+        .iter()
+        .filter(|op| matches!(op, DecodedOp::InsObj { .. }))
+        .count();
+    assert!(obj_ops >= 2, "expected multiple nested ins_obj mutations");
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
+#[test]
+fn upstream_port_diff_inside_out_vec_object_mutation() {
+    let sid = 88023;
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    let root = Timestamp { sid, time: 1 };
+    let vec_id = Timestamp { sid, time: 3 };
+    let o1 = Timestamp { sid, time: 4 };
+    let o2 = Timestamp { sid, time: 5 };
+    let n1 = Timestamp { sid, time: 6 };
+    let n2 = Timestamp { sid, time: 7 };
+    let ops = vec![
+        DecodedOp::NewObj { id: root },
+        DecodedOp::InsVal {
+            id: Timestamp { sid, time: 2 },
+            obj: Timestamp { sid: 0, time: 0 },
+            val: root,
+        },
+        DecodedOp::NewVec { id: vec_id },
+        DecodedOp::NewObj { id: o1 },
+        DecodedOp::NewObj { id: o2 },
+        DecodedOp::NewCon {
+            id: n1,
+            value: ConValue::Json(serde_json::json!("a")),
+        },
+        DecodedOp::NewCon {
+            id: n2,
+            value: ConValue::Json(serde_json::json!("b")),
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 8 },
+            obj: o1,
+            data: vec![("name".to_string(), n1)],
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 9 },
+            obj: o2,
+            data: vec![("name".to_string(), n2)],
+        },
+        DecodedOp::InsVec {
+            id: Timestamp { sid, time: 10 },
+            obj: vec_id,
+            data: vec![(0, o1), (1, o2)],
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 11 },
+            obj: root,
+            data: vec![("v".to_string(), vec_id)],
+        },
+    ];
+    let seed = encode_patch_from_ops(sid, 1, &ops).expect("seed patch encode must succeed");
+    let seed_patch = Patch::from_binary(&seed).expect("seed patch decode must succeed");
+    runtime.apply_patch(&seed_patch).expect("seed apply must succeed");
+    let base_model = runtime
+        .to_model_binary_like()
+        .expect("runtime model encode must succeed");
+    let next = serde_json::json!({"v": [{"name":"aa"},{"name":"bb"}]});
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsObj { .. })),
+        "expected inside-out object mutation under vec"
+    );
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
+}
+
 fn decode_hex(s: &str) -> Vec<u8> {
     assert!(s.len() % 2 == 0, "hex string must have even length");
     let mut out = Vec::with_capacity(s.len() / 2);
