@@ -1,0 +1,73 @@
+{
+  "fixture_version": 1,
+  "name": "patch_clock_codec_parity_03_det_v1",
+  "scenario": "patch_clock_codec_parity",
+  "input": {
+    "sid": 81403,
+    "model_binary_hex": "000000191f41636172721ec114031d201c00011a20190002172016000301fbfb0410"
+  },
+  "expected": {
+    "clock_table_binary_hex": "01fbfb0410",
+    "clock_table": [
+      [
+        81403,
+        16
+      ]
+    ],
+    "relative_ids": [
+      {
+        "id": [
+          81403,
+          1
+        ],
+        "session_index": 1,
+        "time_diff": 15,
+        "decoded_id": [
+          81403,
+          1
+        ]
+      },
+      {
+        "id": [
+          81403,
+          2
+        ],
+        "session_index": 1,
+        "time_diff": 14,
+        "decoded_id": [
+          81403,
+          2
+        ]
+      },
+      {
+        "id": [
+          81403,
+          3
+        ],
+        "session_index": 1,
+        "time_diff": 13,
+        "decoded_id": [
+          81403,
+          3
+        ]
+      },
+      {
+        "id": [
+          81403,
+          4
+        ],
+        "session_index": 1,
+        "time_diff": 12,
+        "decoded_id": [
+          81403,
+          4
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

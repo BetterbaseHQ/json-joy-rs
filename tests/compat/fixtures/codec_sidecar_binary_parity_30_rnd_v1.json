@@ -1,0 +1,22 @@
+{
+  "fixture_version": 1,
+  "name": "codec_sidecar_binary_parity_30_rnd_v1",
+  "scenario": "codec_sidecar_binary_parity",
+  "input": {
+    "sid": 81319,
+    "model_binary_hex": "000000031100f501a7fb0402"
+  },
+  "expected": {
+    "view_binary_hex": "f5",
+    "meta_binary_hex": "00000002110001a7fb0402",
+    "view_roundtrip_binary_hex": "f5",
+    "meta_roundtrip_binary_hex": "00000002110001a7fb0402",
+    "view_json": true,
+    "model_binary_hex": "000000031100f501a7fb0402"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

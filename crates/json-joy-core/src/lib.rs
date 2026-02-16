@@ -15,6 +15,9 @@ pub mod patch_verbose_codec;
 pub mod schema;
 pub mod util_diff;
 pub mod patch_log;
+pub mod codec_indexed_binary;
+pub mod codec_sidecar_binary;
+pub mod patch_clock_codec;
 
 use rand::Rng;
 

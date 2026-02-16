@@ -1,0 +1,24 @@
+{
+  "fixture_version": 1,
+  "name": "codec_sidecar_binary_parity_23_rnd_v1",
+  "scenario": "codec_sidecar_binary_parity",
+  "input": {
+    "sid": 81312,
+    "model_binary_hex": "0000001518417808317a67776e6d6875178116656e3134697701a0fb0409"
+  },
+  "expected": {
+    "view_binary_hex": "a17808317a67776e6d6875656e31346977",
+    "meta_binary_hex": "0000000618411781160501a0fb0409",
+    "view_roundtrip_binary_hex": "a17808317a67776e6d6875656e31346977",
+    "meta_roundtrip_binary_hex": "0000000618411781160501a0fb0409",
+    "view_json": {
+      "1zgwnmhu": "n14iw"
+    },
+    "model_binary_hex": "0000001518417808317a67776e6d6875178116656e3134697701a0fb0409"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

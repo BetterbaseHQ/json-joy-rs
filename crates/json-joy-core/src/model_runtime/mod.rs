@@ -19,7 +19,7 @@ mod decode;
 mod encode;
 mod query;
 mod rga;
-mod types;
+pub(crate) mod types;
 mod view;
 
 use decode::{bootstrap_graph_from_view, decode_runtime_graph};

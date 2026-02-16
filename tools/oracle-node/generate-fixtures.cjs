@@ -2,6 +2,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {Model} = require('json-joy/lib/json-crdt/index.js');
 const {JsonCrdtDiff} = require('json-joy/lib/json-crdt-diff/JsonCrdtDiff.js');
+const {Encoder: IndexedBinaryEncoder} = require('json-joy/lib/json-crdt/codec/indexed/binary/Encoder.js');
+const {Decoder: IndexedBinaryDecoder} = require('json-joy/lib/json-crdt/codec/indexed/binary/Decoder.js');
+const {Encoder: SidecarBinaryEncoder} = require('json-joy/lib/json-crdt/codec/sidecar/binary/Encoder.js');
+const {Decoder: SidecarBinaryDecoder} = require('json-joy/lib/json-crdt/codec/sidecar/binary/Decoder.js');
+const {ClockTable} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockTable.js');
+const {ClockEncoder} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockEncoder.js');
+const {ClockDecoder} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockDecoder.js');
+const {CrdtWriter} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtWriter.js');
+const {CrdtReader} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtReader.js');
+const {CborDecoder} = require('@jsonjoy.com/json-pack/lib/cbor/CborDecoder.js');
 const patchLib = require('json-joy/lib/json-crdt-patch/index.js');
 const {
   Patch,
@@ -242,7 +252,7 @@ function buildCanonicalEncodeFixture(name, input) {
 
 function allCanonicalEncodeFixtures() {
   const sid = 74001;
-  return [
+  const fixtures = [
     buildCanonicalEncodeFixture('patch_canonical_root_scalar_v1', {
       sid,
       time: 1,
@@ -296,6 +306,38 @@ function allCanonicalEncodeFixtures() {
       ],
     }),
   ];
+
+  const rng = mulberry32(0x70617463);
+  for (let i = 0; i < 16; i++) {
+    const baseTime = 1 + (i * 8);
+    const v1 = randScalar(rng);
+    const v2 = randScalar(rng);
+    fixtures.push(
+      buildCanonicalEncodeFixture(`patch_canonical_generated_${String(i + 1).padStart(2, '0')}_v1`, {
+        sid,
+        time: baseTime,
+        meta_kind: 'undefined',
+        ops: [
+          {op: 'new_obj', id: [sid, baseTime]},
+          {op: 'ins_val', id: [sid, baseTime + 1], obj: [0, 0], val: [sid, baseTime]},
+          {op: 'new_con', id: [sid, baseTime + 2], value: v1},
+          {op: 'new_con', id: [sid, baseTime + 3], value: v2},
+          {
+            op: 'ins_obj',
+            id: [sid, baseTime + 4],
+            obj: [sid, baseTime],
+            data: [
+              [`k${i}`, [sid, baseTime + 2]],
+              [`m${i}`, [sid, baseTime + 3]],
+            ],
+          },
+          {op: 'nop', id: [sid, baseTime + 5], len: 1},
+        ],
+      }),
+    );
+  }
+
+  return fixtures;
 }
 
 function buildDecodeErrorFixture(name, binaryHex) {
@@ -439,8 +481,19 @@ function allDecodeErrorFixtures() {
     {name: 'decode_error_ascii_json_v1', hex: Buffer.from('{"x":1}', 'utf8').toString('hex')},
     {name: 'decode_error_sparse_v1', hex: '0100000000000000'},
     {name: 'decode_error_short_header_v1', hex: '0102'},
-    {name: 'decode_error_long_random_v1', hex: 'abcd'.repeat(32)}
+    {name: 'decode_error_long_random_v1', hex: 'abcd'.repeat(32)},
   ];
+
+  const rng = mulberry32(0xdec0de);
+  for (let i = 0; i < 15; i++) {
+    const len = 3 + randInt(rng, 28);
+    const bytes = [];
+    for (let j = 0; j < len; j++) bytes.push(randInt(rng, 256));
+    invalid.push({
+      name: `decode_error_random_extra_${String(i + 1).padStart(2, '0')}_v1`,
+      hex: Buffer.from(bytes).toString('hex'),
+    });
+  }
 
   return invalid.map((v) => buildDecodeErrorFixture(v.name, v.hex));
 }
@@ -1265,6 +1318,22 @@ function normalizeView(view) {
   return view === undefined ? null : view;
 }
 
+function bytesRecordToHexRecord(record) {
+  const out = {};
+  for (const [k, v] of Object.entries(record)) {
+    out[k] = hex(v);
+  }
+  return out;
+}
+
+function hexRecordToBytesRecord(record) {
+  const out = {};
+  for (const [k, v] of Object.entries(record)) {
+    out[k] = fromHex(v);
+  }
+  return out;
+}
+
 function mustPatch(model, next) {
   const patch = model.api.diff(next);
   if (!patch) throw new Error('expected non-empty patch');
@@ -2045,6 +2114,202 @@ function allModelLifecycleFixtures() {
   return fixtures;
 }
 
+function buildCodecIndexedBinaryFixture(name, sid, data) {
+  const model = mkModel(cloneJson(data), sid);
+  const modelBinary = model.toBinary();
+  const encoder = new IndexedBinaryEncoder();
+  const encodedFields = encoder.encode(model);
+  const fieldsHex = bytesRecordToHexRecord(encodedFields);
+  const decoded = new IndexedBinaryDecoder().decode(hexRecordToBytesRecord(fieldsHex));
+  const reEncodedFields = new IndexedBinaryEncoder().encode(decoded);
+
+  return baseFixture(name, 'codec_indexed_binary_parity', {
+    sid,
+    model_binary_hex: hex(modelBinary),
+  }, {
+    fields_hex: fieldsHex,
+    fields_roundtrip_hex: bytesRecordToHexRecord(reEncodedFields),
+    view_json: normalizeView(decoded.view()),
+    model_binary_hex: hex(decoded.toBinary()),
+  });
+}
+
+function allCodecIndexedBinaryFixtures() {
+  const fixtures = [];
+  const cases = [
+    {sid: 81001, data: 1},
+    {sid: 81002, data: 'x'},
+    {sid: 81003, data: {a: 1}},
+    {sid: 81004, data: {a: 1, b: 'x'}},
+    {sid: 81005, data: {a: {b: {c: 1}}}},
+    {sid: 81006, data: {arr: [1, 2, 3]}},
+    {sid: 81007, data: {arr: [{id: 1}, {id: 2}]}},
+    {sid: 81008, data: {txt: 'hello'}},
+    {sid: 81009, data: {bin: [1, 2, 3]}},
+    {sid: 81010, data: {n: null}},
+  ];
+  let idx = 1;
+  for (const c of cases) {
+    fixtures.push(
+      buildCodecIndexedBinaryFixture(
+        `codec_indexed_binary_parity_${String(idx).padStart(2, '0')}_det_v1`,
+        c.sid,
+        c.data,
+      ),
+    );
+    idx++;
+  }
+
+  const rng = mulberry32(0x1a2b3c4d);
+  for (let i = 0; i < 30; i++) {
+    fixtures.push(
+      buildCodecIndexedBinaryFixture(
+        `codec_indexed_binary_parity_${String(idx).padStart(2, '0')}_rnd_v1`,
+        81100 + i,
+        randJson(rng, 4),
+      ),
+    );
+    idx++;
+  }
+  return fixtures;
+}
+
+function buildCodecSidecarBinaryFixture(name, sid, data) {
+  const model = mkModel(cloneJson(data), sid);
+  const modelBinary = model.toBinary();
+  const [view, meta] = new SidecarBinaryEncoder().encode(model);
+  const decodedView = new CborDecoder().read(view);
+  const decoded = new SidecarBinaryDecoder().decode(decodedView, meta);
+  const [view2, meta2] = new SidecarBinaryEncoder().encode(decoded);
+
+  return baseFixture(name, 'codec_sidecar_binary_parity', {
+    sid,
+    model_binary_hex: hex(modelBinary),
+  }, {
+    view_binary_hex: hex(view),
+    meta_binary_hex: hex(meta),
+    view_roundtrip_binary_hex: hex(view2),
+    meta_roundtrip_binary_hex: hex(meta2),
+    view_json: normalizeView(decoded.view()),
+    model_binary_hex: hex(decoded.toBinary()),
+  });
+}
+
+function allCodecSidecarBinaryFixtures() {
+  const fixtures = [];
+  const cases = [
+    {sid: 81201, data: 1},
+    {sid: 81202, data: 'hello'},
+    {sid: 81203, data: {a: 1}},
+    {sid: 81204, data: {a: 1, b: 'x'}},
+    {sid: 81205, data: {arr: [1, 2, 3]}},
+    {sid: 81206, data: {doc: {title: 't', tags: ['x']}}},
+    {sid: 81207, data: {txt: 'The quick brown fox'}},
+    {sid: 81208, data: {nested: {a: {b: {c: 2}}}}},
+    {sid: 81209, data: {vecish: [null, true, 1, 'x']}},
+    {sid: 81210, data: null},
+  ];
+  let idx = 1;
+  for (const c of cases) {
+    fixtures.push(
+      buildCodecSidecarBinaryFixture(
+        `codec_sidecar_binary_parity_${String(idx).padStart(2, '0')}_det_v1`,
+        c.sid,
+        c.data,
+      ),
+    );
+    idx++;
+  }
+
+  const rng = mulberry32(0x55667788);
+  for (let i = 0; i < 30; i++) {
+    fixtures.push(
+      buildCodecSidecarBinaryFixture(
+        `codec_sidecar_binary_parity_${String(idx).padStart(2, '0')}_rnd_v1`,
+        81300 + i,
+        randJson(rng, 4),
+      ),
+    );
+    idx++;
+  }
+  return fixtures;
+}
+
+function buildPatchClockCodecFixture(name, sid, data) {
+  const model = mkModel(cloneJson(data), sid);
+  const table = ClockTable.from(model.clock);
+  const writer = new CrdtWriter();
+  table.write(writer);
+  const tableBytes = writer.flush();
+  const decodedTable = ClockTable.decode(new CrdtReader(tableBytes));
+
+  const ids = [];
+  model.index.forEach(({v: node}) => ids.push(node.id));
+  ids.sort((a, b) => (a.time === b.time ? a.sid - b.sid : a.time - b.time));
+  const pick = ids.slice(0, Math.min(4, ids.length));
+
+  const clockEncoder = new ClockEncoder();
+  clockEncoder.reset(model.clock);
+  const relative = pick.map((id) => {
+    const rel = clockEncoder.append(id);
+    const decoder = new ClockDecoder(decodedTable.byIdx[0].sid, decodedTable.byIdx[0].time);
+    for (let i = 1; i < decodedTable.byIdx.length; i++) {
+      const c = decodedTable.byIdx[i];
+      decoder.pushTuple(c.sid, c.time);
+    }
+    const decodedId = decoder.decodeId(rel.sessionIndex, rel.timeDiff);
+    return {
+      id: [id.sid, id.time],
+      session_index: rel.sessionIndex,
+      time_diff: rel.timeDiff,
+      decoded_id: [decodedId.sid, decodedId.time],
+    };
+  });
+
+  return baseFixture(name, 'patch_clock_codec_parity', {
+    sid,
+    model_binary_hex: hex(model.toBinary()),
+  }, {
+    clock_table_binary_hex: hex(tableBytes),
+    clock_table: decodedTable.byIdx.map((c) => [c.sid, c.time]),
+    relative_ids: relative,
+  });
+}
+
+function allPatchClockCodecFixtures() {
+  const fixtures = [];
+  const baseCases = [
+    {sid: 81401, data: {a: 1}},
+    {sid: 81402, data: {a: {b: 1}}},
+    {sid: 81403, data: {arr: [1, 2, 3]}},
+    {sid: 81404, data: {txt: 'abc'}},
+    {sid: 81405, data: {obj: {x: 1, y: 2}}},
+  ];
+  let idx = 1;
+  for (const c of baseCases) {
+    fixtures.push(
+      buildPatchClockCodecFixture(
+        `patch_clock_codec_parity_${String(idx).padStart(2, '0')}_det_v1`,
+        c.sid,
+        c.data,
+      ),
+    );
+    idx++;
+  }
+  const rng = mulberry32(0x99aabbcc);
+  for (let i = 0; i < 20; i++) {
+    fixtures.push(
+      buildPatchClockCodecFixture(
+        `patch_clock_codec_parity_${String(idx).padStart(2, '0')}_rnd_v1`,
+        81500 + i,
+        randJson(rng, 4),
+      ),
+    );
+    idx++;
+  }
+  return fixtures;
+}
+
 function main() {
   ensureDir(OUT_DIR);
   for (const file of fs.readdirSync(OUT_DIR)) {
@@ -2064,6 +2329,9 @@ function main() {
     ...allLessdbModelManagerFixtures(),
     ...allModelApiWorkflowFixtures(),
     ...allModelLifecycleFixtures(),
+    ...allCodecIndexedBinaryFixtures(),
+    ...allCodecSidecarBinaryFixtures(),
+    ...allPatchClockCodecFixtures(),
   ];
 
   for (const fixture of fixtures) {

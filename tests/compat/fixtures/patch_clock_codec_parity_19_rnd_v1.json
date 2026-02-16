@@ -1,0 +1,73 @@
+{
+  "fixture_version": 1,
+  "name": "patch_clock_codec_parity_19_rnd_v1",
+  "scenario": "patch_clock_codec_parity",
+  "input": {
+    "sid": 81513,
+    "model_binary_hex": "000000e3813d436170813c44656976697063813bc1812a04813ac08139818138780878667937736c6d79813020812f00fb404e4ccccccccccd812d20812c00fbc02633333333333365786935697381264478076f6e79346c646381258181246470717439657a65356135812041617a811f00f6780730636d616c6939811d81811c780e6f6f676e3664767a74756c666d35780866686e6c316c6a621e4261341d00f478096433706f79313636741c811b63637678633375361600f6780a797a61633834353776761500f67809776378646c386e6a7a1300f46336356e1200fb404e99999999999a01e9fc043e"
+  },
+  "expected": {
+    "clock_table_binary_hex": "01e9fc043e",
+    "clock_table": [
+      [
+        81513,
+        62
+      ]
+    ],
+    "relative_ids": [
+      {
+        "id": [
+          81513,
+          1
+        ],
+        "session_index": 1,
+        "time_diff": 61,
+        "decoded_id": [
+          81513,
+          1
+        ]
+      },
+      {
+        "id": [
+          81513,
+          2
+        ],
+        "session_index": 1,
+        "time_diff": 60,
+        "decoded_id": [
+          81513,
+          2
+        ]
+      },
+      {
+        "id": [
+          81513,
+          3
+        ],
+        "session_index": 1,
+        "time_diff": 59,
+        "decoded_id": [
+          81513,
+          3
+        ]
+      },
+      {
+        "id": [
+          81513,
+          4
+        ],
+        "session_index": 1,
+        "time_diff": 58,
+        "decoded_id": [
+          81513,
+          4
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

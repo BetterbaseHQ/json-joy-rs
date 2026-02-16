@@ -308,6 +308,76 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "model_lifecycle_workflow fixtures must define expected.final_model_binary_hex"
                 );
             }
+            "codec_indexed_binary_parity" => {
+                assert!(
+                    fixture["input"]["model_binary_hex"].is_string(),
+                    "codec_indexed_binary_parity fixtures must define input.model_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["fields_hex"].is_object(),
+                    "codec_indexed_binary_parity fixtures must define expected.fields_hex"
+                );
+                assert!(
+                    fixture["expected"]["fields_roundtrip_hex"].is_object(),
+                    "codec_indexed_binary_parity fixtures must define expected.fields_roundtrip_hex"
+                );
+                assert!(
+                    fixture["expected"].get("view_json").is_some(),
+                    "codec_indexed_binary_parity fixtures must define expected.view_json"
+                );
+                assert!(
+                    fixture["expected"]["model_binary_hex"].is_string(),
+                    "codec_indexed_binary_parity fixtures must define expected.model_binary_hex"
+                );
+            }
+            "codec_sidecar_binary_parity" => {
+                assert!(
+                    fixture["input"]["model_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define input.model_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["view_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define expected.view_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["meta_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define expected.meta_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["view_roundtrip_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define expected.view_roundtrip_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["meta_roundtrip_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define expected.meta_roundtrip_binary_hex"
+                );
+                assert!(
+                    fixture["expected"].get("view_json").is_some(),
+                    "codec_sidecar_binary_parity fixtures must define expected.view_json"
+                );
+                assert!(
+                    fixture["expected"]["model_binary_hex"].is_string(),
+                    "codec_sidecar_binary_parity fixtures must define expected.model_binary_hex"
+                );
+            }
+            "patch_clock_codec_parity" => {
+                assert!(
+                    fixture["input"]["model_binary_hex"].is_string(),
+                    "patch_clock_codec_parity fixtures must define input.model_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["clock_table_binary_hex"].is_string(),
+                    "patch_clock_codec_parity fixtures must define expected.clock_table_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["clock_table"].is_array(),
+                    "patch_clock_codec_parity fixtures must define expected.clock_table"
+                );
+                assert!(
+                    fixture["expected"]["relative_ids"].is_array(),
+                    "patch_clock_codec_parity fixtures must define expected.relative_ids"
+                );
+            }
             other => panic!("unexpected fixture scenario: {other}"),
         }
     }
@@ -352,6 +422,15 @@ fn manifest_contains_required_scenarios() {
     let has_model_lifecycle_workflow = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_lifecycle_workflow"));
+    let has_codec_indexed_binary_parity = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("codec_indexed_binary_parity"));
+    let has_codec_sidecar_binary_parity = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("codec_sidecar_binary_parity"));
+    let has_patch_clock_codec_parity = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("patch_clock_codec_parity"));
     let model_roundtrip_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_roundtrip"))
@@ -387,6 +466,26 @@ fn manifest_contains_required_scenarios() {
     let model_lifecycle_workflow_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_lifecycle_workflow"))
+        .count();
+    let codec_indexed_binary_parity_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("codec_indexed_binary_parity"))
+        .count();
+    let codec_sidecar_binary_parity_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("codec_sidecar_binary_parity"))
+        .count();
+    let patch_clock_codec_parity_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("patch_clock_codec_parity"))
+        .count();
+    let patch_decode_error_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("patch_decode_error"))
+        .count();
+    let patch_canonical_encode_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("patch_canonical_encode"))
         .count();
     let has_patch_canonical_encode = fixtures
         .iter()
@@ -432,6 +531,26 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include model_lifecycle_workflow scenarios"
     );
     assert!(
+        has_codec_indexed_binary_parity,
+        "fixtures must include codec_indexed_binary_parity scenarios"
+    );
+    assert!(
+        has_codec_sidecar_binary_parity,
+        "fixtures must include codec_sidecar_binary_parity scenarios"
+    );
+    assert!(
+        has_patch_clock_codec_parity,
+        "fixtures must include patch_clock_codec_parity scenarios"
+    );
+    assert!(
+        patch_decode_error_count >= 25,
+        "fixtures must include at least 25 patch_decode_error scenarios"
+    );
+    assert!(
+        patch_canonical_encode_count >= 20,
+        "fixtures must include at least 20 patch_canonical_encode scenarios"
+    );
+    assert!(
         model_roundtrip_count >= 60,
         "fixtures must include at least 60 model_roundtrip scenarios"
     );
@@ -466,5 +585,17 @@ fn manifest_contains_required_scenarios() {
     assert!(
         model_lifecycle_workflow_count >= 12,
         "fixtures must include at least 12 model_lifecycle_workflow scenarios"
+    );
+    assert!(
+        codec_indexed_binary_parity_count >= 40,
+        "fixtures must include at least 40 codec_indexed_binary_parity scenarios"
+    );
+    assert!(
+        codec_sidecar_binary_parity_count >= 40,
+        "fixtures must include at least 40 codec_sidecar_binary_parity scenarios"
+    );
+    assert!(
+        patch_clock_codec_parity_count >= 25,
+        "fixtures must include at least 25 patch_clock_codec_parity scenarios"
     );
 }

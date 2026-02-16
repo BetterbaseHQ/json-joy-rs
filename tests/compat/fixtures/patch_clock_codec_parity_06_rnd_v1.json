@@ -1,0 +1,37 @@
+{
+  "fixture_version": 1,
+  "name": "patch_clock_codec_parity_06_rnd_v1",
+  "scenario": "patch_clock_codec_parity",
+  "input": {
+    "sid": 81500,
+    "model_binary_hex": "0000000b1100fbc049e6666666666601dcfc0402"
+  },
+  "expected": {
+    "clock_table_binary_hex": "01dcfc0402",
+    "clock_table": [
+      [
+        81500,
+        2
+      ]
+    ],
+    "relative_ids": [
+      {
+        "id": [
+          81500,
+          1
+        ],
+        "session_index": 1,
+        "time_diff": 1,
+        "decoded_id": [
+          81500,
+          1
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

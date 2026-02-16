@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 417,
+  "fixture_count": 553,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -255,6 +255,81 @@
       "file": "decode_error_long_random_v1.json"
     },
     {
+      "name": "decode_error_random_extra_01_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_01_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_02_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_02_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_03_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_03_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_04_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_04_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_05_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_05_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_06_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_06_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_07_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_07_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_08_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_08_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_09_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_09_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_10_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_10_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_11_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_11_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_12_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_12_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_13_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_13_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_14_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_14_v1.json"
+    },
+    {
+      "name": "decode_error_random_extra_15_v1",
+      "scenario": "patch_decode_error",
+      "file": "decode_error_random_extra_15_v1.json"
+    },
+    {
       "name": "patch_canonical_root_scalar_v1",
       "scenario": "patch_canonical_encode",
       "file": "patch_canonical_root_scalar_v1.json"
@@ -273,6 +348,86 @@
       "name": "patch_canonical_string_with_nop_v1",
       "scenario": "patch_canonical_encode",
       "file": "patch_canonical_string_with_nop_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_01_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_01_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_02_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_02_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_03_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_03_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_04_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_04_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_05_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_05_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_06_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_06_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_07_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_07_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_08_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_08_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_09_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_09_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_10_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_10_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_11_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_11_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_12_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_12_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_13_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_13_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_14_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_14_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_15_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_15_v1.json"
+    },
+    {
+      "name": "patch_canonical_generated_16_v1",
+      "scenario": "patch_canonical_encode",
+      "file": "patch_canonical_generated_16_v1.json"
     },
     {
       "name": "model_roundtrip_scalar_number_v1",
@@ -2088,6 +2243,531 @@
       "name": "model_lifecycle_workflow_12_load_v1",
       "scenario": "model_lifecycle_workflow",
       "file": "model_lifecycle_workflow_12_load_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_01_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_01_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_02_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_02_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_03_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_03_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_04_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_04_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_05_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_05_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_06_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_06_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_07_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_07_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_08_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_08_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_09_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_09_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_10_det_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_10_det_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_11_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_11_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_12_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_12_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_13_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_13_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_14_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_14_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_15_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_15_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_16_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_16_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_17_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_17_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_18_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_18_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_19_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_19_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_20_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_20_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_21_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_21_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_22_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_22_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_23_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_23_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_24_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_24_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_25_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_25_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_26_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_26_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_27_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_27_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_28_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_28_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_29_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_29_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_30_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_30_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_31_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_31_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_32_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_32_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_33_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_33_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_34_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_34_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_35_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_35_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_36_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_36_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_37_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_37_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_38_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_38_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_39_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_39_rnd_v1.json"
+    },
+    {
+      "name": "codec_indexed_binary_parity_40_rnd_v1",
+      "scenario": "codec_indexed_binary_parity",
+      "file": "codec_indexed_binary_parity_40_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_01_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_01_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_02_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_02_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_03_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_03_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_04_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_04_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_05_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_05_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_06_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_06_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_07_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_07_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_08_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_08_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_09_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_09_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_10_det_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_10_det_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_11_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_11_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_12_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_12_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_13_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_13_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_14_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_14_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_15_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_15_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_16_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_16_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_17_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_17_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_18_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_18_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_19_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_19_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_20_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_20_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_21_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_21_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_22_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_22_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_23_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_23_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_24_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_24_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_25_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_25_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_26_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_26_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_27_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_27_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_28_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_28_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_29_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_29_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_30_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_30_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_31_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_31_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_32_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_32_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_33_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_33_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_34_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_34_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_35_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_35_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_36_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_36_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_37_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_37_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_38_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_38_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_39_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_39_rnd_v1.json"
+    },
+    {
+      "name": "codec_sidecar_binary_parity_40_rnd_v1",
+      "scenario": "codec_sidecar_binary_parity",
+      "file": "codec_sidecar_binary_parity_40_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_01_det_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_01_det_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_02_det_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_02_det_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_03_det_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_03_det_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_04_det_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_04_det_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_05_det_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_05_det_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_06_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_06_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_07_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_07_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_08_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_08_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_09_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_09_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_10_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_10_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_11_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_11_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_12_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_12_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_13_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_13_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_14_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_14_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_15_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_15_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_16_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_16_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_17_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_17_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_18_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_18_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_19_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_19_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_20_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_20_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_21_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_21_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_22_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_22_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_23_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_23_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_24_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_24_rnd_v1.json"
+    },
+    {
+      "name": "patch_clock_codec_parity_25_rnd_v1",
+      "scenario": "patch_clock_codec_parity",
+      "file": "patch_clock_codec_parity_25_rnd_v1.json"
     }
   ]
 }

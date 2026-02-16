@@ -1,0 +1,36 @@
+{
+  "fixture_version": 1,
+  "name": "codec_sidecar_binary_parity_18_rnd_v1",
+  "scenario": "codec_sidecar_binary_parity",
+  "input": {
+    "sid": 81307,
+    "model_binary_hex": "0000004b811a426130811900f6637a6676811843780a30396779307971786d688117c11804811620811500f58113c08112c11c01811181811064767836371b201a00f4636f786a1400f662746d1380019bfb041b"
+  },
+  "expected": {
+    "view_binary_hex": "a26130f6637a6676a3780a30396779307971786d6884f580816476783637f4636f786af662746d60",
+    "meta_binary_hex": "0000002a811a428119008118438117c118048116208115008113c08112c11c018111818110041b201a0014001380019bfb041b",
+    "view_roundtrip_binary_hex": "a26130f6637a6676a3780a30396779307971786d6884f580816476783637f4636f786af662746d60",
+    "meta_roundtrip_binary_hex": "0000002a811a428119008118438117c118048116208115008113c08112c11c018111818110041b201a0014001380019bfb041b",
+    "view_json": {
+      "0": null,
+      "zfv": {
+        "09gy0yqxmh": [
+          true,
+          [],
+          [
+            "vx67"
+          ],
+          false
+        ],
+        "oxj": null,
+        "tm": ""
+      }
+    },
+    "model_binary_hex": "0000004b811a426130811900f6637a6676811843780a30396779307971786d688117c11804811620811500f58113c08112c11c01811181811064767836371b201a00f4636f786a1400f662746d1380019bfb041b"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

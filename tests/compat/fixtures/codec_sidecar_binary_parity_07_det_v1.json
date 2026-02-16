@@ -1,0 +1,24 @@
+{
+  "fixture_version": 1,
+  "name": "codec_sidecar_binary_parity_07_det_v1",
+  "scenario": "codec_sidecar_binary_parity",
+  "input": {
+    "sid": 81207,
+    "model_binary_hex": "00000021811641637478748115818114781354686520717569636b2062726f776e20666f7801b7fa0417"
+  },
+  "expected": {
+    "view_binary_hex": "a163747874781354686520717569636b2062726f776e20666f78",
+    "meta_binary_hex": "0000000981164181158181141301b7fa0417",
+    "view_roundtrip_binary_hex": "a163747874781354686520717569636b2062726f776e20666f78",
+    "meta_roundtrip_binary_hex": "0000000981164181158181141301b7fa0417",
+    "view_json": {
+      "txt": "The quick brown fox"
+    },
+    "model_binary_hex": "00000021811641637478748115818114781354686520717569636b2062726f776e20666f7801b7fa0417"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

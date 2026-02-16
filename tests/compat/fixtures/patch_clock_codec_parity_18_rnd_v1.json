@@ -1,0 +1,73 @@
+{
+  "fixture_version": 1,
+  "name": "patch_clock_codec_parity_18_rnd_v1",
+  "scenario": "patch_clock_codec_parity",
+  "input": {
+    "sid": 81512,
+    "model_binary_hex": "0000011b817ec11303817dc1816a04817c20817b00f5817920817800f4817681817578086962783865686475816d20816c00f68166818165780a723632646c68746e7231815bc11603815a41637a6474815900fac2bb00008157818156780b796e6263657971316c646f814bc11903814a446132814900fac1d40000647271707781488181476564797173326533756a617a81428181416175780a6a766274706435373662814081813f78093730336d32323968628135c1811d04813420813300f681318181307806333934323533812a20812900f4812781812678096633757a7068757072811942780a71336a77313867746875811800fbc034333333333333780964636b6d32633335738117818116780c30303777757272307178697101e8fc047f"
+  },
+  "expected": {
+    "clock_table_binary_hex": "01e8fc047f",
+    "clock_table": [
+      [
+        81512,
+        127
+      ]
+    ],
+    "relative_ids": [
+      {
+        "id": [
+          81512,
+          1
+        ],
+        "session_index": 1,
+        "time_diff": 126,
+        "decoded_id": [
+          81512,
+          1
+        ]
+      },
+      {
+        "id": [
+          81512,
+          2
+        ],
+        "session_index": 1,
+        "time_diff": 125,
+        "decoded_id": [
+          81512,
+          2
+        ]
+      },
+      {
+        "id": [
+          81512,
+          3
+        ],
+        "session_index": 1,
+        "time_diff": 124,
+        "decoded_id": [
+          81512,
+          3
+        ]
+      },
+      {
+        "id": [
+          81512,
+          4
+        ],
+        "session_index": 1,
+        "time_diff": 123,
+        "decoded_id": [
+          81512,
+          4
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
