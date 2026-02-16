@@ -2,7 +2,7 @@
 
 This repository is structured as a Rust-core + bindings monorepo, following the same high-level model as Glean.
 
-1. One authoritative Rust core crate.
+1. One primary Rust runtime-core crate plus adjacent utility crates in one workspace.
 2. One dedicated FFI crate exposing a stable cross-language API.
 3. Generated language bindings committed/published from `bindings/python/src/json_joy_rs/generated`.
 4. One local pinned bindgen tool in the workspace for reproducible generation.
@@ -12,6 +12,14 @@ This repository is structured as a Rust-core + bindings monorepo, following the 
 - `crates/json-joy-core`
   - Business logic and data structures.
   - No language-specific concerns.
+
+- `crates/json-joy-json-pointer`
+  - Shared JSON Pointer utilities (`parse`, `format`, `escape`, `unescape`).
+  - Re-exported by `json-joy-core` as `json_pointer` to keep existing call sites stable.
+
+- `crates/json-joy-json-pack`
+  - Workspace CBOR/json-pack foundation crate.
+  - Currently focused on CBOR value encode/decode and JSON conversion helpers.
 
 - `crates/json-joy-ffi`
   - UniFFI UDL + exported API surface.

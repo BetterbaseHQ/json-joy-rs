@@ -67,3 +67,26 @@ pub fn format_json_pointer(path: &[String]) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_and_format_matrix() {
+        assert_eq!(parse_json_pointer("").unwrap(), Vec::<String>::new());
+        assert_eq!(parse_json_pointer("/").unwrap(), vec![String::new()]);
+        assert_eq!(
+            parse_json_pointer("/a~0b/c~1d/1").unwrap(),
+            vec!["a~b".to_string(), "c/d".to_string(), "1".to_string()]
+        );
+        assert_eq!(
+            format_json_pointer(&["a~b".to_string(), "c/d".to_string(), "1".to_string()]),
+            "/a~0b/c~1d/1"
+        );
+        assert_eq!(
+            parse_json_pointer_relaxed("foo/bar").unwrap(),
+            vec!["foo", "bar"]
+        );
+    }
+}

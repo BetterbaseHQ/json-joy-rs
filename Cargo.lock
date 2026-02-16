@@ -346,6 +346,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "ciborium",
+ "json-joy-json-pointer",
  "rand",
  "serde_json",
  "thiserror",
@@ -358,6 +359,22 @@ dependencies = [
  "json-joy-core",
  "serde_json",
  "uniffi",
+]
+
+[[package]]
+name = "json-joy-json-pack"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "json-joy-json-pointer"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]

@@ -41,7 +41,7 @@ Gate legend:
 
 | Upstream family | Rust target | Status | test-port mapped | fixture coverage | differential parity | no bridge | Notes |
 |---|---|---|---|---|---|---|---|
-| `json-pointer` (`util.ts` parse/format/escape/unescape) | `crates/json-joy-core/src/json_pointer.rs` | native | yes | no | no | yes | Shared pointer utility used by `model_api/path.rs`; covered by upstream-shaped matrix tests in `tests/upstream_port_json_pointer_matrix.rs` and model API pointer workflow matrices. |
+| `json-pointer` (`util.ts` parse/format/escape/unescape) | `crates/json-joy-json-pointer/src/lib.rs` (re-exported by `crates/json-joy-core/src/lib.rs`) | native | yes | no | no | yes | Shared pointer utility used by `model_api/path.rs`; covered by upstream-shaped matrix tests in `tests/upstream_port_json_pointer_matrix.rs` and model API pointer workflow matrices. |
 
 ## M6 exit targets
 

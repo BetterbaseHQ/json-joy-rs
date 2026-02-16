@@ -1,0 +1,9 @@
+[package]
+name = "json-joy-json-pointer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "JSON Pointer (RFC 6901) helpers for json-joy-rs workspace"
+
+[dependencies]
+thiserror = "2.0"

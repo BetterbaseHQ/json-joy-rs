@@ -4,12 +4,16 @@ resolver = "2"
 members = [
   "crates/json-joy-core",
   "crates/json-joy-ffi",
+  "crates/json-joy-json-pack",
+  "crates/json-joy-json-pointer",
   "tools/embedded-uniffi-bindgen",
 ]
 
 default-members = [
   "crates/json-joy-core",
   "crates/json-joy-ffi",
+  "crates/json-joy-json-pack",
+  "crates/json-joy-json-pointer",
   "tools/embedded-uniffi-bindgen",
 ]
 
