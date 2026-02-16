@@ -99,4 +99,6 @@
   Native baseline now also includes `codec/compact-binary` encode/decode in
   `crates/json-joy-core/src/patch_compact_binary_codec.rs` with upstream-mapped tests in
   `crates/json-joy-core/tests/upstream_port_patch_compact_binary_codec_matrix.rs`.
-- [ ] Decide and track port status for `json-crdt-patch/schema.ts`.
+- [~] Port and track `json-crdt-patch/schema.ts`.
+  Native baseline added in `crates/json-joy-core/src/schema.rs` with upstream-mapped tests in
+  `crates/json-joy-core/tests/upstream_port_patch_schema_matrix.rs`.

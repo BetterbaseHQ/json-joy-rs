@@ -12,6 +12,7 @@ pub mod patch_compact_binary_codec;
 pub mod patch_compact_codec;
 pub mod patch_compaction;
 pub mod patch_verbose_codec;
+pub mod schema;
 pub mod patch_log;
 
 use rand::Rng;

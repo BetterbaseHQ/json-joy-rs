@@ -34,7 +34,7 @@ Gate legend:
 | `util/diff/{str,bin,line}` algorithm-level parity | partially reimplemented in `diff_runtime.rs` | partial | partial | partial | partial | yes | Current parity is fixture/differential driven, but direct algorithm-level upstream test-port mapping is still thin. |
 | `json-crdt-patch/compaction.ts` | `crates/json-joy-core/src/patch_compaction.rs` | partial | yes | no | no | yes | Native baseline port includes `combine` and `compact` semantics; covered by `tests/upstream_port_patch_compaction_matrix.rs`. |
 | `json-crdt-patch/codec/{compact,compact-binary,verbose}` | `crates/json-joy-core/src/patch_compact_codec.rs`, `crates/json-joy-core/src/patch_compact_binary_codec.rs`, `crates/json-joy-core/src/patch_verbose_codec.rs` | partial | partial | no | no | yes | Native baselines now cover `compact`, `compact-binary`, and `verbose` encode/decode; parity depth and fixture/differential coverage still expanding. |
-| `json-crdt-patch/schema.ts` | no Rust equivalent | missing | no | no | no | yes | Patch schema validation/build helpers are not in current Rust surface. |
+| `json-crdt-patch/schema.ts` | `crates/json-joy-core/src/schema.rs` | partial | partial | no | no | yes | Native schema-node builder baseline added (`json`/`json_con` + node families) with upstream-mapped tests; printable/type-level APIs remain out of scope. |
 | less-db compatibility lifecycle apply | `crates/json-joy-core/src/less_db_compat.rs` | partial | yes | yes | partial | yes | `create_model`, `diff_model`, and `apply_patch` are native in production. less-db diff fixture surface is fully native-covered in the expanded `>=50` fixture corpus (`tests/lessdb_model_manager_from_fixtures.rs`). |
 
 ## M6 exit targets
