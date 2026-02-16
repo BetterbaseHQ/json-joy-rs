@@ -770,16 +770,16 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include at least 90 model_apply_replay scenarios"
     );
     assert!(
-        model_diff_parity_count >= 180,
-        "fixtures must include at least 180 model_diff_parity scenarios"
+        model_diff_parity_count >= 300,
+        "fixtures must include at least 300 model_diff_parity scenarios"
     );
     assert!(
-        model_diff_dst_keys_count >= 40,
-        "fixtures must include at least 40 model_diff_dst_keys scenarios"
+        model_diff_dst_keys_count >= 80,
+        "fixtures must include at least 80 model_diff_dst_keys scenarios"
     );
     assert!(
-        lessdb_model_manager_count >= 50,
-        "fixtures must include at least 50 lessdb_model_manager scenarios"
+        lessdb_model_manager_count >= 90,
+        "fixtures must include at least 90 lessdb_model_manager scenarios"
     );
     assert!(
         model_api_workflow_count >= 60,

@@ -146,10 +146,24 @@ pub fn diff_model_to_patch_bytes(
     }
 
     // Native catch-all: replace root value when no specialized shape matched.
+    //
+    // Compatibility policy:
+    // runtime-core JSON shape paths should never surface UnsupportedShape.
     if let Some(native) = try_native_root_replace_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
-    Err(DiffError::UnsupportedShape)
+    let base_time = first_model_clock_sid_time(base_model_binary)
+        .map(|(_, t)| t)
+        .unwrap_or(0);
+    let mut emitter = NativeEmitter::new(sid, base_time.saturating_add(1));
+    let next_root = emitter.emit_value(next_view);
+    emitter.push(DecodedOp::InsVal {
+        id: emitter.next_id(),
+        obj: Timestamp { sid: 0, time: 0 },
+        val: next_root,
+    });
+    let encoded = encode_patch_from_ops(sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(encoded))
 }
 
 include!("dst_keys.rs");

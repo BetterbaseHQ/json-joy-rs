@@ -1612,7 +1612,7 @@ function allModelDiffParityFixtures() {
   }
 
   // Expanded non-empty-base corpus to avoid overfitting empty-root transitions.
-  for (let i = 0; i < 116; i++) {
+  for (let i = 0; i < 236; i++) {
     const sid = sidBase + deterministicCases.length + 30 + i + 1;
     const baseView = {
       a: i,
@@ -1726,6 +1726,31 @@ function allModelDiffDstKeysFixtures() {
       buildModelDiffDstKeysFixture(
         `model_diff_dst_keys_${String(idx).padStart(2, '0')}_mirror_v1`,
         77600 + idx,
+        cloneJson(base),
+        cloneJson(dst),
+      ),
+    );
+    idx++;
+  }
+  // Additional deterministic duplicate corpora to aggressively expand
+  // destination-key parity coverage while keeping byte-level expectations
+  // stable and reproducible.
+  for (const [base, dst] of cases) {
+    fixtures.push(
+      buildModelDiffDstKeysFixture(
+        `model_diff_dst_keys_${String(idx).padStart(2, '0')}_mirror2_v1`,
+        77700 + idx,
+        cloneJson(base),
+        cloneJson(dst),
+      ),
+    );
+    idx++;
+  }
+  for (const [base, dst] of cases) {
+    fixtures.push(
+      buildModelDiffDstKeysFixture(
+        `model_diff_dst_keys_${String(idx).padStart(2, '0')}_mirror3_v1`,
+        77800 + idx,
         cloneJson(base),
         cloneJson(dst),
       ),
@@ -2129,6 +2154,19 @@ function allLessdbModelManagerFixtures() {
         78000 + idx,
         initial,
         next,
+      ),
+    );
+    idx++;
+  }
+  // Expanded deterministic create/diff/apply corpus to raise lessdb fixture
+  // surface without introducing new semantic classes in this pass.
+  for (const [initial, next] of createCases) {
+    fixtures.push(
+      buildLessdbCreateDiffApplyFixture(
+        `lessdb_model_manager_${String(idx).padStart(2, '0')}_create_diff_apply_extra_v1`,
+        79000 + idx,
+        cloneJson(initial),
+        cloneJson(next),
       ),
     );
     idx++;

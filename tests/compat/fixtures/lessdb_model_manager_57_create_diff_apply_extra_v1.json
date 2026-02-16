@@ -1,0 +1,71 @@
+{
+  "fixture_version": 1,
+  "name": "lessdb_model_manager_57_create_diff_apply_extra_v1",
+  "scenario": "lessdb_model_manager",
+  "input": {
+    "workflow": "create_diff_apply",
+    "sid": 79057,
+    "initial_json": {
+      "title": "x"
+    },
+    "ops": [
+      {
+        "kind": "diff",
+        "next_view_json": {
+          "title": "xy"
+        }
+      },
+      {
+        "kind": "apply_last_diff"
+      },
+      {
+        "kind": "patch_log_append_last_diff"
+      },
+      {
+        "kind": "patch_log_deserialize"
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "diff",
+        "patch_present": true,
+        "patch_binary_hex": "d1e90406f70161020379",
+        "patch_op_count": 1,
+        "patch_opcodes": [
+          12
+        ],
+        "patch_span": 1,
+        "patch_id_sid": 79057,
+        "patch_id_time": 6,
+        "patch_next_time": 7
+      },
+      {
+        "kind": "apply_last_diff",
+        "view_json": {
+          "title": "xy"
+        },
+        "model_binary_hex": "000000101541657469746c65148213617810617901d1e90406"
+      },
+      {
+        "kind": "patch_log_append_last_diff",
+        "pending_patch_log_hex": "010000000ad1e90406f70161020379"
+      },
+      {
+        "kind": "patch_log_deserialize",
+        "patch_count": 1
+      }
+    ],
+    "final_view_json": {
+      "title": "xy"
+    },
+    "final_model_binary_hex": "000000101541657469746c65148213617810617901d1e90406",
+    "final_pending_patch_log_hex": "010000000ad1e90406f70161020379"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
