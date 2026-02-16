@@ -940,15 +940,12 @@ fn rid_to_json(id: Id) -> Value {
 }
 
 fn encode_logical(model: &RuntimeModel) -> Result<Vec<u8>, ModelError> {
-    let table = normalized_clock_table(model);
-    if table.is_empty() {
-        return Err(ModelError::InvalidClockTable);
-    }
+    let mut clock = LogicalClockEncoder::from_model(model)?;
 
     let mut root = Vec::new();
     let mut enc = EncodeCtx {
         out: &mut root,
-        table: &table,
+        mode: EncodeMode::Logical(&mut clock),
     };
     if let Some(root_id) = model.root {
         encode_node(&mut enc, root_id, model)?;
@@ -960,6 +957,7 @@ fn encode_logical(model: &RuntimeModel) -> Result<Vec<u8>, ModelError> {
     let root_len = root.len() as u32;
     out.extend_from_slice(&root_len.to_be_bytes());
     out.extend_from_slice(&root);
+    let table = clock.table();
     write_vu57(&mut out, table.len() as u64);
     for t in table {
         write_vu57(&mut out, t.sid);
@@ -974,7 +972,7 @@ fn encode_server(model: &RuntimeModel, server_time: u64) -> Result<Vec<u8>, Mode
     write_vu57(&mut out, server_time);
     let mut enc = EncodeCtx {
         out: &mut out,
-        table: &[],
+        mode: EncodeMode::Server,
     };
     if let Some(root_id) = model.root {
         encode_node(&mut enc, root_id, model)?;
@@ -984,102 +982,106 @@ fn encode_server(model: &RuntimeModel, server_time: u64) -> Result<Vec<u8>, Mode
     Ok(out)
 }
 
-fn normalized_clock_table(model: &RuntimeModel) -> Vec<LogicalClockBase> {
-    let mut table = if model.clock_table.is_empty() {
-        Vec::new()
-    } else {
-        model.clock_table.clone()
-    };
-
-    let mut max_by_sid: HashMap<u64, u64> = HashMap::new();
-    for id in model.nodes.keys() {
-        max_by_sid
-            .entry(id.sid)
-            .and_modify(|m| *m = (*m).max(id.time))
-            .or_insert(id.time);
-    }
-    for node in model.nodes.values() {
-        match node {
-            RuntimeNode::Str(atoms) => {
-                for a in atoms {
-                    max_by_sid
-                        .entry(a.slot.sid)
-                        .and_modify(|m| *m = (*m).max(a.slot.time))
-                        .or_insert(a.slot.time);
-                }
-            }
-            RuntimeNode::Bin(atoms) => {
-                for a in atoms {
-                    max_by_sid
-                        .entry(a.slot.sid)
-                        .and_modify(|m| *m = (*m).max(a.slot.time))
-                        .or_insert(a.slot.time);
-                }
-            }
-            RuntimeNode::Arr(atoms) => {
-                for a in atoms {
-                    max_by_sid
-                        .entry(a.slot.sid)
-                        .and_modify(|m| *m = (*m).max(a.slot.time))
-                        .or_insert(a.slot.time);
-                }
-            }
-            _ => {}
-        }
-    }
-    for (sid, ranges) in &model.clock.observed {
-        for (_, end) in ranges {
-            max_by_sid
-                .entry(*sid)
-                .and_modify(|m| *m = (*m).max(*end))
-                .or_insert(*end);
-        }
-    }
-
-    if table.is_empty() {
-        if let Some((&sid, &time)) = max_by_sid.iter().next() {
-            table.push(LogicalClockBase { sid, time });
-        }
-    } else {
-        let global_max = max_by_sid.values().copied().max().unwrap_or(0);
-        if let Some(first) = table.first_mut() {
-            first.time = first.time.max(global_max);
-        }
-        for t in &mut table {
-            if let Some(max_t) = max_by_sid.get(&t.sid) {
-                t.time = t.time.max(*max_t);
-            }
-        }
-        for (sid, time) in max_by_sid {
-            if !table.iter().any(|t| t.sid == sid) {
-                table.push(LogicalClockBase { sid, time });
-            }
-        }
-    }
-    table
-}
-
 struct EncodeCtx<'a> {
     out: &'a mut Vec<u8>,
-    table: &'a [LogicalClockBase],
+    mode: EncodeMode<'a>,
+}
+
+enum EncodeMode<'a> {
+    Logical(&'a mut LogicalClockEncoder),
+    Server,
+}
+
+struct LogicalClockEncoder {
+    local_time: u64,
+    peers: HashMap<u64, u64>,
+    by_sid: HashMap<u64, usize>,
+    table: Vec<LogicalClockBase>,
+}
+
+impl LogicalClockEncoder {
+    fn from_model(model: &RuntimeModel) -> Result<Self, ModelError> {
+        let (local_sid, mut local_time, mut peers) = if let Some(first) = model.clock_table.first() {
+            let mut peers: HashMap<u64, u64> = HashMap::new();
+            for p in model.clock_table.iter().skip(1) {
+                peers
+                    .entry(p.sid)
+                    .and_modify(|t| *t = (*t).max(p.time))
+                    .or_insert(p.time);
+            }
+            (first.sid, first.time.saturating_add(1), peers)
+        } else {
+            return Err(ModelError::InvalidClockTable);
+        };
+
+        for (sid, ranges) in &model.clock.observed {
+            for (_, end) in ranges {
+                if *sid == local_sid {
+                    if *end >= local_time {
+                        local_time = end.saturating_add(1);
+                    }
+                } else {
+                    peers
+                        .entry(*sid)
+                        .and_modify(|t| *t = (*t).max(*end))
+                        .or_insert(*end);
+                    if *end >= local_time {
+                        local_time = end.saturating_add(1);
+                    }
+                }
+            }
+        }
+
+        let mut by_sid = HashMap::new();
+        let mut table = Vec::new();
+        let base = local_time.saturating_sub(1);
+        by_sid.insert(local_sid, 0);
+        table.push(LogicalClockBase {
+            sid: local_sid,
+            time: base,
+        });
+        Ok(Self {
+            local_time,
+            peers,
+            by_sid,
+            table,
+        })
+    }
+
+    fn append(&mut self, id: Id) -> Result<(u64, u64), ModelError> {
+        if let Some(&idx) = self.by_sid.get(&id.sid) {
+            let base = self.table[idx].time;
+            let diff = base.checked_sub(id.time).ok_or(ModelError::InvalidClockTable)?;
+            return Ok(((idx as u64) + 1, diff));
+        }
+        let base = self
+            .peers
+            .get(&id.sid)
+            .copied()
+            .unwrap_or(self.local_time.saturating_sub(1));
+        let diff = base.checked_sub(id.time).ok_or(ModelError::InvalidClockTable)?;
+        let idx = self.table.len();
+        self.by_sid.insert(id.sid, idx);
+        self.table.push(LogicalClockBase {
+            sid: id.sid,
+            time: base,
+        });
+        Ok(((idx as u64) + 1, diff))
+    }
+
+    fn table(&self) -> &[LogicalClockBase] {
+        &self.table
+    }
 }
 
 fn encode_id(enc: &mut EncodeCtx<'_>, id: Id) -> Result<(), ModelError> {
-    if enc.table.is_empty() {
-        write_vu57(enc.out, id.time);
-        return Ok(());
-    }
-    let (idx, base) = enc
-        .table
-        .iter()
-        .enumerate()
-        .find(|(_, c)| c.sid == id.sid)
-        .ok_or(ModelError::InvalidClockTable)?;
-    let diff = base
-        .time
-        .checked_sub(id.time)
-        .ok_or(ModelError::InvalidClockTable)?;
-    let session_index = (idx as u64) + 1;
+    let (session_index, diff) = match &mut enc.mode {
+        EncodeMode::Logical(clock) => clock.append(id)?,
+        EncodeMode::Server => {
+            write_vu57(enc.out, id.time);
+            return Ok(());
+        }
+    };
     if session_index <= 0b111 && diff <= 0b1111 {
         enc.out
             .push(((session_index as u8) << 4) | (diff as u8));

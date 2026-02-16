@@ -70,11 +70,4 @@
   - `crates/json-joy-core/tests/differential_runtime_seeded.rs`
 - Structural model-encode parity inventory added:
   - `crates/json-joy-core/tests/upstream_port_model_encode_matrix.rs`
-  - Current baseline: `24/30` replay fixtures exact-binary match.
-  - Remaining known mismatch fixtures:
-    - `model_apply_replay_04_obj_in_order_v1`
-    - `model_apply_replay_05_obj_out_of_order_v1`
-    - `model_apply_replay_06_obj_interleaved_dup_v1`
-    - `model_apply_replay_28_vec_in_order_v1`
-    - `model_apply_replay_29_vec_out_of_order_v1`
-    - `model_apply_replay_30_vec_interleaved_dup_v1`
+  - Current baseline: `30/30` replay fixtures exact-binary match.
