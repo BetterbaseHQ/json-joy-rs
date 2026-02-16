@@ -149,6 +149,38 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "patch_schema_parity fixtures must define expected.patch_span"
                 );
             }
+            "util_diff_parity" => {
+                assert!(
+                    fixture["input"]["kind"].is_string(),
+                    "util_diff_parity fixtures must define input.kind"
+                );
+                assert!(
+                    fixture["input"].get("src").is_some(),
+                    "util_diff_parity fixtures must define input.src"
+                );
+                assert!(
+                    fixture["input"].get("dst").is_some(),
+                    "util_diff_parity fixtures must define input.dst"
+                );
+                assert!(
+                    fixture["expected"]["patch"].is_array(),
+                    "util_diff_parity fixtures must define expected.patch"
+                );
+                match fixture["input"]["kind"].as_str() {
+                    Some("str") | Some("bin") => {
+                        assert!(
+                            fixture["expected"].get("src_from_patch").is_some(),
+                            "util_diff_parity str/bin fixtures must define expected.src_from_patch"
+                        );
+                        assert!(
+                            fixture["expected"].get("dst_from_patch").is_some(),
+                            "util_diff_parity str/bin fixtures must define expected.dst_from_patch"
+                        );
+                    }
+                    Some("line") => {}
+                    _ => panic!("util_diff_parity fixtures kind must be one of str|bin|line"),
+                }
+            }
             "model_roundtrip" => {
                 assert!(
                     fixture["expected"]["model_binary_hex"].is_string(),
@@ -504,6 +536,9 @@ fn manifest_contains_required_scenarios() {
     let has_patch_schema_parity = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("patch_schema_parity"));
+    let has_util_diff_parity = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("util_diff_parity"));
     let has_model_roundtrip = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_roundtrip"));
@@ -611,6 +646,10 @@ fn manifest_contains_required_scenarios() {
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_schema_parity"))
         .count();
+    let util_diff_parity_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("util_diff_parity"))
+        .count();
     let patch_canonical_encode_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_canonical_encode"))
@@ -632,6 +671,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         has_patch_schema_parity,
         "fixtures must include patch_schema_parity scenarios"
+    );
+    assert!(
+        has_util_diff_parity,
+        "fixtures must include util_diff_parity scenarios"
     );
     assert!(
         has_patch_canonical_encode,
@@ -701,6 +744,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         patch_schema_parity_count >= 25,
         "fixtures must include at least 25 patch_schema_parity scenarios"
+    );
+    assert!(
+        util_diff_parity_count >= 30,
+        "fixtures must include at least 30 util_diff_parity scenarios"
     );
     assert!(
         patch_canonical_encode_count >= 20,

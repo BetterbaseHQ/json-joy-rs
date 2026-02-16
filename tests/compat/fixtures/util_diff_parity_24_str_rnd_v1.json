@@ -1,0 +1,33 @@
+{
+  "fixture_version": 1,
+  "name": "util_diff_parity_24_str_rnd_v1",
+  "scenario": "util_diff_parity",
+  "input": {
+    "kind": "str",
+    "src": "m5rqam6cre5",
+    "dst": "134e5"
+  },
+  "expected": {
+    "patch": [
+      [
+        -1,
+        "m5rqam6cr"
+      ],
+      [
+        1,
+        "134"
+      ],
+      [
+        0,
+        "e5"
+      ]
+    ],
+    "src_from_patch": "m5rqam6cre5",
+    "dst_from_patch": "134e5"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

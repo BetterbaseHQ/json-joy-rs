@@ -1,0 +1,29 @@
+{
+  "fixture_version": 1,
+  "name": "util_diff_parity_22_str_rnd_v1",
+  "scenario": "util_diff_parity",
+  "input": {
+    "kind": "str",
+    "src": "n6rp",
+    "dst": "awa"
+  },
+  "expected": {
+    "patch": [
+      [
+        -1,
+        "n6rp"
+      ],
+      [
+        1,
+        "awa"
+      ]
+    ],
+    "src_from_patch": "n6rp",
+    "dst_from_patch": "awa"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

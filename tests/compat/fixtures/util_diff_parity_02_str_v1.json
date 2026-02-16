@@ -1,0 +1,49 @@
+{
+  "fixture_version": 1,
+  "name": "util_diff_parity_02_str_v1",
+  "scenario": "util_diff_parity",
+  "input": {
+    "kind": "str",
+    "src": "kitten",
+    "dst": "sitting"
+  },
+  "expected": {
+    "patch": [
+      [
+        -1,
+        "k"
+      ],
+      [
+        1,
+        "s"
+      ],
+      [
+        0,
+        "itt"
+      ],
+      [
+        -1,
+        "e"
+      ],
+      [
+        1,
+        "i"
+      ],
+      [
+        0,
+        "n"
+      ],
+      [
+        1,
+        "g"
+      ]
+    ],
+    "src_from_patch": "kitten",
+    "dst_from_patch": "sitting"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

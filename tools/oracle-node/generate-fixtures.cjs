@@ -9,6 +9,9 @@ const {Decoder: SidecarBinaryDecoder} = require('json-joy/lib/json-crdt/codec/si
 const {ClockTable} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockTable.js');
 const {ClockEncoder} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockEncoder.js');
 const {ClockDecoder} = require('json-joy/lib/json-crdt-patch/codec/clock/ClockDecoder.js');
+const diffStr = require('json-joy/lib/util/diff/str');
+const diffBin = require('json-joy/lib/util/diff/bin');
+const diffLine = require('json-joy/lib/util/diff/line');
 const {CrdtWriter} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtWriter.js');
 const {CrdtReader} = require('json-joy/lib/json-crdt-patch/util/binary/CrdtReader.js');
 const {CborDecoder} = require('@jsonjoy.com/json-pack/lib/cbor/CborDecoder.js');
@@ -501,6 +504,147 @@ function allPatchSchemaFixtures() {
         randJson(rng, 4),
       ),
     );
+    idx++;
+  }
+  return fixtures;
+}
+
+function buildUtilDiffFixture(name, kind, src, dst) {
+  if (kind === 'str') {
+    const patch = diffStr.diff(src, dst);
+    return baseFixture(
+      name,
+      'util_diff_parity',
+      {
+        kind,
+        src,
+        dst,
+      },
+      {
+        patch,
+        src_from_patch: diffStr.src(patch),
+        dst_from_patch: diffStr.dst(patch),
+      },
+    );
+  }
+  if (kind === 'bin') {
+    const srcBuf = new Uint8Array(src);
+    const dstBuf = new Uint8Array(dst);
+    const patch = diffBin.diff(srcBuf, dstBuf);
+    return baseFixture(
+      name,
+      'util_diff_parity',
+      {
+        kind,
+        src,
+        dst,
+      },
+      {
+        patch,
+        src_from_patch: Array.from(diffBin.src(patch)),
+        dst_from_patch: Array.from(diffBin.dst(patch)),
+      },
+    );
+  }
+  if (kind === 'line') {
+    const patch = diffLine.diff(src, dst);
+    return baseFixture(
+      name,
+      'util_diff_parity',
+      {
+        kind,
+        src,
+        dst,
+      },
+      {
+        patch,
+      },
+    );
+  }
+  throw new Error(`unsupported util diff kind: ${kind}`);
+}
+
+function allUtilDiffFixtures() {
+  const fixtures = [];
+  let idx = 1;
+  const strCases = [
+    ['abc', 'axc'],
+    ['kitten', 'sitting'],
+    ['', 'hello'],
+    ['hello', ''],
+    ['emoji 😀 test', 'emoji 😃 tests'],
+    ['line1\nline2\n', 'line1\nlineX\n'],
+  ];
+  for (const [src, dst] of strCases) {
+    fixtures.push(buildUtilDiffFixture(`util_diff_parity_${String(idx).padStart(2, '0')}_str_v1`, 'str', src, dst));
+    idx++;
+  }
+
+  const binCases = [
+    [[1, 2, 3], [1, 4, 3]],
+    [[], [1, 2, 3]],
+    [[1, 2, 3], []],
+    [[0, 255, 42], [0, 255, 42, 99]],
+    [[10, 20, 30, 40], [10, 30, 40]],
+    [[1, 1, 2, 3], [1, 2, 2, 3]],
+  ];
+  for (const [src, dst] of binCases) {
+    fixtures.push(buildUtilDiffFixture(`util_diff_parity_${String(idx).padStart(2, '0')}_bin_v1`, 'bin', src, dst));
+    idx++;
+  }
+
+  const lineCases = [
+    [['a', 'b', 'c'], ['a', 'x', 'c']],
+    [['a', 'b', 'c'], ['a', 'b', 'c', 'd']],
+    [['a', 'b', 'c', 'd'], ['a', 'c', 'd']],
+    [['alpha', 'beta', 'gamma'], ['alpha', 'beta', 'gamma']],
+    [[], ['x', 'y']],
+    [['x', 'y'], []],
+  ];
+  for (const [src, dst] of lineCases) {
+    fixtures.push(buildUtilDiffFixture(`util_diff_parity_${String(idx).padStart(2, '0')}_line_v1`, 'line', src, dst));
+    idx++;
+  }
+
+  const rng = mulberry32(0x42424242);
+  while (idx <= 36) {
+    const t = randInt(rng, 3);
+    if (t === 0) {
+      fixtures.push(
+        buildUtilDiffFixture(
+          `util_diff_parity_${String(idx).padStart(2, '0')}_str_rnd_v1`,
+          'str',
+          randString(rng, 0, 20),
+          randString(rng, 0, 20),
+        ),
+      );
+    } else if (t === 1) {
+      const srcLen = randInt(rng, 12);
+      const dstLen = randInt(rng, 12);
+      const src = Array.from({length: srcLen}, () => randInt(rng, 256));
+      const dst = Array.from({length: dstLen}, () => randInt(rng, 256));
+      fixtures.push(
+        buildUtilDiffFixture(
+          `util_diff_parity_${String(idx).padStart(2, '0')}_bin_rnd_v1`,
+          'bin',
+          src,
+          dst,
+        ),
+      );
+    } else {
+      const srcLen = randInt(rng, 6);
+      const dstLen = randInt(rng, 6);
+      const src = Array.from({length: srcLen}, () => randString(rng, 0, 8));
+      const dst = Array.from({length: dstLen}, () => randString(rng, 0, 8));
+      fixtures.push(
+        buildUtilDiffFixture(
+          `util_diff_parity_${String(idx).padStart(2, '0')}_line_rnd_v1`,
+          'line',
+          src,
+          dst,
+        ),
+      );
+    }
     idx++;
   }
   return fixtures;
@@ -2745,6 +2889,7 @@ function main() {
     ...allPatchAltCodecsFixtures(),
     ...allPatchCompactionFixtures(),
     ...allPatchSchemaFixtures(),
+    ...allUtilDiffFixtures(),
     ...allModelFixtures(),
     ...allModelDecodeErrorFixtures(),
     ...allModelCanonicalEncodeFixtures(),

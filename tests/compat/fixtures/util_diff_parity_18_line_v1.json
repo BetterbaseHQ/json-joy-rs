@@ -1,0 +1,32 @@
+{
+  "fixture_version": 1,
+  "name": "util_diff_parity_18_line_v1",
+  "scenario": "util_diff_parity",
+  "input": {
+    "kind": "line",
+    "src": [
+      "x",
+      "y"
+    ],
+    "dst": []
+  },
+  "expected": {
+    "patch": [
+      [
+        -1,
+        0,
+        -1
+      ],
+      [
+        -1,
+        1,
+        -1
+      ]
+    ]
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
