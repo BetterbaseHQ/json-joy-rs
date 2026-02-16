@@ -1831,6 +1831,87 @@ function allModelApiWorkflowFixtures() {
   return fixtures;
 }
 
+function buildModelLifecycleFixture(name, sid, initial, nextA, nextB, workflow, loadSid) {
+  const base = mkModel(initial, sid);
+  const baseBinary = base.toBinary();
+
+  const step1Model = Model.load(baseBinary, sid);
+  const pA = step1Model.api.diff(nextA);
+  if (!pA) throw new Error('expected non-empty step1 diff patch');
+  step1Model.applyPatch(pA);
+  const pB = step1Model.api.diff(nextB);
+  if (!pB) throw new Error('expected non-empty step2 diff patch');
+
+  const seedPatch = Model.load(mkModel({}, sid).toBinary(), sid).api.diff(initial);
+  if (!seedPatch) throw new Error('expected non-empty seed patch');
+
+  const seedHex = hex(seedPatch.toBinary());
+  const batchHex = [hex(pA.toBinary()), hex(pB.toBinary())];
+
+  let model;
+  if (workflow === 'from_patches_apply_batch') {
+    model = Model.fromPatches([Patch.fromBinary(fromHex(seedHex))]);
+  } else if (workflow === 'load_apply_batch') {
+    model = Model.load(baseBinary, loadSid);
+  } else {
+    throw new Error(`unsupported lifecycle workflow: ${workflow}`);
+  }
+  for (const ph of batchHex) model.applyPatch(Patch.fromBinary(fromHex(ph)));
+
+  return baseFixture(name, 'model_lifecycle_workflow', {
+    workflow,
+    sid,
+    load_sid: loadSid ?? null,
+    initial_json: cloneJson(initial),
+    base_model_binary_hex: hex(baseBinary),
+    seed_patches_binary_hex: [seedHex],
+    batch_patches_binary_hex: batchHex,
+  }, {
+    final_view_json: normalizeView(model.view()),
+    final_model_binary_hex: hex(model.toBinary()),
+  });
+}
+
+function allModelLifecycleFixtures() {
+  const fixtures = [];
+  const cases = [
+    [{doc: {title: 'a', n: 1}}, {doc: {title: 'A', n: 1}}, {doc: {title: 'A', n: 2}}],
+    [{arr: [1]}, {arr: [1, 2]}, {arr: [2]}],
+    [{txt: 'ab'}, {txt: 'aZb'}, {txt: 'aZb!'}],
+    [{meta: {a: 1}}, {meta: {a: 2}}, {meta: {a: 2, b: 3}}],
+    [{flag: false, score: 1}, {flag: true, score: 1}, {flag: true, score: 2}],
+    [{doc: {items: [{id: 1}]}}, {doc: {items: [{id: 1}, {id: 2}]}}, {doc: {items: [{id: 2}]}}],
+  ];
+  let idx = 1;
+  for (const [initial, nextA, nextB] of cases) {
+    fixtures.push(
+      buildModelLifecycleFixture(
+        `model_lifecycle_workflow_${String(idx).padStart(2, '0')}_from_patches_v1`,
+        79500 + idx,
+        initial,
+        nextA,
+        nextB,
+        'from_patches_apply_batch',
+        null,
+      ),
+    );
+    idx++;
+    fixtures.push(
+      buildModelLifecycleFixture(
+        `model_lifecycle_workflow_${String(idx).padStart(2, '0')}_load_v1`,
+        79500 + idx,
+        initial,
+        nextA,
+        nextB,
+        'load_apply_batch',
+        89600 + idx,
+      ),
+    );
+    idx++;
+  }
+  return fixtures;
+}
+
 function main() {
   ensureDir(OUT_DIR);
   for (const file of fs.readdirSync(OUT_DIR)) {
@@ -1848,6 +1929,7 @@ function main() {
     ...allModelDiffParityFixtures(),
     ...allLessdbModelManagerFixtures(),
     ...allModelApiWorkflowFixtures(),
+    ...allModelLifecycleFixtures(),
   ];
 
   for (const fixture of fixtures) {

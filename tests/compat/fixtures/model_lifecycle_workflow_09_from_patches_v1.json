@@ -1,0 +1,31 @@
+{
+  "fixture_version": 1,
+  "name": "model_lifecycle_workflow_09_from_patches_v1",
+  "scenario": "model_lifecycle_workflow",
+  "input": {
+    "workflow": "from_patches_apply_batch",
+    "sid": 79509,
+    "load_sid": null,
+    "initial_json": {
+      "flag": false,
+      "score": 1
+    },
+    "base_model_binary_hex": "00000013144264666c61671300f46573636f72651200010195ed0405",
+    "seed_patches_binary_hex": [
+      "95ed0403f70300f40001520164666c6167036573636f726504"
+    ],
+    "batch_patches_binary_hex": [
+      "95ed0406f70200f5510164666c616706",
+      "95ed0408f702000251016573636f726508"
+    ]
+  },
+  "expected": {
+    "final_view_json": null,
+    "final_model_binary_hex": "00000001000195ed0409"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

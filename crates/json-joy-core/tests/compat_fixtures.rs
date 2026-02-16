@@ -250,6 +250,36 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "model_api_workflow fixtures must define expected.final_model_binary_hex"
                 );
             }
+            "model_lifecycle_workflow" => {
+                assert!(
+                    fixture["input"]["workflow"].is_string(),
+                    "model_lifecycle_workflow fixtures must define input.workflow"
+                );
+                assert!(
+                    fixture["input"]["sid"].is_u64(),
+                    "model_lifecycle_workflow fixtures must define input.sid"
+                );
+                assert!(
+                    fixture["input"]["base_model_binary_hex"].is_string(),
+                    "model_lifecycle_workflow fixtures must define input.base_model_binary_hex"
+                );
+                assert!(
+                    fixture["input"]["seed_patches_binary_hex"].is_array(),
+                    "model_lifecycle_workflow fixtures must define input.seed_patches_binary_hex"
+                );
+                assert!(
+                    fixture["input"]["batch_patches_binary_hex"].is_array(),
+                    "model_lifecycle_workflow fixtures must define input.batch_patches_binary_hex"
+                );
+                assert!(
+                    fixture["expected"].get("final_view_json").is_some(),
+                    "model_lifecycle_workflow fixtures must define expected.final_view_json"
+                );
+                assert!(
+                    fixture["expected"]["final_model_binary_hex"].is_string(),
+                    "model_lifecycle_workflow fixtures must define expected.final_model_binary_hex"
+                );
+            }
             other => panic!("unexpected fixture scenario: {other}"),
         }
     }
@@ -288,6 +318,9 @@ fn manifest_contains_required_scenarios() {
     let has_model_api_workflow = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_api_workflow"));
+    let has_model_lifecycle_workflow = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("model_lifecycle_workflow"));
     let model_roundtrip_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_roundtrip"))
@@ -315,6 +348,10 @@ fn manifest_contains_required_scenarios() {
     let model_api_workflow_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_api_workflow"))
+        .count();
+    let model_lifecycle_workflow_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("model_lifecycle_workflow"))
         .count();
     let has_patch_canonical_encode = fixtures
         .iter()
@@ -352,6 +389,10 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include model_api_workflow scenarios"
     );
     assert!(
+        has_model_lifecycle_workflow,
+        "fixtures must include model_lifecycle_workflow scenarios"
+    );
+    assert!(
         model_roundtrip_count >= 60,
         "fixtures must include at least 60 model_roundtrip scenarios"
     );
@@ -378,5 +419,9 @@ fn manifest_contains_required_scenarios() {
     assert!(
         model_api_workflow_count >= 20,
         "fixtures must include at least 20 model_api_workflow scenarios"
+    );
+    assert!(
+        model_lifecycle_workflow_count >= 12,
+        "fixtures must include at least 12 model_lifecycle_workflow scenarios"
     );
 }

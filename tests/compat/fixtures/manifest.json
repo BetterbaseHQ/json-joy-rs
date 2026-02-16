@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 385,
+  "fixture_count": 397,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -1928,6 +1928,66 @@
       "name": "model_api_workflow_20_v1",
       "scenario": "model_api_workflow",
       "file": "model_api_workflow_20_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_01_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_01_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_02_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_02_load_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_03_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_03_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_04_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_04_load_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_05_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_05_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_06_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_06_load_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_07_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_07_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_08_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_08_load_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_09_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_09_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_10_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_10_load_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_11_from_patches_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_11_from_patches_v1.json"
+    },
+    {
+      "name": "model_lifecycle_workflow_12_load_v1",
+      "scenario": "model_lifecycle_workflow",
+      "file": "model_lifecycle_workflow_12_load_v1.json"
     }
   ]
 }

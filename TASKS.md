@@ -81,7 +81,9 @@
 
 - [~] Add explicit matrix/test-port coverage for `json-crdt/model/api/*` (`ModelApi`, `NodeApi`, finder/proxy/events).
   Baseline added in `crates/json-joy-core/src/model_api.rs` + `crates/json-joy-core/tests/upstream_port_model_api_matrix.rs` (`from_patches`, `apply_batch`, `find`, core mutators). Proxy/fanout/events remain.
-- [ ] Add explicit matrix/test-port coverage for `Model.ts` lifecycle helpers (`fromPatches`, `applyBatch`, schema-aware `load`).
+- [~] Add explicit matrix/test-port coverage for `Model.ts` lifecycle helpers (`fromPatches`, `applyBatch`, schema-aware `load`).
+  Lifecycle baseline now fixture-backed via `model_lifecycle_workflow` + `crates/json-joy-core/tests/model_lifecycle_from_fixtures.rs` and native `NativeModelApi::{from_patches,apply_batch,from_model_binary(load sid)}`.
+  Schema-aware typing behavior remains deferred.
 - [ ] Add tracking row and decision for deferred codecs: `json-crdt/codec/indexed/*` and `json-crdt/codec/sidecar/*`.
 - [ ] Add dedicated tracking/tests for `json-crdt-diff` destination-key mode (`diffDstKeys` parity or explicit defer).
 - [ ] Add dedicated tracking/tests for low-level `util/diff/{str,bin,line}` parity (beyond fixture black-box coverage).

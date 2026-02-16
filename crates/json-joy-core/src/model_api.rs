@@ -52,8 +52,13 @@ pub struct NativeModelApi {
 
 impl NativeModelApi {
     pub fn from_model_binary(data: &[u8], sid_hint: Option<u64>) -> Result<Self, ModelApiError> {
-        let runtime = RuntimeModel::from_model_binary(data)?;
+        let mut runtime = RuntimeModel::from_model_binary(data)?;
         let sid = sid_hint.unwrap_or(65_536);
+        // Match upstream `Model.load(binary, sid)` behavior for logical models:
+        // adopt the caller-provided local session ID for subsequent local ops.
+        if sid_hint.is_some() && data.first().is_some_and(|b| (b & 0x80) == 0) {
+            runtime = runtime.fork_with_sid(sid);
+        }
         Ok(Self { runtime, sid })
     }
 
