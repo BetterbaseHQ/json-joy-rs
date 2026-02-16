@@ -62,6 +62,11 @@ pub struct NativeModelApi {
     listeners: BTreeMap<u64, Box<dyn FnMut(ChangeEvent) + Send + Sync>>,
 }
 
+pub struct NodeHandle<'a> {
+    api: &'a mut NativeModelApi,
+    path: Vec<PathStep>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeEventOrigin {
     Local,
@@ -317,6 +322,13 @@ impl NativeModelApi {
         }
     }
 
+    pub fn node(&mut self) -> NodeHandle<'_> {
+        NodeHandle {
+            api: self,
+            path: Vec::new(),
+        }
+    }
+
     fn apply_target_view(&mut self, next: Value) -> Result<(), ModelApiError> {
         let base = self.runtime.to_model_binary_like()?;
         let patch = diff_model_to_patch_bytes(&base, &next, self.sid)?;
@@ -332,6 +344,63 @@ impl NativeModelApi {
         for listener in self.listeners.values_mut() {
             listener(event.clone());
         }
+    }
+}
+
+impl<'a> NodeHandle<'a> {
+    pub fn at_key(mut self, key: impl Into<String>) -> Self {
+        self.path.push(PathStep::Key(key.into()));
+        self
+    }
+
+    pub fn at_index(mut self, index: usize) -> Self {
+        self.path.push(PathStep::Index(index));
+        self
+    }
+
+    pub fn at_append(mut self) -> Self {
+        self.path.push(PathStep::Append);
+        self
+    }
+
+    pub fn path(&self) -> &[PathStep] {
+        &self.path
+    }
+
+    pub fn read(&self) -> Option<Value> {
+        self.api.read(Some(&self.path))
+    }
+
+    pub fn set(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.api.set(&self.path, value)
+    }
+
+    pub fn add(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.api.add(&self.path, value)
+    }
+
+    pub fn replace(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.api.replace(&self.path, value)
+    }
+
+    pub fn remove(&mut self) -> Result<(), ModelApiError> {
+        self.api.remove(&self.path)
+    }
+
+    pub fn obj_put(
+        &mut self,
+        key: impl Into<String>,
+        value: Value,
+    ) -> Result<(), ModelApiError> {
+        self.api.obj_put(&self.path, key, value)
+    }
+
+    pub fn arr_push(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.api.arr_push(&self.path, value)
+    }
+
+    pub fn str_ins(&mut self, pos: usize, text: &str) -> Result<(), ModelApiError> {
+        self.api.str_ins(&self.path, pos, text)
     }
 }
 

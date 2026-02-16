@@ -229,3 +229,54 @@ fn upstream_port_model_api_tolerant_ops_matrix() {
     assert!(!api.try_replace(&[PathStep::Key("missing".into())], json!(1)));
     assert!(!api.try_remove(&[]));
 }
+
+#[test]
+fn upstream_port_model_api_node_handle_proxy_matrix() {
+    // Upstream mapping:
+    // - json-crdt/model/api/proxy.ts path-bound ergonomic mutation surface.
+    let sid = 97005;
+    let mut api = NativeModelApi::from_patches(&[patch_from_ops(
+        sid,
+        1,
+        &[
+            DecodedOp::NewObj {
+                id: Timestamp { sid, time: 1 },
+            },
+            DecodedOp::InsVal {
+                id: Timestamp { sid, time: 2 },
+                obj: Timestamp { sid: 0, time: 0 },
+                val: Timestamp { sid, time: 1 },
+            },
+        ],
+    )])
+    .expect("from_patches must succeed");
+
+    api.node()
+        .obj_put("doc", json!({"title":"ab","list":[1]}))
+        .expect("obj_put via handle must succeed");
+    api.node()
+        .at_key("doc")
+        .at_key("list")
+        .arr_push(json!(2))
+        .expect("arr_push via handle must succeed");
+    api.node()
+        .at_key("doc")
+        .at_key("title")
+        .str_ins(1, "Z")
+        .expect("str_ins via handle must succeed");
+    api.node()
+        .at_key("doc")
+        .at_key("list")
+        .at_append()
+        .add(json!(3))
+        .expect("append add via handle must succeed");
+    api.node()
+        .at_key("doc")
+        .at_key("list")
+        .at_index(0)
+        .replace(json!(7))
+        .expect("replace via handle must succeed");
+
+    let doc = api.node().at_key("doc").read();
+    assert_eq!(doc, Some(json!({"title":"aZb","list":[7,2,3]})));
+}
