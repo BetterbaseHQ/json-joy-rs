@@ -16,6 +16,7 @@ const patchLib = require('json-joy/lib/json-crdt-patch/index.js');
 const patchCompactCodec = require('json-joy/lib/json-crdt-patch/codec/compact');
 const patchVerboseCodec = require('json-joy/lib/json-crdt-patch/codec/verbose');
 const patchCompactBinaryCodec = require('json-joy/lib/json-crdt-patch/codec/compact-binary');
+const patchCompaction = require('json-joy/lib/json-crdt-patch/compaction');
 const {
   Patch,
   ts,
@@ -376,6 +377,60 @@ function allPatchAltCodecsFixtures() {
       ),
     );
   }
+  return fixtures;
+}
+
+function buildPatchCompactionFixture(name, patchBinaryHex) {
+  const patch = Patch.fromBinary(fromHex(patchBinaryHex));
+  const compacted = patch.clone();
+  patchCompaction.compact(compacted);
+  const compactedHex = hex(compacted.toBinary());
+  return baseFixture(
+    name,
+    'patch_compaction_parity',
+    {
+      patch_binary_hex: patchBinaryHex,
+    },
+    {
+      compacted_patch_binary_hex: compactedHex,
+      changed: compactedHex !== patchBinaryHex,
+    },
+  );
+}
+
+function allPatchCompactionFixtures() {
+  const canonical = allCanonicalEncodeFixtures();
+  const fixtures = [];
+  let i = 0;
+  for (const fixture of canonical) {
+    i += 1;
+    fixtures.push(
+      buildPatchCompactionFixture(
+        `patch_compaction_parity_${String(i).padStart(2, '0')}_v1`,
+        fixture.expected.patch_binary_hex,
+      ),
+    );
+  }
+
+  // UTF-16 span-sensitive case from upstream compaction semantics.
+  const sid = 74100;
+  const utf16Patch = canonicalPatchFromModel({
+    sid,
+    time: 1,
+    meta_kind: 'undefined',
+    ops: [
+      {op: 'new_str', id: [sid, 1]},
+      {op: 'ins_val', id: [sid, 2], obj: [0, 0], val: [sid, 1]},
+      {op: 'ins_str', id: [sid, 3], obj: [sid, 1], ref: [sid, 1], data: '😀'},
+      {op: 'ins_str', id: [sid, 5], obj: [sid, 1], ref: [sid, 4], data: 'x'},
+    ],
+  });
+  fixtures.push(
+    buildPatchCompactionFixture(
+      `patch_compaction_parity_${String(i + 1).padStart(2, '0')}_utf16_v1`,
+      hex(utf16Patch.toBinary()),
+    ),
+  );
   return fixtures;
 }
 
@@ -2616,6 +2671,7 @@ function main() {
     ...allDecodeErrorFixtures(),
     ...allCanonicalEncodeFixtures(),
     ...allPatchAltCodecsFixtures(),
+    ...allPatchCompactionFixtures(),
     ...allModelFixtures(),
     ...allModelDecodeErrorFixtures(),
     ...allModelCanonicalEncodeFixtures(),

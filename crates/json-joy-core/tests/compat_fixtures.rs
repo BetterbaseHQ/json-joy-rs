@@ -105,6 +105,20 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "patch_alt_codecs fixtures must define expected.compact_binary_hex"
                 );
             }
+            "patch_compaction_parity" => {
+                assert!(
+                    fixture["input"]["patch_binary_hex"].is_string(),
+                    "patch_compaction_parity fixtures must define input.patch_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["compacted_patch_binary_hex"].is_string(),
+                    "patch_compaction_parity fixtures must define expected.compacted_patch_binary_hex"
+                );
+                assert!(
+                    fixture["expected"]["changed"].is_boolean(),
+                    "patch_compaction_parity fixtures must define expected.changed"
+                );
+            }
             "model_roundtrip" => {
                 assert!(
                     fixture["expected"]["model_binary_hex"].is_string(),
@@ -454,6 +468,9 @@ fn manifest_contains_required_scenarios() {
     let has_patch_alt_codecs = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("patch_alt_codecs"));
+    let has_patch_compaction_parity = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("patch_compaction_parity"));
     let has_model_roundtrip = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("model_roundtrip"));
@@ -553,6 +570,10 @@ fn manifest_contains_required_scenarios() {
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_alt_codecs"))
         .count();
+    let patch_compaction_parity_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("patch_compaction_parity"))
+        .count();
     let patch_canonical_encode_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("patch_canonical_encode"))
@@ -566,6 +587,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         has_patch_alt_codecs,
         "fixtures must include patch_alt_codecs scenarios"
+    );
+    assert!(
+        has_patch_compaction_parity,
+        "fixtures must include patch_compaction_parity scenarios"
     );
     assert!(
         has_patch_canonical_encode,
@@ -627,6 +652,10 @@ fn manifest_contains_required_scenarios() {
     assert!(
         patch_alt_codecs_count >= 20,
         "fixtures must include at least 20 patch_alt_codecs scenarios"
+    );
+    assert!(
+        patch_compaction_parity_count >= 20,
+        "fixtures must include at least 20 patch_compaction_parity scenarios"
     );
     assert!(
         patch_canonical_encode_count >= 20,

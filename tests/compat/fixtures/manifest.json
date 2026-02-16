@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 807,
+  "fixture_count": 828,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -528,6 +528,111 @@
       "name": "patch_alt_codecs_20_v1",
       "scenario": "patch_alt_codecs",
       "file": "patch_alt_codecs_20_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_01_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_01_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_02_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_02_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_03_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_03_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_04_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_04_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_05_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_05_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_06_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_06_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_07_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_07_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_08_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_08_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_09_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_09_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_10_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_10_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_11_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_11_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_12_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_12_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_13_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_13_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_14_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_14_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_15_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_15_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_16_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_16_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_17_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_17_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_18_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_18_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_19_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_19_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_20_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_20_v1.json"
+    },
+    {
+      "name": "patch_compaction_parity_21_utf16_v1",
+      "scenario": "patch_compaction_parity",
+      "file": "patch_compaction_parity_21_utf16_v1.json"
     },
     {
       "name": "model_roundtrip_scalar_number_v1",

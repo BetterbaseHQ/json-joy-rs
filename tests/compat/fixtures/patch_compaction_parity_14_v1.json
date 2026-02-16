@@ -1,0 +1,17 @@
+{
+  "fixture_version": 1,
+  "name": "patch_compaction_parity_14_v1",
+  "scenario": "patch_compaction_parity",
+  "input": {
+    "patch_binary_hex": "91c20449f7061048800049010062623300f6524901626b394b01626d394c0189"
+  },
+  "expected": {
+    "compacted_patch_binary_hex": "91c20449f7061048800049010062623300f6524901626b394b01626d394c0189",
+    "changed": false
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
