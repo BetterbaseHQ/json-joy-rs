@@ -1,4 +1,4 @@
-.PHONY: check fmt test bindings-python compat-fixtures
+.PHONY: check fmt test bindings-python compat-fixtures test-core-fixtures test-core-upstream test-core-differential test-core-property test-core
 
 check:
 	mise x -- cargo check
@@ -8,6 +8,21 @@ fmt:
 
 test:
 	mise x -- cargo test --workspace
+
+test-core-fixtures:
+	mise x -- cargo test -p json-joy-core --test compat_fixtures --test patch_codec_from_fixtures --test patch_encode_from_canonical_fixtures --test patch_alt_codecs_from_fixtures --test patch_compaction_from_fixtures --test patch_schema_from_fixtures --test util_diff_from_fixtures --test model_codec_from_fixtures --test model_encode_from_canonical_fixtures --test model_apply_replay_from_fixtures --test model_diff_parity_from_fixtures --test model_diff_dst_keys_from_fixtures --test model_api_from_fixtures --test model_api_proxy_fanout_from_fixtures --test model_lifecycle_from_fixtures --test lessdb_model_manager_from_fixtures --test codec_indexed_binary_from_fixtures --test codec_sidecar_binary_from_fixtures
+
+test-core-upstream:
+	mise x -- cargo test -p json-joy-core --test upstream_port_diff_matrix --test upstream_port_diff_smoke --test upstream_port_diff_native_support_matrix --test upstream_port_diff_server_clock_matrix --test upstream_port_diff_nonempty_scalar_matrix --test upstream_port_diff_nonempty_recursive_matrix --test upstream_port_model_apply_matrix --test upstream_port_model_graph_invariants --test upstream_port_model_encode_matrix --test upstream_port_model_runtime_smoke --test upstream_port_model_api_matrix --test upstream_port_model_api_proxy_matrix --test upstream_port_model_api_fanout_matrix --test upstream_port_model_api_events_matrix --test upstream_port_nodes_family_matrix --test upstream_port_nodes_rga_matrix --test upstream_port_str_rga_matrix --test upstream_port_val_lww_matrix --test upstream_port_patch_builder_matrix --test upstream_port_patch_builder_smoke --test upstream_port_patch_rebase_matrix --test upstream_port_patch_compaction_matrix --test upstream_port_patch_compact_codec_matrix --test upstream_port_patch_compact_binary_codec_matrix --test upstream_port_patch_verbose_codec_matrix --test upstream_port_patch_schema_matrix --test upstream_port_patch_clock_codec_matrix --test upstream_port_codec_indexed_binary_matrix --test upstream_port_codec_sidecar_binary_matrix --test upstream_port_util_diff_str_bin_matrix --test upstream_port_util_diff_line_matrix
+
+test-core-differential:
+	mise x -- cargo test -p json-joy-core --test differential_runtime_seeded --test differential_codec_seeded --test differential_patch_codecs_seeded --test differential_patch_compaction_seeded --test differential_patch_schema_seeded --test differential_util_diff_seeded
+
+test-core-property:
+	mise x -- cargo test -p json-joy-core --test property_replay_idempotence --test property_codec_roundtrip_invariants --test property_model_api_event_convergence
+
+test-core:
+	mise x -- cargo test -p json-joy-core
 
 bindings-python:
 	bin/generate-bindings.sh python

@@ -58,3 +58,11 @@ This repository is structured as a Rust-core + bindings monorepo, following the 
 - This layout is intentionally aligned with the upstream `json-crdt/model/api`,
   `json-crdt/model`, and `json-crdt-diff` families for easier side-by-side
   verification against `/Users/nchapman/Code/json-joy`.
+
+## Test-suite organization
+
+- Test strategy and commands are documented in:
+  - `/Users/nchapman/Drive/Code/json-joy-rs/TEST_SUITE.md`
+- A meta coverage inventory test guards high-signal suite presence and fixture
+  scenario inventory:
+  - `/Users/nchapman/Drive/Code/json-joy-rs/crates/json-joy-core/tests/suite_coverage_inventory.rs`

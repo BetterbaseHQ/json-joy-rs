@@ -112,6 +112,11 @@
   - `model_diff_parity >= 300`
   - `model_diff_dst_keys >= 80`
   - `lessdb_model_manager >= 90`
+- Test-suite maintainability hardening:
+  - Added top-level suite guide: `TEST_SUITE.md`.
+  - Added meta inventory guard:
+    `crates/json-joy-core/tests/suite_coverage_inventory.rs`
+    (checks required suite presence, layer depth, and fixture scenario inventory).
 
 ### Matrix expansion follow-ups from upstream sweep (`/Users/nchapman/Drive/Code/json-joy/packages/json-joy/src`)
 
