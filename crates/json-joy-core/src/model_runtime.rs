@@ -610,7 +610,15 @@ impl RuntimeModel {
             } => {
                 let obj = Id::from(*obj);
                 if let Some(RuntimeNode::Str(atoms)) = self.nodes.get_mut(&obj) {
-                    let idx = find_insert_index_str(atoms, Id::from(*reference), obj);
+                    let insert_id = Id {
+                        sid: id.sid,
+                        time: id.time,
+                    };
+                    let Some(idx) =
+                        find_insert_index_str(atoms, Id::from(*reference), obj, insert_id)
+                    else {
+                        return Ok(());
+                    };
                     let mut inserted = Vec::new();
                     for (i, ch) in data.chars().enumerate() {
                         let slot = Id {
@@ -636,7 +644,15 @@ impl RuntimeModel {
             } => {
                 let obj = Id::from(*obj);
                 if let Some(RuntimeNode::Bin(atoms)) = self.nodes.get_mut(&obj) {
-                    let idx = find_insert_index_bin(atoms, Id::from(*reference), obj);
+                    let insert_id = Id {
+                        sid: id.sid,
+                        time: id.time,
+                    };
+                    let Some(idx) =
+                        find_insert_index_bin(atoms, Id::from(*reference), obj, insert_id)
+                    else {
+                        return Ok(());
+                    };
                     let inserted = data
                         .iter()
                         .enumerate()
@@ -673,7 +689,15 @@ impl RuntimeModel {
                     })
                     .collect::<Vec<_>>();
                 if let Some(RuntimeNode::Arr(atoms)) = self.nodes.get_mut(&obj) {
-                    let idx = find_insert_index_arr(atoms, Id::from(*reference), obj);
+                    let insert_id = Id {
+                        sid: id.sid,
+                        time: id.time,
+                    };
+                    let Some(idx) =
+                        find_insert_index_arr(atoms, Id::from(*reference), obj, insert_id)
+                    else {
+                        return Ok(());
+                    };
                     let mut inserted = Vec::new();
                     for (i, v) in data.iter().enumerate() {
                         let vid = Id::from(*v);
@@ -1663,32 +1687,57 @@ fn read_one_cbor(ctx: &mut DecodeCtx<'_>) -> Result<CborValue, ModelError> {
     Ok(val)
 }
 
-fn find_insert_index_str(atoms: &[StrAtom], reference: Id, container: Id) -> usize {
-    if reference == container {
-        return 0;
+fn find_insert_index_rga(slots: &[Id], reference: Id, container: Id, id: Id) -> Option<usize> {
+    let mut left = if reference == container {
+        if slots.is_empty() {
+            return Some(0);
+        }
+        let first = slots[0];
+        if cmp_id_time_sid(first, id).is_lt() {
+            return Some(0);
+        }
+        if first == id {
+            return None;
+        }
+        0usize
+    } else {
+        slots.iter().position(|slot| *slot == reference)?
+    };
+
+    loop {
+        let right = left + 1;
+        if right >= slots.len() {
+            break;
+        }
+        let right_id = slots[right];
+        if right_id.time < id.time {
+            break;
+        }
+        if right_id.time == id.time {
+            if right_id.sid == id.sid {
+                return None;
+            }
+            if right_id.sid < id.sid {
+                break;
+            }
+        }
+        left = right;
     }
-    atoms
-        .iter()
-        .position(|a| a.slot == reference)
-        .map_or(atoms.len(), |i| i + 1)
+
+    Some(left + 1)
 }
 
-fn find_insert_index_bin(atoms: &[BinAtom], reference: Id, container: Id) -> usize {
-    if reference == container {
-        return 0;
-    }
-    atoms
-        .iter()
-        .position(|a| a.slot == reference)
-        .map_or(atoms.len(), |i| i + 1)
+fn find_insert_index_str(atoms: &[StrAtom], reference: Id, container: Id, id: Id) -> Option<usize> {
+    let slots = atoms.iter().map(|a| a.slot).collect::<Vec<_>>();
+    find_insert_index_rga(&slots, reference, container, id)
 }
 
-fn find_insert_index_arr(atoms: &[ArrAtom], reference: Id, container: Id) -> usize {
-    if reference == container {
-        return 0;
-    }
-    atoms
-        .iter()
-        .position(|a| a.slot == reference)
-        .map_or(atoms.len(), |i| i + 1)
+fn find_insert_index_bin(atoms: &[BinAtom], reference: Id, container: Id, id: Id) -> Option<usize> {
+    let slots = atoms.iter().map(|a| a.slot).collect::<Vec<_>>();
+    find_insert_index_rga(&slots, reference, container, id)
+}
+
+fn find_insert_index_arr(atoms: &[ArrAtom], reference: Id, container: Id, id: Id) -> Option<usize> {
+    let slots = atoms.iter().map(|a| a.slot).collect::<Vec<_>>();
+    find_insert_index_rga(&slots, reference, container, id)
 }
