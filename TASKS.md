@@ -75,6 +75,8 @@
   - `crates/json-joy-core/src/model_runtime/mod.rs` now delegates shared runtime graph types and RGA insertion ordering helpers to:
     - `crates/json-joy-core/src/model_runtime/types.rs`
     - `crates/json-joy-core/src/model_runtime/rga.rs`
+  - Runtime patch-apply/GC/root-inference mutation logic is now isolated in:
+    - `crates/json-joy-core/src/model_runtime/apply.rs`
 - Fixture floors hardened:
   - `model_diff_parity >= 100`
   - `model_apply_replay >= 50`
