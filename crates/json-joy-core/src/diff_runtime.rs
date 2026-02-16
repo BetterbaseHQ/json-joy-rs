@@ -62,6 +62,9 @@ pub fn diff_model_to_patch_bytes(
     if let Some(native) = try_native_root_obj_multi_array_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+    if let Some(native) = try_native_root_obj_vec_delta_diff(base_model_binary, next_view, sid)? {
+        return Ok(native);
+    }
     if let Some(native) = try_native_nested_obj_scalar_key_delta_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
@@ -642,6 +645,116 @@ fn emit_array_delta_ops(
             what: spans,
         });
     }
+}
+
+fn try_native_root_obj_vec_delta_diff(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    patch_sid: u64,
+) -> Result<Option<Option<Vec<u8>>>, DiffError> {
+    let model = match Model::from_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let base_obj = match model.view() {
+        Value::Object(map) if !map.is_empty() => map,
+        _ => return Ok(None),
+    };
+    let next_obj = match next_view {
+        Value::Object(map) => map,
+        _ => return Ok(None),
+    };
+    if base_obj.len() != next_obj.len() {
+        return Ok(None);
+    }
+    if base_obj.keys().any(|k| !next_obj.contains_key(k)) {
+        return Ok(None);
+    }
+
+    let changed: Vec<&String> = base_obj
+        .iter()
+        .filter_map(|(k, v)| (next_obj.get(k) != Some(v)).then_some(k))
+        .collect();
+    if changed.is_empty() {
+        return Ok(Some(None));
+    }
+
+    let runtime = match RuntimeModel::from_model_binary(base_model_binary) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let (_, base_time) = match first_logical_clock_sid_time(base_model_binary) {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+    let mut emitter = NativeEmitter::new(patch_sid, base_time.saturating_add(1));
+
+    for key in changed {
+        let dst = match next_obj.get(key) {
+            Some(Value::Array(arr)) => arr,
+            _ => return Ok(None),
+        };
+        let vec_node = match runtime.root_object_field(key) {
+            Some(id) if runtime.node_is_vec(id) => id,
+            _ => return Ok(None),
+        };
+
+        let src_len = runtime
+            .vec_max_index(vec_node)
+            .map(|m| m.saturating_add(1) as usize)
+            .unwrap_or(0);
+        let dst_len = dst.len();
+        let min = src_len.min(dst_len);
+        let mut edits: Vec<(u64, Timestamp)> = Vec::new();
+
+        // Upstream diffVec: trim trailing src indexes by writing `undefined`.
+        for i in dst_len..src_len {
+            if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
+                if runtime.node_is_deleted_or_missing(child) {
+                    continue;
+                }
+                let undef = emitter.next_id();
+                emitter.push(DecodedOp::NewCon {
+                    id: undef,
+                    value: ConValue::Undef,
+                });
+                edits.push((i as u64, undef));
+            }
+        }
+
+        // Upstream diffVec: update common indexes where recursive diff fails.
+        for (i, value) in dst.iter().take(min).enumerate() {
+            if let Some(child) = runtime.vec_index_value(vec_node, i as u64) {
+                if runtime
+                    .node_json_value(child)
+                    .as_ref()
+                    .is_some_and(|v| v == value)
+                {
+                    continue;
+                }
+            }
+            edits.push((i as u64, emitter.emit_value(value)));
+        }
+
+        // Upstream diffVec: append new tail indexes.
+        for (i, value) in dst.iter().enumerate().skip(src_len) {
+            edits.push((i as u64, emitter.emit_value(value)));
+        }
+
+        if !edits.is_empty() {
+            emitter.push(DecodedOp::InsVec {
+                id: emitter.next_id(),
+                obj: vec_node,
+                data: edits,
+            });
+        }
+    }
+
+    if emitter.ops.is_empty() {
+        return Ok(Some(None));
+    }
+    let encoded = encode_patch_from_ops(patch_sid, base_time.saturating_add(1), &emitter.ops)?;
+    Ok(Some(Some(encoded)))
 }
 
 struct NativeEmitter {

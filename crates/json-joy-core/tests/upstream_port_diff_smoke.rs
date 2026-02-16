@@ -1,7 +1,8 @@
 use json_joy_core::diff_runtime::diff_model_to_patch_bytes;
 use json_joy_core::less_db_compat::{create_model, model_to_binary};
 use json_joy_core::model_runtime::RuntimeModel;
-use json_joy_core::patch::Patch;
+use json_joy_core::patch::{ConValue, DecodedOp, Patch, Timestamp};
+use json_joy_core::patch_builder::encode_patch_from_ops;
 
 // Upstream references:
 // - /Users/nchapman/Code/json-joy/packages/json-joy/src/json-crdt-diff/JsonCrdtDiff.ts
@@ -77,6 +78,69 @@ fn upstream_port_diff_multi_array_key_delta_reaches_target_view() {
     let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
     runtime.apply_patch(&decoded).expect("runtime apply must succeed");
     assert_eq!(runtime.view_json(), next);
+}
+
+#[test]
+fn upstream_port_diff_vec_index_updates_use_ins_vec() {
+    // Ports upstream JsonCrdtDiff.diffVec behavior for index updates/deletes.
+    let sid = 88003;
+    let mut runtime = RuntimeModel::new_logical_empty(sid);
+    let root = Timestamp { sid, time: 1 };
+    let vec_id = Timestamp { sid, time: 3 };
+    let one = Timestamp { sid, time: 4 };
+    let two = Timestamp { sid, time: 5 };
+    let ops = vec![
+        DecodedOp::NewObj { id: root },
+        DecodedOp::InsVal {
+            id: Timestamp { sid, time: 2 },
+            obj: Timestamp { sid: 0, time: 0 },
+            val: root,
+        },
+        DecodedOp::NewVec { id: vec_id },
+        DecodedOp::NewCon {
+            id: one,
+            value: ConValue::Json(serde_json::json!(1)),
+        },
+        DecodedOp::NewCon {
+            id: two,
+            value: ConValue::Json(serde_json::json!(2)),
+        },
+        DecodedOp::InsVec {
+            id: Timestamp { sid, time: 6 },
+            obj: vec_id,
+            data: vec![(0, one), (1, two)],
+        },
+        DecodedOp::InsObj {
+            id: Timestamp { sid, time: 7 },
+            obj: root,
+            data: vec![("v".to_string(), vec_id)],
+        },
+    ];
+    let seed = encode_patch_from_ops(sid, 1, &ops).expect("seed patch encode must succeed");
+    let seed_patch = Patch::from_binary(&seed).expect("seed patch decode must succeed");
+    runtime.apply_patch(&seed_patch).expect("seed apply must succeed");
+    let base_model = runtime
+        .to_model_binary_like()
+        .expect("runtime model encode must succeed");
+    let next = serde_json::json!({"v": [1, 3]});
+
+    let patch = diff_model_to_patch_bytes(&base_model, &next, sid)
+        .expect("diff should succeed")
+        .expect("non-noop diff expected");
+    let decoded = Patch::from_binary(&patch).expect("generated patch must decode");
+    assert!(
+        decoded
+            .decoded_ops()
+            .iter()
+            .any(|op| matches!(op, DecodedOp::InsVec { .. })),
+        "diff patch must contain ins_vec"
+    );
+
+    let mut applied = RuntimeModel::from_model_binary(&base_model).expect("runtime decode must succeed");
+    applied
+        .apply_patch(&decoded)
+        .expect("runtime apply must succeed");
+    assert_eq!(applied.view_json(), next);
 }
 
 fn decode_hex(s: &str) -> Vec<u8> {

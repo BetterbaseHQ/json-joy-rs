@@ -402,6 +402,41 @@ impl RuntimeModel {
         matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Obj(_)))
     }
 
+    pub(crate) fn node_is_vec(&self, id: Timestamp) -> bool {
+        matches!(self.nodes.get(&Id::from(id)), Some(RuntimeNode::Vec(_)))
+    }
+
+    pub(crate) fn vec_index_value(&self, id: Timestamp, index: u64) -> Option<Timestamp> {
+        let node = self.nodes.get(&Id::from(id))?;
+        if let RuntimeNode::Vec(map) = node {
+            map.get(&index).copied().map(Into::into)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn vec_max_index(&self, id: Timestamp) -> Option<u64> {
+        let node = self.nodes.get(&Id::from(id))?;
+        if let RuntimeNode::Vec(map) = node {
+            map.keys().copied().max()
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn node_json_value(&self, id: Timestamp) -> Option<Value> {
+        self.node_view(Id::from(id))
+    }
+
+    pub(crate) fn node_is_deleted_or_missing(&self, id: Timestamp) -> bool {
+        let key = Id::from(id);
+        match self.nodes.get(&key) {
+            None => true,
+            Some(RuntimeNode::Con(ConCell::Undef)) => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn string_visible_slots(&self, id: Timestamp) -> Option<Vec<Timestamp>> {
         let node = self.nodes.get(&Id::from(id))?;
         if let RuntimeNode::Str(atoms) = node {
