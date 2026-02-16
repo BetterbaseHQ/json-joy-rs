@@ -188,7 +188,7 @@ Exit criteria:
 - Model binary fixtures pass.
 - `model_roundtrip` fixture count >= 60.
 - `model_decode_error` fixture count >= 20.
-- `model_canonical_encode` fixture count >= 6 with exact byte parity tests.
+- `model_canonical_encode` fixture count >= 12 with exact byte parity tests.
 - Decoder malformed-input compatibility is fixture-backed and documented.
 
 ## M3: Apply Patch + Clock Semantics
@@ -202,7 +202,7 @@ Deliverables:
 - Session/vector behavior required for replay idempotence.
 
 Exit criteria:
-- `model_apply_replay` fixture count >= 30.
+- `model_apply_replay` fixture count >= 50.
 - `model_apply_replay_from_fixtures` tests pass:
   - `apply_replay_fixtures_match_oracle_view`
   - `duplicate_patch_replay_is_idempotent`
@@ -220,7 +220,7 @@ Deliverables:
 - `None`/patch behavior parity.
 
 Exit criteria:
-- `model_diff_parity` fixture count >= 50.
+- `model_diff_parity` fixture count >= 100.
 - Exact patch binary parity for patch-present fixtures (`patch_binary_hex` match).
 - No-op parity: Rust returns `None` exactly where oracle returns no patch.
 - `model_diff_parity_from_fixtures` tests pass:
@@ -236,7 +236,7 @@ Deliverables:
 - Minimal FFI exposure for model lifecycle + patch-log helpers.
 
 Exit criteria:
-- `lessdb_model_manager` fixture count >= 30.
+- `lessdb_model_manager` fixture count >= 50.
 - `lessdb_model_manager_from_fixtures` tests pass:
   - `lessdb_create_diff_apply_matches_oracle`
   - `lessdb_noop_diff_returns_none`

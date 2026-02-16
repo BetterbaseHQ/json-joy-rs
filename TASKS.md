@@ -70,4 +70,9 @@
   - `crates/json-joy-core/tests/differential_runtime_seeded.rs`
 - Structural model-encode parity inventory added:
   - `crates/json-joy-core/tests/upstream_port_model_encode_matrix.rs`
-  - Current baseline: `30/30` replay fixtures exact-binary match.
+  - Current baseline: `50/50` replay fixtures exact-binary match.
+- Fixture floors hardened:
+  - `model_diff_parity >= 100`
+  - `model_apply_replay >= 50`
+  - `lessdb_model_manager >= 50`
+  - `model_canonical_encode >= 12`
