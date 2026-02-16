@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use json_joy_core::model_runtime::RuntimeModel;
 use json_joy_core::patch::Patch;
+use std::collections::HashSet;
 use serde_json::Value;
 
 fn fixtures_dir() -> PathBuf {
@@ -51,6 +52,7 @@ fn upstream_port_model_encode_inventory_from_apply_replay() {
     let mut match_count = 0u32;
     let mut mismatch_count = 0u32;
     let mut mismatch_names = Vec::new();
+    let mut mismatch_ids = Vec::new();
 
     for entry in fixtures {
         if entry["scenario"].as_str() != Some("model_apply_replay") {
@@ -100,6 +102,7 @@ fn upstream_port_model_encode_inventory_from_apply_replay() {
             match_count += 1;
         } else {
             mismatch_count += 1;
+            mismatch_ids.push(name.to_string());
             mismatch_names.push(format!(
                 "{} expected={} actual={}",
                 name,
@@ -119,5 +122,27 @@ fn upstream_port_model_encode_inventory_from_apply_replay() {
     assert!(
         match_count >= 24,
         "expected at least 24 binary-parity matches in apply_replay inventory; got {match_count}"
+    );
+
+    let known: HashSet<&str> = [
+        "model_apply_replay_04_obj_in_order_v1",
+        "model_apply_replay_05_obj_out_of_order_v1",
+        "model_apply_replay_06_obj_interleaved_dup_v1",
+        "model_apply_replay_28_vec_in_order_v1",
+        "model_apply_replay_29_vec_out_of_order_v1",
+        "model_apply_replay_30_vec_interleaved_dup_v1",
+    ]
+    .into_iter()
+    .collect();
+    for id in &mismatch_ids {
+        assert!(
+            known.contains(id.as_str()),
+            "unexpected model encode mismatch fixture: {id}"
+        );
+    }
+    assert!(
+        mismatch_ids.len() <= known.len(),
+        "mismatch count regressed beyond known set: {}",
+        mismatch_ids.len()
     );
 }
