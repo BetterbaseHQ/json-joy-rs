@@ -21,6 +21,8 @@ use thiserror::Error;
 pub enum ApplyError {
     #[error("unsupported operation for runtime apply")]
     UnsupportedOpForM3,
+    #[error("runtime graph invariant violation: {0}")]
+    InvariantViolation(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -168,6 +170,9 @@ impl RuntimeModel {
             let span = op.span();
             self.clock.observe(id.sid, id.time, span);
             self.apply_op(op)?;
+            #[cfg(debug_assertions)]
+            self.validate_invariants()
+                .map_err(ApplyError::InvariantViolation)?;
         }
         Ok(())
     }
@@ -197,7 +202,7 @@ impl RuntimeModel {
             match node {
                 RuntimeNode::Con(_) => {}
                 RuntimeNode::Val(child) => {
-                    if !self.nodes.contains_key(child) {
+                    if (child.sid != 0 || child.time != 0) && !self.nodes.contains_key(child) {
                         return Err(format!(
                             "val node {}.{} points to missing child {}.{}",
                             id.sid, id.time, child.sid, child.time
