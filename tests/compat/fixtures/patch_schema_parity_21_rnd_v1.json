@@ -1,0 +1,97 @@
+{
+  "fixture_version": 1,
+  "name": "patch_schema_parity_21_rnd_v1",
+  "scenario": "patch_schema_parity",
+  "input": {
+    "sid": 81821,
+    "time": 1,
+    "value_json": {
+      "urwxtau3up": [
+        [
+          {
+            "ixp15laf": -74.5,
+            "655opl": "3458np14hyem7ep"
+          }
+        ],
+        [
+          null,
+          "1rv3msvis",
+          {},
+          false
+        ],
+        [
+          {
+            "xvhtrv": null
+          },
+          null
+        ]
+      ],
+      "fw0": false,
+      "4vs42f887": [
+        {
+          "6": 51.5,
+          "uhqooag0m": "lszal4meze9t",
+          "s5laz10vs": false,
+          "6vhkqfm": "s82lu8miam2c"
+        }
+      ],
+      "d642": "9"
+    }
+  },
+  "expected": {
+    "patch_binary_hex": "9dff0401f72c1030301000fac295000020600f0606333435386e7031346879656d3765705204780869787031356c61660578063635356f706c0671030304300800f648191a2060091c1c317276336d73766973100800f4482728741818191c2627301000f6512f7806787668747276300800f6483233722e2e2f3273020203182e00f4301000fa424e000020600c3e3e6c737a616c346d657a65397400f420600c4c014c017338326c75386d69616d3263543c61363d78097568716f6f6167306d3e780973356c617a313076734b0178073676686b71666d4c01713b3b3c20615b015b01395401780a7572777874617533757002636677303a78093476733432663838373b64643634325b0148800001",
+    "patch_opcodes": [
+      2,
+      6,
+      6,
+      2,
+      0,
+      4,
+      12,
+      10,
+      14,
+      6,
+      1,
+      0,
+      9,
+      4,
+      12,
+      2,
+      1,
+      0,
+      9,
+      14,
+      6,
+      2,
+      0,
+      10,
+      1,
+      0,
+      9,
+      14,
+      14,
+      0,
+      6,
+      2,
+      0,
+      4,
+      12,
+      0,
+      4,
+      12,
+      10,
+      14,
+      4,
+      12,
+      10,
+      9
+    ],
+    "patch_op_count": 44,
+    "patch_span": 94
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

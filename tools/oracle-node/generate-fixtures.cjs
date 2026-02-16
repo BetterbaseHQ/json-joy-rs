@@ -17,6 +17,7 @@ const patchCompactCodec = require('json-joy/lib/json-crdt-patch/codec/compact');
 const patchVerboseCodec = require('json-joy/lib/json-crdt-patch/codec/verbose');
 const patchCompactBinaryCodec = require('json-joy/lib/json-crdt-patch/codec/compact-binary');
 const patchCompaction = require('json-joy/lib/json-crdt-patch/compaction');
+const {ClockVector} = require('json-joy/lib/json-crdt-patch/clock/clock');
 const {
   Patch,
   ts,
@@ -431,6 +432,77 @@ function allPatchCompactionFixtures() {
       hex(utf16Patch.toBinary()),
     ),
   );
+  return fixtures;
+}
+
+function buildPatchSchemaFixture(name, sid, time, value) {
+  const builder = new patchLib.PatchBuilder(new ClockVector(sid, time));
+  const root = patchLib.s.json(value).build(builder);
+  builder.setVal(ts(0, 0), root);
+  const patch = builder.flush();
+  const decoded = Patch.fromBinary(patch.toBinary());
+  return baseFixture(
+    name,
+    'patch_schema_parity',
+    {
+      sid,
+      time,
+      value_json: cloneJson(value),
+    },
+    {
+      patch_binary_hex: hex(patch.toBinary()),
+      patch_opcodes: decoded.ops.map((op) => OPCODE_BY_NAME[op.name()]),
+      patch_op_count: decoded.ops.length,
+      patch_span: decoded.span(),
+    },
+  );
+}
+
+function allPatchSchemaFixtures() {
+  const fixtures = [];
+  const baseCases = [
+    null,
+    true,
+    false,
+    0,
+    1,
+    -1,
+    'hello',
+    'emoji 😀 test',
+    [],
+    [1, 2, 3],
+    [1, {a: 2}, [3, 4]],
+    {},
+    {a: 1},
+    {a: 1, b: 'x', c: false},
+    {nested: {arr: [1, 2, {x: 'y'}]}},
+    {emoji: '👨‍🍳', zwj: 'A👩‍💻B'},
+    {mix: [null, true, 0, 's', {k: [1, 2]}]},
+  ];
+  let idx = 1;
+  for (const value of baseCases) {
+    fixtures.push(
+      buildPatchSchemaFixture(
+        `patch_schema_parity_${String(idx).padStart(2, '0')}_det_v1`,
+        81700 + idx,
+        1,
+        value,
+      ),
+    );
+    idx++;
+  }
+  const rng = mulberry32(0x7e57aa11);
+  while (idx <= 28) {
+    fixtures.push(
+      buildPatchSchemaFixture(
+        `patch_schema_parity_${String(idx).padStart(2, '0')}_rnd_v1`,
+        81800 + idx,
+        1,
+        randJson(rng, 4),
+      ),
+    );
+    idx++;
+  }
   return fixtures;
 }
 
@@ -2672,6 +2744,7 @@ function main() {
     ...allCanonicalEncodeFixtures(),
     ...allPatchAltCodecsFixtures(),
     ...allPatchCompactionFixtures(),
+    ...allPatchSchemaFixtures(),
     ...allModelFixtures(),
     ...allModelDecodeErrorFixtures(),
     ...allModelCanonicalEncodeFixtures(),

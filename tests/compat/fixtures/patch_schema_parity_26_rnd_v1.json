@@ -1,0 +1,25 @@
+{
+  "fixture_version": 1,
+  "name": "patch_schema_parity_26_rnd_v1",
+  "scenario": "patch_schema_parity",
+  "input": {
+    "sid": 81826,
+    "time": 1,
+    "value_json": "18o90cjcm53p"
+  },
+  "expected": {
+    "patch_binary_hex": "a2ff0401f70320600c010131386f3930636a636d35337048800001",
+    "patch_opcodes": [
+      4,
+      12,
+      9
+    ],
+    "patch_op_count": 3,
+    "patch_span": 14
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

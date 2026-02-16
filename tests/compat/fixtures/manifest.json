@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 828,
+  "fixture_count": 856,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -633,6 +633,146 @@
       "name": "patch_compaction_parity_21_utf16_v1",
       "scenario": "patch_compaction_parity",
       "file": "patch_compaction_parity_21_utf16_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_01_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_01_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_02_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_02_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_03_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_03_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_04_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_04_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_05_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_05_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_06_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_06_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_07_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_07_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_08_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_08_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_09_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_09_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_10_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_10_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_11_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_11_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_12_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_12_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_13_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_13_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_14_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_14_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_15_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_15_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_16_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_16_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_17_det_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_17_det_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_18_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_18_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_19_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_19_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_20_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_20_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_21_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_21_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_22_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_22_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_23_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_23_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_24_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_24_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_25_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_25_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_26_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_26_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_27_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_27_rnd_v1.json"
+    },
+    {
+      "name": "patch_schema_parity_28_rnd_v1",
+      "scenario": "patch_schema_parity",
+      "file": "patch_schema_parity_28_rnd_v1.json"
     },
     {
       "name": "model_roundtrip_scalar_number_v1",
