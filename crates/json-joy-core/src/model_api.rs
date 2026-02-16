@@ -79,6 +79,22 @@ pub struct StrHandle<'a> {
     inner: NodeHandle<'a>,
 }
 
+pub struct ValHandle<'a> {
+    inner: NodeHandle<'a>,
+}
+
+pub struct BinHandle<'a> {
+    inner: NodeHandle<'a>,
+}
+
+pub struct VecHandle<'a> {
+    inner: NodeHandle<'a>,
+}
+
+pub struct ConHandle<'a> {
+    inner: NodeHandle<'a>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeEventOrigin {
     Local,
@@ -435,6 +451,34 @@ impl<'a> NodeHandle<'a> {
             _ => Err(ModelApiError::NotString),
         }
     }
+
+    pub fn as_val(self) -> Result<ValHandle<'a>, ModelApiError> {
+        Ok(ValHandle { inner: self })
+    }
+
+    pub fn as_bin(self) -> Result<BinHandle<'a>, ModelApiError> {
+        match self.read() {
+            Some(Value::Array(arr))
+                if arr
+                    .iter()
+                    .all(|v| v.as_u64().is_some_and(|n| n <= 255)) =>
+            {
+                Ok(BinHandle { inner: self })
+            }
+            _ => Err(ModelApiError::NotArray),
+        }
+    }
+
+    pub fn as_vec(self) -> Result<VecHandle<'a>, ModelApiError> {
+        match self.read() {
+            Some(Value::Array(_)) => Ok(VecHandle { inner: self }),
+            _ => Err(ModelApiError::NotArray),
+        }
+    }
+
+    pub fn as_con(self) -> Result<ConHandle<'a>, ModelApiError> {
+        Ok(ConHandle { inner: self })
+    }
 }
 
 impl<'a> ObjHandle<'a> {
@@ -507,6 +551,71 @@ impl<'a> StrHandle<'a> {
                 .replace(&self.inner.path, Value::String(chars.into_iter().collect()))?;
         }
         Ok(())
+    }
+}
+
+impl<'a> ValHandle<'a> {
+    pub fn view(&self) -> Option<Value> {
+        self.inner.read()
+    }
+
+    pub fn set(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.inner.replace(value)
+    }
+}
+
+impl<'a> BinHandle<'a> {
+    pub fn length(&self) -> usize {
+        self.inner
+            .read()
+            .and_then(|v| v.as_array().map(|a| a.len()))
+            .unwrap_or(0)
+    }
+
+    pub fn ins(&mut self, index: usize, bytes: &[u8]) -> Result<(), ModelApiError> {
+        let mut current = self.inner.read().ok_or(ModelApiError::PathNotFound)?;
+        let arr = current.as_array_mut().ok_or(ModelApiError::NotArray)?;
+        let mut i = index.min(arr.len());
+        for b in bytes {
+            arr.insert(i, Value::from(*b));
+            i += 1;
+        }
+        self.inner.api.replace(&self.inner.path, current)
+    }
+
+    pub fn del(&mut self, index: usize, length: usize) -> Result<(), ModelApiError> {
+        let mut current = self.inner.read().ok_or(ModelApiError::PathNotFound)?;
+        let arr = current.as_array_mut().ok_or(ModelApiError::NotArray)?;
+        if index < arr.len() {
+            let end = (index + length).min(arr.len());
+            arr.drain(index..end);
+        }
+        self.inner.api.replace(&self.inner.path, current)
+    }
+}
+
+impl<'a> VecHandle<'a> {
+    pub fn set(&mut self, index: usize, value: Option<Value>) -> Result<(), ModelApiError> {
+        let mut current = self.inner.read().ok_or(ModelApiError::PathNotFound)?;
+        let arr = current.as_array_mut().ok_or(ModelApiError::NotArray)?;
+        if index >= arr.len() {
+            arr.resize(index + 1, Value::Null);
+        }
+        match value {
+            Some(v) => arr[index] = v,
+            None => arr[index] = Value::Null,
+        }
+        self.inner.api.replace(&self.inner.path, current)
+    }
+}
+
+impl<'a> ConHandle<'a> {
+    pub fn view(&self) -> Option<Value> {
+        self.inner.read()
+    }
+
+    pub fn set(&mut self, value: Value) -> Result<(), ModelApiError> {
+        self.inner.replace(value)
     }
 }
 

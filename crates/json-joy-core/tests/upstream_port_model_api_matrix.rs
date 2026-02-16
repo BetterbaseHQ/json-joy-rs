@@ -339,3 +339,76 @@ fn upstream_port_model_api_typed_node_wrappers_matrix() {
 
     assert_eq!(api.view(), json!({"doc":{"list":[7,9]}}));
 }
+
+#[test]
+fn upstream_port_model_api_extended_typed_wrappers_matrix() {
+    // Upstream mapping:
+    // - json-crdt/model/api/nodes.ts typed wrappers (`asVal/asBin/asVec/asCon`) baseline.
+    let sid = 97007;
+    let mut api = NativeModelApi::from_patches(&[patch_from_ops(
+        sid,
+        1,
+        &[
+            DecodedOp::NewObj {
+                id: Timestamp { sid, time: 1 },
+            },
+            DecodedOp::InsVal {
+                id: Timestamp { sid, time: 2 },
+                obj: Timestamp { sid: 0, time: 0 },
+                val: Timestamp { sid, time: 1 },
+            },
+        ],
+    )])
+    .expect("from_patches must succeed");
+
+    api.node()
+        .as_obj()
+        .expect("root object wrapper must resolve")
+        .set("bin", json!([1, 2, 3]))
+        .expect("bin seed set must succeed");
+    api.node()
+        .as_obj()
+        .expect("root object wrapper must resolve")
+        .set("vec", json!([1, 2]))
+        .expect("vec seed set must succeed");
+    api.node()
+        .as_obj()
+        .expect("root object wrapper must resolve")
+        .set("con", json!("x"))
+        .expect("con seed set must succeed");
+
+    let mut bin = api
+        .node()
+        .at_key("bin")
+        .as_bin()
+        .expect("bin wrapper must resolve");
+    assert_eq!(bin.length(), 3);
+    bin.ins(1, &[9, 8]).expect("bin ins must succeed");
+    bin.del(0, 1).expect("bin del must succeed");
+
+    let mut vec = api
+        .node()
+        .at_key("vec")
+        .as_vec()
+        .expect("vec wrapper must resolve");
+    vec.set(3, Some(json!(7))).expect("vec set must succeed");
+    vec.set(1, None).expect("vec remove-style set must succeed");
+
+    let mut con = api
+        .node()
+        .at_key("con")
+        .as_con()
+        .expect("con wrapper must resolve");
+    assert_eq!(con.view(), Some(json!("x")));
+    con.set(json!("y")).expect("con set must succeed");
+
+    let mut val = api
+        .node()
+        .at_key("con")
+        .as_val()
+        .expect("val wrapper must resolve");
+    assert_eq!(val.view(), Some(json!("y")));
+    val.set(json!("z")).expect("val set must succeed");
+
+    assert_eq!(api.view(), json!({"bin":[9,8,2,3],"vec":[1,null,null,7],"con":"z"}));
+}
