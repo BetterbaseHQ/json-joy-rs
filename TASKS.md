@@ -97,6 +97,9 @@
   - Patch and model codec families are split in:
     - `crates/json-joy-core/src/patch/{types,rewrite,decode,encode}.rs`
     - `crates/json-joy-core/src/model/{error,view,decode,encode}.rs`
+  - Indexed and sidecar codec families are split in:
+    - `crates/json-joy-core/src/codec_indexed_binary/{types,encode,decode}.rs`
+    - `crates/json-joy-core/src/codec_sidecar_binary/{types,encode,decode}.rs`
 - Fixture floors hardened:
   - `patch_canonical_encode >= 40`
   - `patch_decode_error >= 35`
