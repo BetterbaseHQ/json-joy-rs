@@ -168,6 +168,11 @@ impl NativeModelApi {
         self.read_ptr(ptr)
     }
 
+    pub fn find_ptr(&self, ptr: &str) -> Option<Value> {
+        let steps = parse_json_pointer(ptr).ok()?;
+        self.find(&steps)
+    }
+
     pub fn set(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
         let mut next = self.runtime.view_json();
         if path.is_empty() {
@@ -419,6 +424,22 @@ impl NativeModelApi {
         }
     }
 
+    pub fn node_ptr(&mut self, ptr: &str) -> Result<NodeHandle<'_>, ModelApiError> {
+        let mut handle = self.node();
+        for step in parse_json_pointer(ptr)? {
+            handle.path.push(step);
+        }
+        Ok(handle)
+    }
+
+    pub fn s(&mut self) -> NodeHandle<'_> {
+        self.node()
+    }
+
+    pub fn s_ptr(&mut self, ptr: &str) -> Result<NodeHandle<'_>, ModelApiError> {
+        self.node_ptr(ptr)
+    }
+
     fn apply_target_view(&mut self, next: Value) -> Result<(), ModelApiError> {
         let base = self.runtime.to_model_binary_like()?;
         let patch = diff_model_to_patch_bytes(&base, &next, self.sid)?;
@@ -442,4 +463,3 @@ impl NativeModelApi {
         }
     }
 }
-

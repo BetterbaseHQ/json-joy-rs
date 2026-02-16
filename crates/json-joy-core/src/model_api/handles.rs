@@ -1,4 +1,11 @@
 impl<'a> NodeHandle<'a> {
+    pub fn at_ptr(mut self, ptr: &str) -> Result<Self, ModelApiError> {
+        for step in parse_json_pointer(ptr)? {
+            self.path.push(step);
+        }
+        Ok(self)
+    }
+
     pub fn at_key(mut self, key: impl Into<String>) -> Self {
         self.path.push(PathStep::Key(key.into()));
         self

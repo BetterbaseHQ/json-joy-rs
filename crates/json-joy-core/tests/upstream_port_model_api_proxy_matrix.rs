@@ -17,21 +17,41 @@ fn upstream_port_model_api_proxy_matrix_path_builder_semantics() {
         .at_key("list")
         .arr_push(json!(2))
         .unwrap();
+    api.s()
+        .at_key("doc")
+        .at_key("list")
+        .at_append()
+        .add(json!(3))
+        .unwrap();
     api.node()
         .at_key("doc")
         .at_key("title")
         .str_ins(1, "Z")
         .unwrap();
+    api.node_ptr("/doc/title").unwrap().str_ins(0, "_").unwrap();
+    api.s_ptr("/doc/list/0")
+        .unwrap()
+        .replace(json!(7))
+        .unwrap();
+    api.node()
+        .at_ptr("/doc/list/1")
+        .unwrap()
+        .replace(json!(8))
+        .unwrap();
     api.node()
         .at_key("doc")
         .at_key("list")
         .at_index(0)
-        .replace(json!(7))
+        .replace(json!(9))
         .unwrap();
     api.node()
         .at_key("doc")
         .obj_put("flag", json!(true))
         .unwrap();
 
-    assert_eq!(api.view(), json!({"doc":{"title":"aZb","list":[7,2],"flag":true}}));
+    assert_eq!(
+        api.find_ptr("/doc/title"),
+        Some(json!("_aZb"))
+    );
+    assert_eq!(api.view(), json!({"doc":{"title":"_aZb","list":[9,8,3],"flag":true}}));
 }
