@@ -70,6 +70,7 @@ enum RuntimeNode {
 #[derive(Debug, Clone)]
 enum ConCell {
     Json(Value),
+    Ref(Id),
     Undef,
 }
 
@@ -431,9 +432,7 @@ impl RuntimeModel {
                 let id = Id::from(*id);
                 let val = match value {
                     ConValue::Json(v) => ConCell::Json(v.clone()),
-                    ConValue::Ref(ts) => {
-                        ConCell::Json(self.node_view(Id::from(*ts)).unwrap_or(Value::Null))
-                    }
+                    ConValue::Ref(ts) => ConCell::Ref(Id::from(*ts)),
                     ConValue::Undef => ConCell::Undef,
                 };
                 self.nodes.entry(id).or_insert(RuntimeNode::Con(val));
@@ -724,6 +723,7 @@ impl RuntimeModel {
     fn node_view(&self, id: Id) -> Option<Value> {
         match self.nodes.get(&id)? {
             RuntimeNode::Con(ConCell::Json(v)) => Some(v.clone()),
+            RuntimeNode::Con(ConCell::Ref(id)) => Some(rid_to_json(*id)),
             RuntimeNode::Con(ConCell::Undef) => None,
             RuntimeNode::Val(child) => Some(self.node_view(*child).unwrap_or(Value::Null)),
             RuntimeNode::Obj(entries) => {
@@ -868,7 +868,7 @@ fn decode_node(ctx: &mut DecodeCtx<'_>) -> Result<Id, ModelError> {
                 RuntimeNode::Con(ConCell::Json(cbor_to_json(read_one_cbor(ctx)?)?))
             } else {
                 let rid = decode_id(ctx)?;
-                RuntimeNode::Con(ConCell::Json(rid_to_json(rid)))
+                RuntimeNode::Con(ConCell::Ref(rid))
             };
             ctx.nodes.insert(id, node);
         }
@@ -1173,6 +1173,10 @@ fn encode_node(enc: &mut EncodeCtx<'_>, id: Id, model: &RuntimeModel) -> Result<
         RuntimeNode::Con(ConCell::Json(v)) => {
             enc.out.push(0);
             json_to_cbor_bytes(v, enc.out)?;
+        }
+        RuntimeNode::Con(ConCell::Ref(rid)) => {
+            enc.out.push(1);
+            encode_id(enc, *rid)?;
         }
         RuntimeNode::Con(ConCell::Undef) => {
             enc.out.push(0);
