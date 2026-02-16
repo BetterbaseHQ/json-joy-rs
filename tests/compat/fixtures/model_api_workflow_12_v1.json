@@ -1,0 +1,233 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_12_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79012,
+    "initial_json": {
+      "doc": {
+        "seed": [
+          {
+            "73s7w0xk": null,
+            "f38vswj0c": 94.5,
+            "o": "cbwso4t",
+            "ie": null
+          },
+          -36.6
+        ],
+        "nested": {
+          "v": 30
+        }
+      },
+      "title": "0e8sx7vo",
+      "list": [
+        6
+      ]
+    },
+    "base_model_binary_hex": "0000009281284363646f6381274264736565648126c18115028125447808373373377730786b812400f678096633387673776a3063812300fa42bd0000616f81228181217807636277736f3474626965811a00f6811820811700fbc0424ccccccccccd78066e65737465648113416176811200181e657469746c651f811e7808306538737837766f646c69737416c11201152014000601a4e90429",
+    "ops": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ]
+      },
+      {
+        "kind": "obj_put",
+        "path": [
+          "doc"
+        ],
+        "key": "k8",
+        "value_json": null
+      },
+      {
+        "kind": "arr_push",
+        "path": [
+          "list"
+        ],
+        "value_json": 34
+      },
+      {
+        "kind": "str_ins",
+        "path": [
+          "title"
+        ],
+        "pos": 0,
+        "text": "x"
+      },
+      {
+        "kind": "set",
+        "path": [
+          "doc"
+        ],
+        "value_json": {
+          "5": [],
+          "hd": null,
+          "6y": {
+            "8vs9ddt": 29.6,
+            "zl": true
+          }
+        }
+      },
+      {
+        "kind": "apply_batch",
+        "patches_binary_hex": [
+          "a4e9043bf70b00f6641a22776a6734811a1e05611a1c68811a1b02611a1a700001482c4401000348244601510163646f633b",
+          "a4e90449f71f10300800f6484b014c0120654e014e016778367875724a014a014b014e01300800f448570158010800fb404b266666666666485a015b0120645d015d0165796b660800f64862016301745601560157015a015d016201524901780675306278386e4a0161795601841a30014101011d013c04621a1a3871000848246d01080000486f01700171232f6f01510163646f634901"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ],
+        "value_json": "0e8sx7vo"
+      },
+      {
+        "kind": "obj_put",
+        "view_json": {
+          "doc": {
+            "seed": [
+              {
+                "73s7w0xk": null,
+                "f38vswj0c": 94.5,
+                "o": "cbwso4t",
+                "ie": null
+              },
+              -36.6
+            ],
+            "nested": {
+              "v": 30
+            },
+            "k8": null
+          },
+          "title": "0e8sx7vo",
+          "list": [
+            6
+          ]
+        }
+      },
+      {
+        "kind": "arr_push",
+        "view_json": {
+          "doc": {
+            "seed": [
+              {
+                "73s7w0xk": null,
+                "f38vswj0c": 94.5,
+                "o": "cbwso4t",
+                "ie": null
+              },
+              -36.6
+            ],
+            "nested": {
+              "v": 30
+            },
+            "k8": null
+          },
+          "title": "0e8sx7vo",
+          "list": [
+            6,
+            34
+          ]
+        }
+      },
+      {
+        "kind": "str_ins",
+        "view_json": {
+          "doc": {
+            "seed": [
+              {
+                "73s7w0xk": null,
+                "f38vswj0c": 94.5,
+                "o": "cbwso4t",
+                "ie": null
+              },
+              -36.6
+            ],
+            "nested": {
+              "v": 30
+            },
+            "k8": null
+          },
+          "title": "x0e8sx7vo",
+          "list": [
+            6,
+            34
+          ]
+        }
+      },
+      {
+        "kind": "set",
+        "view_json": {
+          "doc": {
+            "5": [],
+            "hd": null,
+            "6y": {
+              "8vs9ddt": 29.6,
+              "zl": true
+            }
+          },
+          "title": "x0e8sx7vo",
+          "list": [
+            6,
+            34
+          ]
+        }
+      },
+      {
+        "kind": "apply_batch",
+        "view_json": {
+          "doc": {
+            "u0bx8n": [
+              null,
+              "gx6xu"
+            ],
+            "y": [
+              false,
+              54.3,
+              "eykf",
+              null
+            ]
+          },
+          "title": "8qp",
+          "list": [
+            8,
+            1,
+            0
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "doc": {
+        "u0bx8n": [
+          null,
+          "gx6xu"
+        ],
+        "y": [
+          false,
+          54.3,
+          "eykf",
+          null
+        ]
+      },
+      "title": "8qp",
+      "list": [
+        8,
+        1,
+        0
+      ]
+    },
+    "final_model_binary_hex": "0000009a81724363646f63812a42780675306278386e8129c1811f02812820812700f681258181246567783678756179811dc11e04811c20811b00f4811920811800fb404b26666666666681168181156465796b66811120811000f6657469746c658159871862387181306170814301815802813201815606813704646c6973748150c3814c01814f20160008814401814720812f00011101142013000001a4e90473"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

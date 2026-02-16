@@ -1605,6 +1605,232 @@ function allLessdbModelManagerFixtures() {
   return fixtures;
 }
 
+function toPathArray(path) {
+  return path.map((p) => (typeof p === 'number' ? p : String(p)));
+}
+
+function findAtPath(value, path) {
+  let cur = value;
+  for (const step of path) {
+    if (Array.isArray(cur)) {
+      const idx = typeof step === 'number' ? step : Number(step);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= cur.length) return undefined;
+      cur = cur[idx];
+      continue;
+    }
+    if (cur && typeof cur === 'object') {
+      const key = String(step);
+      if (!Object.prototype.hasOwnProperty.call(cur, key)) return undefined;
+      cur = cur[key];
+      continue;
+    }
+    return undefined;
+  }
+  return cur;
+}
+
+function setAtPath(root, path, value) {
+  if (!path.length) return value;
+  let cur = root;
+  for (let i = 0; i < path.length - 1; i++) {
+    const step = path[i];
+    if (Array.isArray(cur)) {
+      const idx = typeof step === 'number' ? step : Number(step);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= cur.length) throw new Error('invalid array path');
+      cur = cur[idx];
+    } else if (cur && typeof cur === 'object') {
+      const key = String(step);
+      if (!Object.prototype.hasOwnProperty.call(cur, key)) throw new Error('missing object path');
+      cur = cur[key];
+    } else throw new Error('non-container in path');
+  }
+  const last = path[path.length - 1];
+  if (Array.isArray(cur)) {
+    const idx = typeof last === 'number' ? last : Number(last);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= cur.length) throw new Error('invalid array leaf path');
+    cur[idx] = value;
+    return root;
+  }
+  if (cur && typeof cur === 'object') {
+    cur[String(last)] = value;
+    return root;
+  }
+  throw new Error('invalid leaf parent');
+}
+
+function buildModelApiWorkflowFixture(name, sid, initial, ops) {
+  const model = mkModel(initial, sid);
+  const baseBinary = model.toBinary();
+  const runtime = mkModel(initial, sid);
+  runtime.api.flush();
+  let currentView = cloneJson(initial);
+
+  const inputOps = [];
+  const expectedSteps = [];
+
+  for (const op of ops) {
+    if (op.kind === 'find') {
+      const path = toPathArray(op.path);
+      const actual = findAtPath(runtime.view(), op.path);
+      inputOps.push({kind: 'find', path});
+      expectedSteps.push({kind: 'find', path, value_json: normalizeView(actual)});
+      continue;
+    }
+    if (op.kind === 'set') {
+      currentView = setAtPath(currentView, op.path, cloneJson(op.value));
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'set', path: toPathArray(op.path), value_json: op.value});
+      expectedSteps.push({kind: 'set', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'obj_put') {
+      const obj = findAtPath(currentView, op.path);
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('obj_put path is not object');
+      obj[String(op.key)] = cloneJson(op.value);
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({
+        kind: 'obj_put',
+        path: toPathArray(op.path),
+        key: String(op.key),
+        value_json: op.value,
+      });
+      expectedSteps.push({kind: 'obj_put', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'arr_push') {
+      const arr = findAtPath(currentView, op.path);
+      if (!Array.isArray(arr)) throw new Error('arr_push path is not array');
+      arr.push(cloneJson(op.value));
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'arr_push', path: toPathArray(op.path), value_json: op.value});
+      expectedSteps.push({kind: 'arr_push', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'str_ins') {
+      const s = findAtPath(currentView, op.path);
+      if (typeof s !== 'string') throw new Error('str_ins path is not string');
+      const chars = Array.from(s);
+      const pos = Math.max(0, Math.min(op.pos, chars.length));
+      chars.splice(pos, 0, ...Array.from(op.text));
+      currentView = setAtPath(currentView, op.path, chars.join(''));
+      const patch = runtime.api.diff(currentView);
+      if (patch) runtime.applyPatch(patch);
+      inputOps.push({kind: 'str_ins', path: toPathArray(op.path), pos: op.pos, text: op.text});
+      expectedSteps.push({kind: 'str_ins', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    if (op.kind === 'apply_batch') {
+      const patchHexes = [];
+      for (const nextView of op.batch_next_views) {
+        const patch = runtime.api.diff(nextView);
+        if (patch) {
+          patchHexes.push(hex(patch.toBinary()));
+          runtime.applyPatch(patch);
+        }
+      }
+      inputOps.push({kind: 'apply_batch', patches_binary_hex: patchHexes});
+      expectedSteps.push({kind: 'apply_batch', view_json: normalizeView(runtime.view())});
+      continue;
+    }
+    throw new Error(`unsupported model_api op: ${op.kind}`);
+  }
+
+  return baseFixture(name, 'model_api_workflow', {
+    sid,
+    initial_json: cloneJson(initial),
+    base_model_binary_hex: hex(baseBinary),
+    ops: inputOps,
+  }, {
+    steps: expectedSteps,
+    final_view_json: normalizeView(runtime.view()),
+    final_model_binary_hex: hex(runtime.toBinary()),
+  });
+}
+
+function allModelApiWorkflowFixtures() {
+  const fixtures = [];
+  let idx = 1;
+  const cases = [
+    {
+      initial: {doc: {title: 'a', items: [1]}},
+      ops: [
+        {kind: 'find', path: ['doc', 'title']},
+        {kind: 'obj_put', path: ['doc'], key: 'flag', value: true},
+        {kind: 'arr_push', path: ['doc', 'items'], value: 2},
+        {kind: 'set', path: ['doc', 'title'], value: 'A'},
+      ],
+    },
+    {
+      initial: {name: 'ab', list: [1, 2]},
+      ops: [
+        {kind: 'str_ins', path: ['name'], pos: 1, text: 'Z'},
+        {kind: 'find', path: ['name']},
+        {kind: 'arr_push', path: ['list'], value: 3},
+      ],
+    },
+    {
+      initial: {meta: {v: 1}, tags: ['x']},
+      ops: [
+        {kind: 'obj_put', path: ['meta'], key: 'ok', value: false},
+        {kind: 'find', path: ['meta', 'ok']},
+        {kind: 'apply_batch', batch_next_views: [{meta: {v: 2, ok: false}, tags: ['x']}, {meta: {v: 2, ok: true}, tags: ['x', 'y']}]},
+      ],
+    },
+  ];
+
+  for (const c of cases) {
+    fixtures.push(
+      buildModelApiWorkflowFixture(
+        `model_api_workflow_${String(idx).padStart(2, '0')}_v1`,
+        79000 + idx,
+        c.initial,
+        c.ops,
+      ),
+    );
+    idx++;
+  }
+
+  const rng = mulberry32(0x6d6f6465);
+  for (let i = 0; i < 17; i++) {
+    const initial = {
+      doc: {
+        seed: randJson(rng, 2),
+        nested: {v: randInt(rng, 50)},
+      },
+      title: randString(rng, 1, 8),
+      list: [randInt(rng, 9)],
+    };
+    const ops = [
+      {kind: 'find', path: ['title']},
+      {kind: 'obj_put', path: ['doc'], key: `k${i}`, value: randScalar(rng)},
+      {kind: 'arr_push', path: ['list'], value: randInt(rng, 100)},
+      {kind: 'str_ins', path: ['title'], pos: randInt(rng, 3), text: 'x'},
+      {kind: 'set', path: ['doc'], value: randJson(rng, 2)},
+      {
+        kind: 'apply_batch',
+        batch_next_views: [
+          {doc: randJson(rng, 2), title: randString(rng, 1, 8), list: [randInt(rng, 10), randInt(rng, 10)]},
+          {doc: randJson(rng, 2), title: randString(rng, 1, 8), list: [randInt(rng, 10), randInt(rng, 10), randInt(rng, 10)]},
+        ],
+      },
+    ];
+    fixtures.push(
+      buildModelApiWorkflowFixture(
+        `model_api_workflow_${String(idx).padStart(2, '0')}_v1`,
+        79000 + idx,
+        initial,
+        ops,
+      ),
+    );
+    idx++;
+  }
+
+  return fixtures;
+}
+
 function main() {
   ensureDir(OUT_DIR);
   for (const file of fs.readdirSync(OUT_DIR)) {
@@ -1621,6 +1847,7 @@ function main() {
     ...allModelApplyReplayFixtures(),
     ...allModelDiffParityFixtures(),
     ...allLessdbModelManagerFixtures(),
+    ...allModelApiWorkflowFixtures(),
   ];
 
   for (const fixture of fixtures) {

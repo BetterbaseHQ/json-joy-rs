@@ -1,0 +1,94 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_03_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79003,
+    "initial_json": {
+      "meta": {
+        "v": 1
+      },
+      "tags": [
+        "x"
+      ]
+    },
+    "base_model_binary_hex": "0000001c1942646d65746118416176170001647461677315c112011481136178019be9040a",
+    "ops": [
+      {
+        "kind": "obj_put",
+        "path": [
+          "meta"
+        ],
+        "key": "ok",
+        "value_json": false
+      },
+      {
+        "kind": "find",
+        "path": [
+          "meta",
+          "ok"
+        ]
+      },
+      {
+        "kind": "apply_batch",
+        "patches_binary_hex": [
+          "9be9040df7020002510261760d",
+          "9be9040ff70500f55102626f6b0f206111117971050811"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "obj_put",
+        "view_json": {
+          "meta": {
+            "v": 1,
+            "ok": false
+          },
+          "tags": [
+            "x"
+          ]
+        }
+      },
+      {
+        "kind": "find",
+        "path": [
+          "meta",
+          "ok"
+        ],
+        "value_json": false
+      },
+      {
+        "kind": "apply_batch",
+        "view_json": {
+          "meta": {
+            "v": 2,
+            "ok": true
+          },
+          "tags": [
+            "x",
+            "y"
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "meta": {
+        "v": 2,
+        "ok": true
+      },
+      "tags": [
+        "x",
+        "y"
+      ]
+    },
+    "final_model_binary_hex": "0000002b811242646d6574618111426176160002626f6b1400f564746167731ec21b011d811c617810011281116179019be90413"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

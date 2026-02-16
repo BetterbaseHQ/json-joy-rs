@@ -1,0 +1,85 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_02_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79002,
+    "initial_json": {
+      "name": "ab",
+      "list": [
+        1,
+        2
+      ]
+    },
+    "base_model_binary_hex": "000000201e42646e616d651d811c626162646c6973741ac1130219201800011620150002019ae9040f",
+    "ops": [
+      {
+        "kind": "str_ins",
+        "path": [
+          "name"
+        ],
+        "pos": 1,
+        "text": "Z"
+      },
+      {
+        "kind": "find",
+        "path": [
+          "name"
+        ]
+      },
+      {
+        "kind": "arr_push",
+        "path": [
+          "list"
+        ],
+        "value_json": 3
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "str_ins",
+        "view_json": {
+          "name": "aZb",
+          "list": [
+            1,
+            2
+          ]
+        }
+      },
+      {
+        "kind": "find",
+        "path": [
+          "name"
+        ],
+        "value_json": "aZb"
+      },
+      {
+        "kind": "arr_push",
+        "view_json": {
+          "name": "aZb",
+          "list": [
+            1,
+            2,
+            3
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "name": "aZb",
+      "list": [
+        1,
+        2,
+        3
+      ]
+    },
+    "final_model_binary_hex": "00000030811342646e616d658112838111616114615a81106162646c6973741fc218021e201d00011b201a000210011320120003019ae90414"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

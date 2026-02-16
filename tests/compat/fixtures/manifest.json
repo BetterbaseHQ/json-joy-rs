@@ -2,7 +2,7 @@
   "fixture_version": 1,
   "upstream_package": "json-joy",
   "upstream_version": "17.67.0",
-  "fixture_count": 365,
+  "fixture_count": 385,
   "fixtures": [
     {
       "name": "diff_root_number_to_number_v1",
@@ -1828,6 +1828,106 @@
       "name": "lessdb_model_manager_55_merge_idempotent_v1",
       "scenario": "lessdb_model_manager",
       "file": "lessdb_model_manager_55_merge_idempotent_v1.json"
+    },
+    {
+      "name": "model_api_workflow_01_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_01_v1.json"
+    },
+    {
+      "name": "model_api_workflow_02_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_02_v1.json"
+    },
+    {
+      "name": "model_api_workflow_03_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_03_v1.json"
+    },
+    {
+      "name": "model_api_workflow_04_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_04_v1.json"
+    },
+    {
+      "name": "model_api_workflow_05_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_05_v1.json"
+    },
+    {
+      "name": "model_api_workflow_06_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_06_v1.json"
+    },
+    {
+      "name": "model_api_workflow_07_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_07_v1.json"
+    },
+    {
+      "name": "model_api_workflow_08_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_08_v1.json"
+    },
+    {
+      "name": "model_api_workflow_09_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_09_v1.json"
+    },
+    {
+      "name": "model_api_workflow_10_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_10_v1.json"
+    },
+    {
+      "name": "model_api_workflow_11_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_11_v1.json"
+    },
+    {
+      "name": "model_api_workflow_12_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_12_v1.json"
+    },
+    {
+      "name": "model_api_workflow_13_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_13_v1.json"
+    },
+    {
+      "name": "model_api_workflow_14_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_14_v1.json"
+    },
+    {
+      "name": "model_api_workflow_15_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_15_v1.json"
+    },
+    {
+      "name": "model_api_workflow_16_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_16_v1.json"
+    },
+    {
+      "name": "model_api_workflow_17_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_17_v1.json"
+    },
+    {
+      "name": "model_api_workflow_18_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_18_v1.json"
+    },
+    {
+      "name": "model_api_workflow_19_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_19_v1.json"
+    },
+    {
+      "name": "model_api_workflow_20_v1",
+      "scenario": "model_api_workflow",
+      "file": "model_api_workflow_20_v1.json"
     }
   ]
 }

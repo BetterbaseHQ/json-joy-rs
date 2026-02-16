@@ -1,0 +1,193 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_16_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79016,
+    "initial_json": {
+      "doc": {
+        "seed": {
+          "2": [
+            "gmwk",
+            false
+          ],
+          "onhng4": null,
+          "ecvp65kcue": {}
+        },
+        "nested": {
+          "v": 22
+        }
+      },
+      "title": "mzxhpv3",
+      "list": [
+        8
+      ]
+    },
+    "base_model_binary_hex": "0000007781234363646f63812242647365656481214361328120c1811702811f81811e64676d776b811a20811900f478066f6e686e6734811500f6780a6563767036356b63756581144078066e6573746564811241617681110016657469746c651e811d78076d7a7868707633646c69737416c11201152014000801a8e90424",
+    "ops": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ]
+      },
+      {
+        "kind": "obj_put",
+        "path": [
+          "doc"
+        ],
+        "key": "k12",
+        "value_json": false
+      },
+      {
+        "kind": "arr_push",
+        "path": [
+          "list"
+        ],
+        "value_json": 18
+      },
+      {
+        "kind": "str_ins",
+        "path": [
+          "title"
+        ],
+        "pos": 1,
+        "text": "x"
+      },
+      {
+        "kind": "set",
+        "path": [
+          "doc"
+        ],
+        "value_json": {}
+      },
+      {
+        "kind": "apply_batch",
+        "patches_binary_hex": [
+          "a8e90430f70a00fbc05293333333333361161d3281161b0361161936831617012b01180200014827350003481f37510163646f6330",
+          "a8e9043af70d20600a3a3a6668347563726472363762163139648116310161163337811633010007481f4a01080009484c014d01711e1e4c01510163646f633a"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ],
+        "value_json": "mzxhpv3"
+      },
+      {
+        "kind": "obj_put",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "2": [
+                "gmwk",
+                false
+              ],
+              "onhng4": null,
+              "ecvp65kcue": {}
+            },
+            "nested": {
+              "v": 22
+            },
+            "k12": false
+          },
+          "title": "mzxhpv3",
+          "list": [
+            8
+          ]
+        }
+      },
+      {
+        "kind": "arr_push",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "2": [
+                "gmwk",
+                false
+              ],
+              "onhng4": null,
+              "ecvp65kcue": {}
+            },
+            "nested": {
+              "v": 22
+            },
+            "k12": false
+          },
+          "title": "mzxhpv3",
+          "list": [
+            8,
+            18
+          ]
+        }
+      },
+      {
+        "kind": "str_ins",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "2": [
+                "gmwk",
+                false
+              ],
+              "onhng4": null,
+              "ecvp65kcue": {}
+            },
+            "nested": {
+              "v": 22
+            },
+            "k12": false
+          },
+          "title": "mxzxhpv3",
+          "list": [
+            8,
+            18
+          ]
+        }
+      },
+      {
+        "kind": "set",
+        "view_json": {
+          "doc": {},
+          "title": "mxzxhpv3",
+          "list": [
+            8,
+            18
+          ]
+        }
+      },
+      {
+        "kind": "apply_batch",
+        "view_json": {
+          "doc": "fh4ucrdr67",
+          "title": "7h9d",
+          "list": [
+            9,
+            7,
+            1
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "doc": "fh4ucrdr67",
+      "title": "7h9d",
+      "list": [
+        9,
+        7,
+        1
+      ]
+    },
+    "final_model_binary_hex": "00000060814f4363646f638116818115780a66683475637264723637657469746c65813a89813901812501813802811d0118613781366168813503811f011b623964646c6973748132c311011420130009812e01813120160007812601812920811b000101a8e90450"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

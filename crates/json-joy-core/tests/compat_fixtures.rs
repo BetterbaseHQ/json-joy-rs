@@ -215,6 +215,41 @@ fn every_manifest_fixture_file_exists_and_has_required_keys() {
                     "lessdb_model_manager fixtures must define expected.final_model_binary_hex"
                 );
             }
+            "model_api_workflow" => {
+                assert!(
+                    fixture["input"]["sid"].is_u64(),
+                    "model_api_workflow fixtures must define input.sid"
+                );
+                assert!(
+                    fixture["input"]["initial_json"].is_object()
+                        || fixture["input"]["initial_json"].is_array()
+                        || fixture["input"]["initial_json"].is_string()
+                        || fixture["input"]["initial_json"].is_number()
+                        || fixture["input"]["initial_json"].is_boolean()
+                        || fixture["input"]["initial_json"].is_null(),
+                    "model_api_workflow fixtures must define input.initial_json"
+                );
+                assert!(
+                    fixture["input"]["base_model_binary_hex"].is_string(),
+                    "model_api_workflow fixtures must define input.base_model_binary_hex"
+                );
+                assert!(
+                    fixture["input"]["ops"].is_array(),
+                    "model_api_workflow fixtures must define input.ops"
+                );
+                assert!(
+                    fixture["expected"]["steps"].is_array(),
+                    "model_api_workflow fixtures must define expected.steps"
+                );
+                assert!(
+                    fixture["expected"].get("final_view_json").is_some(),
+                    "model_api_workflow fixtures must define expected.final_view_json"
+                );
+                assert!(
+                    fixture["expected"]["final_model_binary_hex"].is_string(),
+                    "model_api_workflow fixtures must define expected.final_model_binary_hex"
+                );
+            }
             other => panic!("unexpected fixture scenario: {other}"),
         }
     }
@@ -250,6 +285,9 @@ fn manifest_contains_required_scenarios() {
     let has_lessdb_model_manager = fixtures
         .iter()
         .any(|f| f["scenario"].as_str() == Some("lessdb_model_manager"));
+    let has_model_api_workflow = fixtures
+        .iter()
+        .any(|f| f["scenario"].as_str() == Some("model_api_workflow"));
     let model_roundtrip_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("model_roundtrip"))
@@ -273,6 +311,10 @@ fn manifest_contains_required_scenarios() {
     let lessdb_model_manager_count = fixtures
         .iter()
         .filter(|f| f["scenario"].as_str() == Some("lessdb_model_manager"))
+        .count();
+    let model_api_workflow_count = fixtures
+        .iter()
+        .filter(|f| f["scenario"].as_str() == Some("model_api_workflow"))
         .count();
     let has_patch_canonical_encode = fixtures
         .iter()
@@ -306,6 +348,10 @@ fn manifest_contains_required_scenarios() {
         "fixtures must include lessdb_model_manager scenarios"
     );
     assert!(
+        has_model_api_workflow,
+        "fixtures must include model_api_workflow scenarios"
+    );
+    assert!(
         model_roundtrip_count >= 60,
         "fixtures must include at least 60 model_roundtrip scenarios"
     );
@@ -328,5 +374,9 @@ fn manifest_contains_required_scenarios() {
     assert!(
         lessdb_model_manager_count >= 50,
         "fixtures must include at least 50 lessdb_model_manager scenarios"
+    );
+    assert!(
+        model_api_workflow_count >= 20,
+        "fixtures must include at least 20 model_api_workflow scenarios"
     );
 }

@@ -1,0 +1,225 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_08_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79008,
+    "initial_json": {
+      "doc": {
+        "seed": {
+          "41p81tlhj": [
+            false,
+            "5",
+            "ms7pot2yub3ei"
+          ],
+          "yoqaii90": [
+            "b",
+            "f5c29om06bw",
+            "59ehxlgm7uv2"
+          ],
+          "d": {
+            "6f9sydeb3e": true,
+            "zf46sbk": "x5yjxw2"
+          }
+        },
+        "nested": {
+          "v": 3
+        }
+      },
+      "title": "9nlj",
+      "list": [
+        6
+      ]
+    },
+    "base_model_binary_hex": "000000d881544363646f63815342647365656481524378093431703831746c686a8151c1813d03815020814f00f4814d81814c6135814b81814a780d6d7337706f74327975623365697808796f716169693930813ac1811e03813981813861628137818136780b66356332396f6d30366277812b81812a780c35396568786c676d377576326164811b42780a36663973796465623365811a00f578077a66343673626b811981811878077835796a78773278066e65737465641f4161761e0003657469746c651b811a64396e6c6a646c69737416c11201152014000601a0e90455",
+    "ops": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ]
+      },
+      {
+        "kind": "obj_put",
+        "path": [
+          "doc"
+        ],
+        "key": "k4",
+        "value_json": false
+      },
+      {
+        "kind": "arr_push",
+        "path": [
+          "list"
+        ],
+        "value_json": 41
+      },
+      {
+        "kind": "str_ins",
+        "path": [
+          "title"
+        ],
+        "pos": 0,
+        "text": "x"
+      },
+      {
+        "kind": "set",
+        "path": [
+          "doc"
+        ],
+        "value_json": "ncftpwlj2"
+      },
+      {
+        "kind": "apply_batch",
+        "patches_binary_hex": [
+          "a0e90468f7090032634a014e01763070824a015c01014b0104080000486d016e01714f014f016d01814f015b0101510163646f636801",
+          "a0e90473f70c20600a7301730179696f6f386c7274316c634a016b0139336d644a016a0135783675814a016901020007486d0146020800094848024902714f014f014802510163646f637301"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ],
+        "value_json": "9nlj"
+      },
+      {
+        "kind": "obj_put",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "41p81tlhj": [
+                false,
+                "5",
+                "ms7pot2yub3ei"
+              ],
+              "yoqaii90": [
+                "b",
+                "f5c29om06bw",
+                "59ehxlgm7uv2"
+              ],
+              "d": {
+                "6f9sydeb3e": true,
+                "zf46sbk": "x5yjxw2"
+              }
+            },
+            "nested": {
+              "v": 3
+            },
+            "k4": false
+          },
+          "title": "9nlj",
+          "list": [
+            6
+          ]
+        }
+      },
+      {
+        "kind": "arr_push",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "41p81tlhj": [
+                false,
+                "5",
+                "ms7pot2yub3ei"
+              ],
+              "yoqaii90": [
+                "b",
+                "f5c29om06bw",
+                "59ehxlgm7uv2"
+              ],
+              "d": {
+                "6f9sydeb3e": true,
+                "zf46sbk": "x5yjxw2"
+              }
+            },
+            "nested": {
+              "v": 3
+            },
+            "k4": false
+          },
+          "title": "9nlj",
+          "list": [
+            6,
+            41
+          ]
+        }
+      },
+      {
+        "kind": "str_ins",
+        "view_json": {
+          "doc": {
+            "seed": {
+              "41p81tlhj": [
+                false,
+                "5",
+                "ms7pot2yub3ei"
+              ],
+              "yoqaii90": [
+                "b",
+                "f5c29om06bw",
+                "59ehxlgm7uv2"
+              ],
+              "d": {
+                "6f9sydeb3e": true,
+                "zf46sbk": "x5yjxw2"
+              }
+            },
+            "nested": {
+              "v": 3
+            },
+            "k4": false
+          },
+          "title": "x9nlj",
+          "list": [
+            6,
+            41
+          ]
+        }
+      },
+      {
+        "kind": "set",
+        "view_json": {
+          "doc": "ncftpwlj2",
+          "title": "x9nlj",
+          "list": [
+            6,
+            41
+          ]
+        }
+      },
+      {
+        "kind": "apply_batch",
+        "view_json": {
+          "doc": "yioo8lrt1l",
+          "title": "5x6up93m",
+          "list": [
+            9,
+            7,
+            6
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "doc": "yioo8lrt1l",
+      "title": "5x6up93m",
+      "list": [
+        9,
+        7,
+        6
+      ]
+    },
+    "final_model_binary_hex": "0000005f818b014363646f638119818118780a79696f6f386c7274316c657469746c658142868130018141048123021b6435783675812161701e6339336d646c697374813dc411011420130009811c01811f20160007813901813c20813b000681318101a0e9048c01"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}

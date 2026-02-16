@@ -1,0 +1,169 @@
+{
+  "fixture_version": 1,
+  "name": "model_api_workflow_17_v1",
+  "scenario": "model_api_workflow",
+  "input": {
+    "sid": 79017,
+    "initial_json": {
+      "doc": {
+        "seed": "jgw",
+        "nested": {
+          "v": 10
+        }
+      },
+      "title": "3nbw33qb",
+      "list": [
+        3
+      ]
+    },
+    "base_model_binary_hex": "0000004a81194363646f6381184264736565648117818116636a677778066e657374656481134161768112000a657469746c651f811e7808336e627733337162646c69737416c11201152014000301a9e9041a",
+    "ops": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ]
+      },
+      {
+        "kind": "obj_put",
+        "path": [
+          "doc"
+        ],
+        "key": "k13",
+        "value_json": "vhplfskpwba7ww3"
+      },
+      {
+        "kind": "arr_push",
+        "path": [
+          "list"
+        ],
+        "value_json": 27
+      },
+      {
+        "kind": "str_ins",
+        "path": [
+          "title"
+        ],
+        "pos": 2,
+        "text": "x"
+      },
+      {
+        "kind": "set",
+        "path": [
+          "doc"
+        ],
+        "value_json": "zn6bvabsd14x"
+      },
+      {
+        "kind": "apply_batch",
+        "patches_binary_hex": [
+          "a9e9043ff70a63313d6f7a32813138066231366b3881313205670b133736686f727370830b0c0230010e060000482c4e01000648155001",
+          "a9e90452f70f3020600e530153016d3565313769766b75757077656271520152015301610b4c0167810b4601070009482c65010009481567010800094869016a017114186901510163646f635201"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "steps": [
+      {
+        "kind": "find",
+        "path": [
+          "title"
+        ],
+        "value_json": "3nbw33qb"
+      },
+      {
+        "kind": "obj_put",
+        "view_json": {
+          "doc": {
+            "seed": "jgw",
+            "nested": {
+              "v": 10
+            },
+            "k13": "vhplfskpwba7ww3"
+          },
+          "title": "3nbw33qb",
+          "list": [
+            3
+          ]
+        }
+      },
+      {
+        "kind": "arr_push",
+        "view_json": {
+          "doc": {
+            "seed": "jgw",
+            "nested": {
+              "v": 10
+            },
+            "k13": "vhplfskpwba7ww3"
+          },
+          "title": "3nbw33qb",
+          "list": [
+            3,
+            27
+          ]
+        }
+      },
+      {
+        "kind": "str_ins",
+        "view_json": {
+          "doc": {
+            "seed": "jgw",
+            "nested": {
+              "v": 10
+            },
+            "k13": "vhplfskpwba7ww3"
+          },
+          "title": "3nxbw33qb",
+          "list": [
+            3,
+            27
+          ]
+        }
+      },
+      {
+        "kind": "set",
+        "view_json": {
+          "doc": "zn6bvabsd14x",
+          "title": "3nxbw33qb",
+          "list": [
+            3,
+            27
+          ]
+        }
+      },
+      {
+        "kind": "apply_batch",
+        "view_json": {
+          "doc": [
+            "m5e17ivkuupweb"
+          ],
+          "title": "g",
+          "list": [
+            9,
+            9,
+            9
+          ]
+        }
+      }
+    ],
+    "final_view_json": {
+      "doc": [
+        "m5e17ivkuupweb"
+      ],
+      "title": "g",
+      "list": [
+        9,
+        9,
+        9
+      ]
+    },
+    "final_model_binary_hex": "0000005a816c4363646f63811bc11b01811a818119780e6d3565313769766b757570776562657469746c65816285816102813d01815f068127071a6167646c6973748159c381550181582016000911011420130009813e0181412018000901a9e9046d"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "tools/oracle-node/generate-fixtures.cjs"
+  }
+}
