@@ -3,6 +3,7 @@
 pub mod model;
 pub mod crdt_binary;
 pub mod model_runtime;
+pub mod model_api;
 pub mod diff_runtime;
 pub mod less_db_compat;
 pub mod patch;

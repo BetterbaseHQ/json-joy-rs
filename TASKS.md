@@ -79,7 +79,8 @@
 
 ### Matrix expansion follow-ups from upstream sweep (`/Users/nchapman/Drive/Code/json-joy/packages/json-joy/src`)
 
-- [ ] Add explicit matrix/test-port coverage for `json-crdt/model/api/*` (`ModelApi`, `NodeApi`, finder/proxy/events).
+- [~] Add explicit matrix/test-port coverage for `json-crdt/model/api/*` (`ModelApi`, `NodeApi`, finder/proxy/events).
+  Baseline added in `crates/json-joy-core/src/model_api.rs` + `crates/json-joy-core/tests/upstream_port_model_api_matrix.rs` (`from_patches`, `apply_batch`, `find`, core mutators). Proxy/fanout/events remain.
 - [ ] Add explicit matrix/test-port coverage for `Model.ts` lifecycle helpers (`fromPatches`, `applyBatch`, schema-aware `load`).
 - [ ] Add tracking row and decision for deferred codecs: `json-crdt/codec/indexed/*` and `json-crdt/codec/sidecar/*`.
 - [ ] Add dedicated tracking/tests for `json-crdt-diff` destination-key mode (`diffDstKeys` parity or explicit defer).

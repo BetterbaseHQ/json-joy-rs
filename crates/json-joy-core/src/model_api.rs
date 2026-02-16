@@ -1,0 +1,180 @@
+//! Native model API slice inspired by upstream `json-crdt/model/api/*`.
+//!
+//! This module intentionally starts with a compact surface that is already
+//! useful for runtime orchestration and test-port mapping:
+//! - bootstrap from patches (`Model.fromPatches`-like),
+//! - batch apply (`Model.applyBatch`-like),
+//! - path lookup (`api.find`-like),
+//! - basic mutators (`set`, `obj_put`, `arr_push`, `str_ins`).
+
+use crate::diff_runtime::{diff_model_to_patch_bytes, DiffError};
+use crate::model::ModelError;
+use crate::model_runtime::{ApplyError, RuntimeModel};
+use crate::patch::Patch;
+use serde_json::Value;
+use thiserror::Error;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathStep {
+    Key(String),
+    Index(usize),
+}
+
+#[derive(Debug, Error)]
+pub enum ModelApiError {
+    #[error("no patches provided")]
+    NoPatches,
+    #[error("first patch missing id")]
+    MissingPatchId,
+    #[error("path not found")]
+    PathNotFound,
+    #[error("path does not point to object")]
+    NotObject,
+    #[error("path does not point to array")]
+    NotArray,
+    #[error("path does not point to string")]
+    NotString,
+    #[error("model encode/decode failed: {0}")]
+    Model(#[from] ModelError),
+    #[error("patch apply failed: {0}")]
+    Apply(#[from] ApplyError),
+    #[error("diff failed: {0}")]
+    Diff(#[from] DiffError),
+    #[error("patch decode failed: {0}")]
+    PatchDecode(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeModelApi {
+    runtime: RuntimeModel,
+    sid: u64,
+}
+
+impl NativeModelApi {
+    pub fn from_model_binary(data: &[u8], sid_hint: Option<u64>) -> Result<Self, ModelApiError> {
+        let runtime = RuntimeModel::from_model_binary(data)?;
+        let sid = sid_hint.unwrap_or(65_536);
+        Ok(Self { runtime, sid })
+    }
+
+    pub fn from_patches(patches: &[Patch]) -> Result<Self, ModelApiError> {
+        let first = patches.first().ok_or(ModelApiError::NoPatches)?;
+        let (sid, _) = first.id().ok_or(ModelApiError::MissingPatchId)?;
+        let mut runtime = RuntimeModel::new_logical_empty(sid);
+        for patch in patches {
+            runtime.apply_patch(patch)?;
+        }
+        Ok(Self { runtime, sid })
+    }
+
+    pub fn apply_patch(&mut self, patch: &Patch) -> Result<(), ModelApiError> {
+        self.runtime.apply_patch(patch)?;
+        if let Some((sid, _)) = patch.id() {
+            self.sid = self.sid.max(sid);
+        }
+        Ok(())
+    }
+
+    pub fn apply_batch(&mut self, patches: &[Patch]) -> Result<(), ModelApiError> {
+        for patch in patches {
+            self.apply_patch(patch)?;
+        }
+        Ok(())
+    }
+
+    pub fn view(&self) -> Value {
+        self.runtime.view_json()
+    }
+
+    pub fn to_model_binary(&self) -> Result<Vec<u8>, ModelApiError> {
+        Ok(self.runtime.to_model_binary_like()?)
+    }
+
+    pub fn find(&self, path: &[PathStep]) -> Option<Value> {
+        let mut node = self.runtime.view_json();
+        for step in path {
+            node = match (step, node) {
+                (PathStep::Key(k), Value::Object(map)) => map.get(k)?.clone(),
+                (PathStep::Index(i), Value::Array(arr)) => arr.get(*i)?.clone(),
+                _ => return None,
+            };
+        }
+        Some(node)
+    }
+
+    pub fn set(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
+        let mut next = self.runtime.view_json();
+        if path.is_empty() {
+            next = value;
+            return self.apply_target_view(next);
+        }
+        let target = get_path_mut(&mut next, path).ok_or(ModelApiError::PathNotFound)?;
+        *target = value;
+        self.apply_target_view(next)
+    }
+
+    pub fn obj_put(
+        &mut self,
+        path: &[PathStep],
+        key: impl Into<String>,
+        value: Value,
+    ) -> Result<(), ModelApiError> {
+        let mut next = self.runtime.view_json();
+        let target = if path.is_empty() {
+            &mut next
+        } else {
+            get_path_mut(&mut next, path).ok_or(ModelApiError::PathNotFound)?
+        };
+        let map = target.as_object_mut().ok_or(ModelApiError::NotObject)?;
+        map.insert(key.into(), value);
+        self.apply_target_view(next)
+    }
+
+    pub fn arr_push(&mut self, path: &[PathStep], value: Value) -> Result<(), ModelApiError> {
+        let mut next = self.runtime.view_json();
+        let target = get_path_mut(&mut next, path).ok_or(ModelApiError::PathNotFound)?;
+        let arr = target.as_array_mut().ok_or(ModelApiError::NotArray)?;
+        arr.push(value);
+        self.apply_target_view(next)
+    }
+
+    pub fn str_ins(&mut self, path: &[PathStep], pos: usize, text: &str) -> Result<(), ModelApiError> {
+        let mut next = self.runtime.view_json();
+        let target = get_path_mut(&mut next, path).ok_or(ModelApiError::PathNotFound)?;
+        let s = target.as_str().ok_or(ModelApiError::NotString)?;
+        let mut chars: Vec<char> = s.chars().collect();
+        let p = pos.min(chars.len());
+        for (offset, ch) in text.chars().enumerate() {
+            chars.insert(p + offset, ch);
+        }
+        *target = Value::String(chars.into_iter().collect());
+        self.apply_target_view(next)
+    }
+
+    fn apply_target_view(&mut self, next: Value) -> Result<(), ModelApiError> {
+        let base = self.runtime.to_model_binary_like()?;
+        let patch = diff_model_to_patch_bytes(&base, &next, self.sid)?;
+        if let Some(bytes) = patch {
+            let decoded =
+                Patch::from_binary(&bytes).map_err(|e| ModelApiError::PatchDecode(e.to_string()))?;
+            self.apply_patch(&decoded)?;
+        }
+        Ok(())
+    }
+}
+
+fn get_path_mut<'a>(value: &'a mut Value, path: &[PathStep]) -> Option<&'a mut Value> {
+    let mut cur = value;
+    for step in path {
+        match (step, cur) {
+            (PathStep::Key(key), Value::Object(map)) => {
+                cur = map.get_mut(key)?;
+            }
+            (PathStep::Index(idx), Value::Array(arr)) => {
+                cur = arr.get_mut(*idx)?;
+            }
+            _ => return None,
+        }
+    }
+    Some(cur)
+}
