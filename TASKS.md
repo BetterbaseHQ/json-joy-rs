@@ -89,5 +89,9 @@
   Added native entrypoint `diff_model_dst_keys_to_patch_bytes` + fixture scenario `model_diff_dst_keys` (20 deterministic cases) and parity test `crates/json-joy-core/tests/model_diff_dst_keys_from_fixtures.rs`.
 - [ ] Add dedicated tracking/tests for low-level `util/diff/{str,bin,line}` parity (beyond fixture black-box coverage).
 - [x] Port and track `json-crdt-patch/compaction.ts` baseline (`combine` + `compact`) with upstream-mapped tests.
-- [ ] Decide and track port status for patch alternate codecs (`compact`, `compact-binary`, `verbose`).
+- [~] Port/track patch alternate codecs (`compact`, `compact-binary`, `verbose`).
+  Native baseline now includes `codec/compact` encode/decode in
+  `crates/json-joy-core/src/patch_compact_codec.rs` with upstream-mapped tests in
+  `crates/json-joy-core/tests/upstream_port_patch_compact_codec_matrix.rs`.
+  `compact-binary` and `verbose` remain.
 - [ ] Decide and track port status for `json-crdt-patch/schema.ts`.
