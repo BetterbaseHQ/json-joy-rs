@@ -1,16 +1,18 @@
+use crate::crdt_binary::BinaryCursor;
+
 fn decode_model_view(data: &[u8]) -> Result<Value, ModelError> {
-    let mut reader = Reader::new(data);
+    let mut reader = BinaryCursor::new(data);
 
     // Server-clock encoding starts with a marker byte whose highest bit is set
     // and does not contain a clock table section.
-    if reader.peak()? & 0b1000_0000 != 0 {
-        let _marker = reader.u8()?;
-        let _time = reader.vu57()?;
+    if reader.peek_u8().ok_or(ModelError::InvalidModelBinary)? & 0b1000_0000 != 0 {
+        let _marker = reader.u8().ok_or(ModelError::InvalidModelBinary)?;
+        let _time = reader.vu57().ok_or(ModelError::InvalidModelBinary)?;
         return decode_root_to_end(&mut reader);
     }
 
-    let clock_table_offset = reader.u32_be()? as usize;
-    let root_start = reader.pos;
+    let clock_table_offset = reader.u32_be().ok_or(ModelError::InvalidClockTable)? as usize;
+    let root_start = reader.position();
     let clock_start = root_start
         .checked_add(clock_table_offset)
         .ok_or(ModelError::InvalidClockTable)?;
@@ -20,21 +22,21 @@ fn decode_model_view(data: &[u8]) -> Result<Value, ModelError> {
 
     // Validate basic clock table framing similarly to upstream decode path.
     {
-        let mut clock = Reader::new(&data[clock_start..]);
-        let table_len = clock.vu57()?;
+        let mut clock = BinaryCursor::new(&data[clock_start..]);
+        let table_len = clock.vu57().ok_or(ModelError::InvalidClockTable)?;
         if table_len == 0 {
             return Err(ModelError::InvalidClockTable);
         }
-        let _session = clock.vu57()?;
-        let _time = clock.vu57()?;
+        let _session = clock.vu57().ok_or(ModelError::InvalidClockTable)?;
+        let _time = clock.vu57().ok_or(ModelError::InvalidClockTable)?;
         for _ in 1..table_len {
-            let _ = clock.vu57()?;
-            let _ = clock.vu57()?;
+            let _ = clock.vu57().ok_or(ModelError::InvalidClockTable)?;
+            let _ = clock.vu57().ok_or(ModelError::InvalidClockTable)?;
         }
     }
 
     let root_slice = &data[root_start..clock_start];
-    let mut root_reader = Reader::new(root_slice);
+    let mut root_reader = BinaryCursor::new(root_slice);
     let value = decode_root(&mut root_reader)?;
     if !root_reader.is_eof() {
         return Err(ModelError::InvalidModelBinary);
@@ -42,7 +44,7 @@ fn decode_model_view(data: &[u8]) -> Result<Value, ModelError> {
     Ok(value)
 }
 
-fn decode_root_to_end(reader: &mut Reader<'_>) -> Result<Value, ModelError> {
+fn decode_root_to_end(reader: &mut BinaryCursor<'_>) -> Result<Value, ModelError> {
     let value = decode_root(reader)?;
     if !reader.is_eof() {
         return Err(ModelError::InvalidModelBinary);
@@ -50,18 +52,18 @@ fn decode_root_to_end(reader: &mut Reader<'_>) -> Result<Value, ModelError> {
     Ok(value)
 }
 
-fn decode_root(reader: &mut Reader<'_>) -> Result<Value, ModelError> {
-    let first = reader.peak()?;
+fn decode_root(reader: &mut BinaryCursor<'_>) -> Result<Value, ModelError> {
+    let first = reader.peek_u8().ok_or(ModelError::InvalidModelBinary)?;
     if first == 0 {
-        reader.u8()?;
+        reader.u8().ok_or(ModelError::InvalidModelBinary)?;
         return Ok(Value::Null);
     }
     decode_node(reader)
 }
 
-fn decode_node(reader: &mut Reader<'_>) -> Result<Value, ModelError> {
-    reader.skip_id()?;
-    let octet = reader.u8()?;
+fn decode_node(reader: &mut BinaryCursor<'_>) -> Result<Value, ModelError> {
+    reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
+    let octet = reader.u8().ok_or(ModelError::InvalidModelBinary)?;
     let major = octet >> 5;
     let minor = (octet & 0b1_1111) as u64;
 
@@ -72,48 +74,68 @@ fn decode_node(reader: &mut Reader<'_>) -> Result<Value, ModelError> {
         1 => decode_node(reader),
         // OBJ
         2 => {
-            let len = if minor != 31 { minor } else { reader.vu57()? };
+            let len = if minor != 31 {
+                minor
+            } else {
+                reader.vu57().ok_or(ModelError::InvalidModelBinary)?
+            };
             decode_obj(reader, len)
         }
         // VEC
         3 => {
-            let len = if minor != 31 { minor } else { reader.vu57()? };
+            let len = if minor != 31 {
+                minor
+            } else {
+                reader.vu57().ok_or(ModelError::InvalidModelBinary)?
+            };
             decode_vec(reader, len)
         }
         // STR
         4 => {
-            let len = if minor != 31 { minor } else { reader.vu57()? };
+            let len = if minor != 31 {
+                minor
+            } else {
+                reader.vu57().ok_or(ModelError::InvalidModelBinary)?
+            };
             decode_str(reader, len)
         }
         // BIN
         5 => {
-            let len = if minor != 31 { minor } else { reader.vu57()? };
+            let len = if minor != 31 {
+                minor
+            } else {
+                reader.vu57().ok_or(ModelError::InvalidModelBinary)?
+            };
             decode_bin(reader, len)
         }
         // ARR
         6 => {
-            let len = if minor != 31 { minor } else { reader.vu57()? };
+            let len = if minor != 31 {
+                minor
+            } else {
+                reader.vu57().ok_or(ModelError::InvalidModelBinary)?
+            };
             decode_arr(reader, len)
         }
         _ => Err(ModelError::InvalidModelBinary),
     }
 }
 
-fn decode_con(reader: &mut Reader<'_>, length: u64) -> Result<Value, ModelError> {
+fn decode_con(reader: &mut BinaryCursor<'_>, length: u64) -> Result<Value, ModelError> {
     if length == 0 {
-        let cbor = reader.read_one_cbor()?;
+        let cbor = reader.read_one_cbor().ok_or(ModelError::InvalidModelBinary)?;
         return cbor_to_json(cbor);
     }
 
     // Timestamp reference constant. Not expected in current fixture corpus.
-    reader.skip_id()?;
+    reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
     Ok(Value::Null)
 }
 
-fn decode_obj(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
+fn decode_obj(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelError> {
     let mut map = Map::new();
     for _ in 0..len {
-        let key = match reader.read_one_cbor()? {
+        let key = match reader.read_one_cbor().ok_or(ModelError::InvalidModelBinary)? {
             CborValue::Text(s) => s,
             _ => return Err(ModelError::InvalidModelBinary),
         };
@@ -123,12 +145,12 @@ fn decode_obj(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
     Ok(Value::Object(map))
 }
 
-fn decode_vec(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
+fn decode_vec(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelError> {
     let mut out = Vec::with_capacity(len as usize);
     for _ in 0..len {
-        let octet = reader.peak()?;
+        let octet = reader.peek_u8().ok_or(ModelError::InvalidModelBinary)?;
         if octet == 0 {
-            reader.u8()?;
+            reader.u8().ok_or(ModelError::InvalidModelBinary)?;
             out.push(Value::Null);
         } else {
             out.push(decode_node(reader)?);
@@ -137,11 +159,11 @@ fn decode_vec(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
     Ok(Value::Array(out))
 }
 
-fn decode_str(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
+fn decode_str(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelError> {
     let mut out = String::new();
     for _ in 0..len {
-        reader.skip_id()?;
-        let cbor = reader.read_one_cbor()?;
+        reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
+        let cbor = reader.read_one_cbor().ok_or(ModelError::InvalidModelBinary)?;
         match cbor {
             CborValue::Text(s) => {
                 out.push_str(&s);
@@ -155,15 +177,17 @@ fn decode_str(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
     Ok(Value::String(out))
 }
 
-fn decode_bin(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
+fn decode_bin(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelError> {
     let mut out: Vec<u8> = Vec::new();
     for _ in 0..len {
-        reader.skip_id()?;
-        let (deleted, span) = reader.b1vu56()?;
+        reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
+        let (deleted, span) = reader.b1vu56().ok_or(ModelError::InvalidModelBinary)?;
         if deleted == 1 {
             continue;
         }
-        let bytes = reader.buf(span as usize)?;
+        let bytes = reader
+            .read_bytes(span as usize)
+            .ok_or(ModelError::InvalidModelBinary)?;
         for b in bytes {
             out.push(*b);
         }
@@ -177,11 +201,11 @@ fn decode_bin(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
     Ok(Value::Object(map))
 }
 
-fn decode_arr(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
+fn decode_arr(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelError> {
     let mut out = Vec::new();
     for _ in 0..len {
-        reader.skip_id()?;
-        let (deleted, span) = reader.b1vu56()?;
+        reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
+        let (deleted, span) = reader.b1vu56().ok_or(ModelError::InvalidModelBinary)?;
 
         if deleted == 1 {
             continue;
@@ -196,95 +220,3 @@ fn decode_arr(reader: &mut Reader<'_>, len: u64) -> Result<Value, ModelError> {
 fn cbor_to_json(v: CborValue) -> Result<Value, ModelError> {
     json_joy_json_pack::cbor_to_json_owned(v).map_err(|_| ModelError::InvalidModelBinary)
 }
-
-#[derive(Debug)]
-struct Reader<'a> {
-    data: &'a [u8],
-    pos: usize,
-}
-
-impl<'a> Reader<'a> {
-    fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0 }
-    }
-
-    fn is_eof(&self) -> bool {
-        self.pos == self.data.len()
-    }
-
-    fn remaining(&self) -> usize {
-        self.data.len().saturating_sub(self.pos)
-    }
-
-    fn peak(&self) -> Result<u8, ModelError> {
-        if self.remaining() < 1 {
-            return Err(ModelError::InvalidModelBinary);
-        }
-        Ok(self.data[self.pos])
-    }
-
-    fn u8(&mut self) -> Result<u8, ModelError> {
-        let b = self.peak()?;
-        self.pos += 1;
-        Ok(b)
-    }
-
-    fn u32_be(&mut self) -> Result<u32, ModelError> {
-        if self.remaining() < 4 {
-            return Err(ModelError::InvalidClockTable);
-        }
-        let out = u32::from_be_bytes([
-            self.data[self.pos],
-            self.data[self.pos + 1],
-            self.data[self.pos + 2],
-            self.data[self.pos + 3],
-        ]);
-        self.pos += 4;
-        Ok(out)
-    }
-
-    fn skip(&mut self, n: usize) -> Result<(), ModelError> {
-        if self.remaining() < n {
-            return Err(ModelError::InvalidModelBinary);
-        }
-        self.pos += n;
-        Ok(())
-    }
-
-    fn buf(&mut self, n: usize) -> Result<&'a [u8], ModelError> {
-        if self.remaining() < n {
-            return Err(ModelError::InvalidModelBinary);
-        }
-        let start = self.pos;
-        self.pos += n;
-        Ok(&self.data[start..start + n])
-    }
-
-    fn vu57(&mut self) -> Result<u64, ModelError> {
-        read_vu57(self.data, &mut self.pos).ok_or(ModelError::InvalidModelBinary)
-    }
-
-    fn b1vu56(&mut self) -> Result<(u8, u64), ModelError> {
-        read_b1vu56(self.data, &mut self.pos).ok_or(ModelError::InvalidModelBinary)
-    }
-
-    fn skip_id(&mut self) -> Result<(), ModelError> {
-        let byte = self.u8()?;
-        if byte <= 0b0111_1111 {
-            return Ok(());
-        }
-        self.pos -= 1;
-        let _ = self.b1vu56()?;
-        let _ = self.vu57()?;
-        Ok(())
-    }
-
-    fn read_one_cbor(&mut self) -> Result<CborValue, ModelError> {
-        let slice = &self.data[self.pos..];
-        let (val, consumed) = json_joy_json_pack::decode_cbor_value_with_consumed(slice)
-            .map_err(|_| ModelError::InvalidModelBinary)?;
-        self.skip(consumed)?;
-        Ok(val)
-    }
-}
-use crate::crdt_binary::{read_b1vu56, read_vu57};

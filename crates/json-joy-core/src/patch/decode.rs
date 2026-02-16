@@ -1,91 +1,33 @@
-struct Reader<'a> {
-    data: &'a [u8],
-    pos: usize,
-}
-
-impl<'a> Reader<'a> {
-    fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0 }
-    }
-
-    fn is_eof(&self) -> bool {
-        self.pos == self.data.len()
-    }
-
-    fn remaining(&self) -> usize {
-        self.data.len().saturating_sub(self.pos)
-    }
-
-    fn u8(&mut self) -> Result<u8, PatchError> {
-        if self.remaining() < 1 {
-            return Err(PatchError::Overflow);
-        }
-        let b = self.data[self.pos];
-        self.pos += 1;
-        Ok(b)
-    }
-
-    fn skip(&mut self, n: usize) -> Result<(), PatchError> {
-        if self.remaining() < n {
-            return Err(PatchError::Overflow);
-        }
-        self.pos += n;
-        Ok(())
-    }
-
-    fn read_bytes(&mut self, n: usize) -> Result<Vec<u8>, PatchError> {
-        if self.remaining() < n {
-            return Err(PatchError::Overflow);
-        }
-        let start = self.pos;
-        self.pos += n;
-        Ok(self.data[start..start + n].to_vec())
-    }
-
-    fn vu57(&mut self) -> Result<u64, PatchError> {
-        read_vu57(self.data, &mut self.pos).ok_or(PatchError::Overflow)
-    }
-
-    fn b1vu56(&mut self) -> Result<(u8, u64), PatchError> {
-        read_b1vu56(self.data, &mut self.pos).ok_or(PatchError::Overflow)
-    }
-
-    fn decode_id(&mut self, patch_sid: u64) -> Result<Timestamp, PatchError> {
-        let (flag, time) = self.b1vu56()?;
-        if flag == 1 {
-            let sid = self.vu57()?;
-            Ok(Timestamp { sid, time })
-        } else {
-            Ok(Timestamp {
-                sid: patch_sid,
-                time,
-            })
-        }
-    }
-
-    fn read_one_cbor(&mut self) -> Result<Value, PatchError> {
-        let slice = &self.data[self.pos..];
-        let (val, consumed) = json_joy_json_pack::decode_cbor_value_with_consumed(slice)
-            .map_err(|_| PatchError::InvalidCbor)?;
-        self.skip(consumed)?;
-        Ok(val)
-    }
-}
+use crate::crdt_binary::BinaryCursor;
+type Reader<'a> = BinaryCursor<'a>;
 
 fn cbor_to_json(v: Value) -> Result<serde_json::Value, PatchError> {
     json_joy_json_pack::cbor_to_json_owned(v).map_err(|_| PatchError::InvalidCbor)
 }
 
+fn decode_id(reader: &mut BinaryCursor<'_>, patch_sid: u64) -> Result<Timestamp, PatchError> {
+    let (flag, time) = reader.b1vu56().ok_or(PatchError::Overflow)?;
+    if flag == 1 {
+        let sid = reader.vu57().ok_or(PatchError::Overflow)?;
+        Ok(Timestamp { sid, time })
+    } else {
+        Ok(Timestamp {
+            sid: patch_sid,
+            time,
+        })
+    }
+}
+
 type DecodedPatchPayload = (u64, u64, u64, u64, Vec<u8>, Vec<DecodedOp>);
 
-fn decode_patch(reader: &mut Reader<'_>) -> Result<DecodedPatchPayload, PatchError> {
-    let sid = reader.vu57()?;
-    let time = reader.vu57()?;
+fn decode_patch(reader: &mut BinaryCursor<'_>) -> Result<DecodedPatchPayload, PatchError> {
+    let sid = reader.vu57().ok_or(PatchError::Overflow)?;
+    let time = reader.vu57().ok_or(PatchError::Overflow)?;
 
     // meta is a CBOR value (typically undefined or [meta])
-    let _meta = reader.read_one_cbor()?;
+    let _meta = reader.read_one_cbor().ok_or(PatchError::InvalidCbor)?;
 
-    let ops_len = reader.vu57()?;
+    let ops_len = reader.vu57().ok_or(PatchError::Overflow)?;
     let mut span: u64 = 0;
     let mut opcodes = Vec::with_capacity(ops_len as usize);
     let mut decoded_ops = Vec::with_capacity(ops_len as usize);
@@ -101,21 +43,24 @@ fn decode_patch(reader: &mut Reader<'_>) -> Result<DecodedPatchPayload, PatchErr
     Ok((sid, time, ops_len, span, opcodes, decoded_ops))
 }
 
-fn read_len_from_low3_or_var(reader: &mut Reader<'_>, octet: u8) -> Result<u64, PatchError> {
+fn read_len_from_low3_or_var(
+    reader: &mut BinaryCursor<'_>,
+    octet: u8,
+) -> Result<u64, PatchError> {
     let low = (octet & 0b111) as u64;
     if low == 0 {
-        reader.vu57()
+        reader.vu57().ok_or(PatchError::Overflow)
     } else {
         Ok(low)
     }
 }
 
 fn decode_op(
-    reader: &mut Reader<'_>,
+    reader: &mut BinaryCursor<'_>,
     patch_sid: u64,
     op_id: Timestamp,
 ) -> Result<(u8, DecodedOp, u64), PatchError> {
-    let octet = reader.u8()?;
+    let octet = reader.u8().ok_or(PatchError::Overflow)?;
     let opcode = octet >> 3;
 
     match opcode {
@@ -126,14 +71,16 @@ fn decode_op(
                 // CBOR undefined (0xf7) is used by json-joy diffs for object-key
                 // deletion semantics. Preserve it explicitly to allow canonical
                 // binary parity in native patch encoding.
-                if reader.remaining() >= 1 && reader.data[reader.pos] == 0xf7 {
-                    reader.u8()?;
+                if reader.peek_u8() == Some(0xf7) {
+                    reader.u8().ok_or(PatchError::Overflow)?;
                     ConValue::Undef
                 } else {
-                    ConValue::Json(cbor_to_json(reader.read_one_cbor()?)?)
+                    ConValue::Json(cbor_to_json(
+                        reader.read_one_cbor().ok_or(PatchError::InvalidCbor)?,
+                    )?)
                 }
             } else {
-                ConValue::Ref(reader.decode_id(patch_sid)?)
+                ConValue::Ref(decode_id(reader, patch_sid)?)
             };
             Ok((opcode, DecodedOp::NewCon { id: op_id, value }, 1))
         }
@@ -151,8 +98,8 @@ fn decode_op(
         6 => Ok((opcode, DecodedOp::NewArr { id: op_id }, 1)),
         // ins_val
         9 => {
-            let obj = reader.decode_id(patch_sid)?;
-            let val = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
+            let val = decode_id(reader, patch_sid)?;
             Ok((
                 opcode,
                 DecodedOp::InsVal {
@@ -166,14 +113,14 @@ fn decode_op(
         // ins_obj
         10 => {
             let len = read_len_from_low3_or_var(reader, octet)?;
-            let obj = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
             let mut data = Vec::with_capacity(len as usize);
             for _ in 0..len {
-                let key = match reader.read_one_cbor()? {
+                let key = match reader.read_one_cbor().ok_or(PatchError::InvalidCbor)? {
                     Value::Text(s) => s,
                     _ => return Err(PatchError::InvalidCbor),
                 };
-                let value = reader.decode_id(patch_sid)?;
+                let value = decode_id(reader, patch_sid)?;
                 data.push((key, value));
             }
             Ok((
@@ -189,11 +136,11 @@ fn decode_op(
         // ins_vec
         11 => {
             let len = read_len_from_low3_or_var(reader, octet)?;
-            let obj = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
             let mut data = Vec::with_capacity(len as usize);
             for _ in 0..len {
-                let idx = reader.u8()? as u64;
-                let value = reader.decode_id(patch_sid)?;
+                let idx = reader.u8().ok_or(PatchError::Overflow)? as u64;
+                let value = decode_id(reader, patch_sid)?;
                 data.push((idx, value));
             }
             Ok((
@@ -209,10 +156,10 @@ fn decode_op(
         // ins_str
         12 => {
             let len = read_len_from_low3_or_var(reader, octet)? as usize;
-            let obj = reader.decode_id(patch_sid)?;
-            let reference = reader.decode_id(patch_sid)?;
-            let bytes = reader.read_bytes(len)?;
-            let data = String::from_utf8(bytes).map_err(|_| PatchError::InvalidCbor)?;
+            let obj = decode_id(reader, patch_sid)?;
+            let reference = decode_id(reader, patch_sid)?;
+            let bytes = reader.read_bytes(len).ok_or(PatchError::Overflow)?;
+            let data = String::from_utf8(bytes.to_vec()).map_err(|_| PatchError::InvalidCbor)?;
             // Upstream JS patch op span for strings is UTF-16 code unit length.
             let span = data.encode_utf16().count() as u64;
             Ok((
@@ -229,9 +176,9 @@ fn decode_op(
         // ins_bin
         13 => {
             let len = read_len_from_low3_or_var(reader, octet)? as usize;
-            let obj = reader.decode_id(patch_sid)?;
-            let reference = reader.decode_id(patch_sid)?;
-            let data = reader.read_bytes(len)?;
+            let obj = decode_id(reader, patch_sid)?;
+            let reference = decode_id(reader, patch_sid)?;
+            let data = reader.read_bytes(len).ok_or(PatchError::Overflow)?.to_vec();
             Ok((
                 opcode,
                 DecodedOp::InsBin {
@@ -246,11 +193,11 @@ fn decode_op(
         // ins_arr
         14 => {
             let len = read_len_from_low3_or_var(reader, octet)?;
-            let obj = reader.decode_id(patch_sid)?;
-            let reference = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
+            let reference = decode_id(reader, patch_sid)?;
             let mut data = Vec::with_capacity(len as usize);
             for _ in 0..len {
-                data.push(reader.decode_id(patch_sid)?);
+                data.push(decode_id(reader, patch_sid)?);
             }
             Ok((
                 opcode,
@@ -265,9 +212,9 @@ fn decode_op(
         }
         // upd_arr
         15 => {
-            let obj = reader.decode_id(patch_sid)?;
-            let reference = reader.decode_id(patch_sid)?;
-            let val = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
+            let reference = decode_id(reader, patch_sid)?;
+            let val = decode_id(reader, patch_sid)?;
             Ok((
                 opcode,
                 DecodedOp::UpdArr {
@@ -282,11 +229,11 @@ fn decode_op(
         // del
         16 => {
             let len = read_len_from_low3_or_var(reader, octet)?;
-            let obj = reader.decode_id(patch_sid)?;
+            let obj = decode_id(reader, patch_sid)?;
             let mut what = Vec::with_capacity(len as usize);
             for _ in 0..len {
-                let start = reader.decode_id(patch_sid)?;
-                let span = reader.vu57()?;
+                let start = decode_id(reader, patch_sid)?;
+                let span = reader.vu57().ok_or(PatchError::Overflow)?;
                 what.push(Timespan {
                     sid: start.sid,
                     time: start.time,
@@ -311,4 +258,3 @@ fn decode_op(
         _ => Err(PatchError::UnknownOpcode(opcode)),
     }
 }
-use crate::crdt_binary::{read_b1vu56, read_vu57};

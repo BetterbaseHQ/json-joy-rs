@@ -3,10 +3,103 @@
 //! These helpers mirror `json-joy@17.67.0` `CrdtReader/CrdtWriter` behavior
 //! for `vu57`, `b1vu56`, and logical clock-table/id handling.
 
+use ciborium::value::Value as CborValue;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogicalClockBase {
     pub sid: u64,
     pub time: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BinaryCursor<'a> {
+    data: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> BinaryCursor<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { data, pos: 0 }
+    }
+
+    pub fn position(&self) -> usize {
+        self.pos
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.pos == self.data.len()
+    }
+
+    pub fn remaining(&self) -> usize {
+        self.data.len().saturating_sub(self.pos)
+    }
+
+    pub fn peek_u8(&self) -> Option<u8> {
+        self.data.get(self.pos).copied()
+    }
+
+    pub fn u8(&mut self) -> Option<u8> {
+        let b = self.peek_u8()?;
+        self.pos += 1;
+        Some(b)
+    }
+
+    pub fn u32_be(&mut self) -> Option<u32> {
+        if self.remaining() < 4 {
+            return None;
+        }
+        let out = u32::from_be_bytes([
+            self.data[self.pos],
+            self.data[self.pos + 1],
+            self.data[self.pos + 2],
+            self.data[self.pos + 3],
+        ]);
+        self.pos += 4;
+        Some(out)
+    }
+
+    pub fn skip(&mut self, n: usize) -> Option<()> {
+        if self.remaining() < n {
+            return None;
+        }
+        self.pos += n;
+        Some(())
+    }
+
+    pub fn read_bytes(&mut self, n: usize) -> Option<&'a [u8]> {
+        if self.remaining() < n {
+            return None;
+        }
+        let start = self.pos;
+        self.pos += n;
+        Some(&self.data[start..start + n])
+    }
+
+    pub fn vu57(&mut self) -> Option<u64> {
+        read_vu57(self.data, &mut self.pos)
+    }
+
+    pub fn b1vu56(&mut self) -> Option<(u8, u64)> {
+        read_b1vu56(self.data, &mut self.pos)
+    }
+
+    pub fn skip_id(&mut self) -> Option<()> {
+        let byte = self.u8()?;
+        if byte <= 0b0111_1111 {
+            return Some(());
+        }
+        self.pos = self.pos.saturating_sub(1);
+        let _ = self.b1vu56()?;
+        let _ = self.vu57()?;
+        Some(())
+    }
+
+    pub fn read_one_cbor(&mut self) -> Option<CborValue> {
+        let slice = &self.data[self.pos..];
+        let (val, consumed) = json_joy_json_pack::decode_cbor_value_with_consumed(slice).ok()?;
+        self.skip(consumed)?;
+        Some(val)
+    }
 }
 
 pub fn write_vu57(out: &mut Vec<u8>, mut value: u64) {

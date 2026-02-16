@@ -55,7 +55,10 @@ This repository is structured as a Rust-core + bindings monorepo, following the 
 - Patch binary construction is centralized through the native patch family:
   `crates/json-joy-core/src/patch/encode.rs` is the shared encoder path used by
   `patch_builder`.
-- CBOR helper logic is centralized in `crates/json-joy-json-pack/src/cbor.rs`;
+- Runtime model/patch decoders now share a common binary cursor primitive in
+  `crates/json-joy-core/src/crdt_binary.rs` (`BinaryCursor` + `vu57`/`b1vu56`
+  helpers) to mirror upstream reader-style organization and reduce decode drift.
+- CBOR helper logic is centralized in `crates/json-joy-json-pack/src/cbor/`;
   core consumes this via `json_joy_core::json_pack` re-export and direct crate
   dependency to avoid duplicate conversion/encoding implementations.
 - Oracle tooling remains for fixture generation and differential verification.
