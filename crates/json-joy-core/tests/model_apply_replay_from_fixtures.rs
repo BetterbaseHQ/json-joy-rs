@@ -76,11 +76,17 @@ fn apply_replay_fixtures_match_oracle_view() {
 
         let mut runtime = RuntimeModel::from_model_binary(&base_bytes)
             .unwrap_or_else(|e| panic!("runtime base decode failed for {name}: {e}"));
+        runtime
+            .validate_invariants()
+            .unwrap_or_else(|e| panic!("runtime invariants failed at base for {name}: {e}"));
         for idx in replay {
             let i = idx.as_u64().expect("replay index must be u64") as usize;
             runtime
                 .apply_patch(&patches[i])
                 .unwrap_or_else(|e| panic!("runtime apply failed for {name}: {e}"));
+            runtime
+                .validate_invariants()
+                .unwrap_or_else(|e| panic!("runtime invariants failed after apply for {name}: {e}"));
         }
 
         assert_eq!(
@@ -123,11 +129,17 @@ fn duplicate_patch_replay_is_idempotent() {
             .collect::<Vec<_>>();
 
         let mut runtime = RuntimeModel::from_model_binary(&base_bytes).expect("runtime model must decode");
+        runtime
+            .validate_invariants()
+            .unwrap_or_else(|e| panic!("runtime invariants failed at base for {name}: {e}"));
         let mut first_seen = false;
         let mut first_view = None;
         for idx in replay {
             let i = idx.as_u64().expect("replay index must be u64") as usize;
             runtime.apply_patch(&patches[i]).expect("runtime apply must succeed");
+            runtime
+                .validate_invariants()
+                .unwrap_or_else(|e| panic!("runtime invariants failed after apply for {name}: {e}"));
             if !first_seen {
                 first_seen = true;
                 first_view = Some(runtime.view_json());
@@ -177,9 +189,15 @@ fn out_of_order_replay_matches_oracle() {
             .collect::<Vec<_>>();
 
         let mut runtime = RuntimeModel::from_model_binary(&base_bytes).expect("runtime model must decode");
+        runtime
+            .validate_invariants()
+            .unwrap_or_else(|e| panic!("runtime invariants failed at base for {name}: {e}"));
         for idx in replay {
             let i = idx.as_u64().expect("replay index must be u64") as usize;
             runtime.apply_patch(&patches[i]).expect("runtime apply must succeed");
+            runtime
+                .validate_invariants()
+                .unwrap_or_else(|e| panic!("runtime invariants failed after apply for {name}: {e}"));
         }
 
         assert_eq!(

@@ -37,13 +37,22 @@ fn property_replay_applying_same_sequence_twice_is_stable() {
             .collect();
 
         let mut model_once = RuntimeModel::from_model_binary(&base).expect("base decode must succeed");
+        model_once
+            .validate_invariants()
+            .expect("invariants must hold for base model");
         for idx in replay.iter().copied() {
             model_once.apply_patch(&patches[idx]).expect("apply must succeed");
+            model_once
+                .validate_invariants()
+                .expect("invariants must hold after apply");
         }
         let once_view = model_once.view_json();
 
         for idx in replay.iter().copied() {
             model_once.apply_patch(&patches[idx]).expect("second pass apply must succeed");
+            model_once
+                .validate_invariants()
+                .expect("invariants must hold after second-pass apply");
         }
         let twice_view = model_once.view_json();
 
@@ -89,13 +98,24 @@ fn property_duplicate_compression_preserves_view_for_duplicate_heavy_fixtures() 
         let compressed = compress_adjacent_duplicates(&replay);
 
         let mut full = RuntimeModel::from_model_binary(&base).expect("base decode must succeed");
+        full
+            .validate_invariants()
+            .expect("invariants must hold for base model");
         for idx in replay.iter().copied() {
             full.apply_patch(&patches[idx]).expect("full apply must succeed");
+            full.validate_invariants()
+                .expect("invariants must hold after full apply");
         }
 
         let mut dedup = RuntimeModel::from_model_binary(&base).expect("base decode must succeed");
+        dedup
+            .validate_invariants()
+            .expect("invariants must hold for base model");
         for idx in compressed.iter().copied() {
             dedup.apply_patch(&patches[idx]).expect("dedup apply must succeed");
+            dedup
+                .validate_invariants()
+                .expect("invariants must hold after dedup apply");
         }
 
         assert_eq!(
