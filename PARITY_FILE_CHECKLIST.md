@@ -43,71 +43,71 @@ Rules:
 
 ## Package: buffers
 
-- [ ] `packages/buffers/package.json` -> `crates/buffers/Cargo.toml`
-- [ ] `Create mirrored package root: crates/buffers/src`
-- [ ] `Complete all 61 file ports below`
+- [x] `packages/buffers/package.json` -> `crates/buffers/Cargo.toml` (COMPLETE)
+- [x] `Create mirrored package root: crates/buffers/src` (COMPLETE)
+- [ ] `Complete all 61 file ports below` (3 core files done, rest incremental)
 
-- [ ] `packages/buffers/src/Reader.ts` -> `crates/buffers/src/Reader.rs`
-- [ ] `packages/buffers/src/Slice.ts` -> `crates/buffers/src/Slice.rs`
-- [ ] `packages/buffers/src/StreamingOctetReader.ts` -> `crates/buffers/src/StreamingOctetReader.rs`
-- [ ] `packages/buffers/src/StreamingReader.ts` -> `crates/buffers/src/StreamingReader.rs`
-- [ ] `packages/buffers/src/Uint8ArrayCut.ts` -> `crates/buffers/src/Uint8ArrayCut.rs`
-- [ ] `packages/buffers/src/Writer.ts` -> `crates/buffers/src/Writer.rs`
-- [ ] `packages/buffers/src/__bench__/bench.decodeUtf8.ts` -> `crates/buffers/src/__bench__/bench.decodeUtf8.rs`
-- [ ] `packages/buffers/src/__bench__/bench.encodeUtf8.ts` -> `crates/buffers/src/__bench__/bench.encodeUtf8.rs`
-- [ ] `packages/buffers/src/__bench__/runBenchmark.ts` -> `crates/buffers/src/__bench__/runBenchmark.rs`
-- [ ] `packages/buffers/src/__tests__/Reader.slice-cut.spec.ts` -> `crates/buffers/src/__tests__/Reader.slice-cut.spec.rs`
-- [ ] `packages/buffers/src/__tests__/Reader.spec.ts` -> `crates/buffers/src/__tests__/Reader.spec.rs`
-- [ ] `packages/buffers/src/__tests__/StreamingReader.spec.ts` -> `crates/buffers/src/__tests__/StreamingReader.spec.rs`
-- [ ] `packages/buffers/src/__tests__/Writer.spec.ts` -> `crates/buffers/src/__tests__/Writer.spec.rs`
-- [ ] `packages/buffers/src/__tests__/isFloat32.spec.ts` -> `crates/buffers/src/__tests__/isFloat32.spec.rs`
-- [ ] `packages/buffers/src/__tests__/peak-peek.spec.ts` -> `crates/buffers/src/__tests__/peak-peek.spec.rs`
-- [ ] `packages/buffers/src/b.ts` -> `crates/buffers/src/b.rs`
-- [ ] `packages/buffers/src/bufferToUint8Array.ts` -> `crates/buffers/src/bufferToUint8Array.rs`
-- [ ] `packages/buffers/src/cmpUint8Array.ts` -> `crates/buffers/src/cmpUint8Array.rs`
-- [ ] `packages/buffers/src/cmpUint8Array2.ts` -> `crates/buffers/src/cmpUint8Array2.rs`
-- [ ] `packages/buffers/src/cmpUint8Array3.ts` -> `crates/buffers/src/cmpUint8Array3.rs`
-- [ ] `packages/buffers/src/concat.ts` -> `crates/buffers/src/concat.rs`
-- [ ] `packages/buffers/src/copy.ts` -> `crates/buffers/src/copy.rs`
-- [ ] `packages/buffers/src/f16.ts` -> `crates/buffers/src/f16.rs`
-- [ ] `packages/buffers/src/index.ts` -> `crates/buffers/src/mod.rs`
-- [ ] `packages/buffers/src/isArrayBuffer.ts` -> `crates/buffers/src/isArrayBuffer.rs`
-- [ ] `packages/buffers/src/isFloat32.ts` -> `crates/buffers/src/isFloat32.rs`
-- [ ] `packages/buffers/src/isUint8Array.ts` -> `crates/buffers/src/isUint8Array.rs`
-- [ ] `packages/buffers/src/printOctets.ts` -> `crates/buffers/src/printOctets.rs`
-- [ ] `packages/buffers/src/strings.ts` -> `crates/buffers/src/strings.rs`
-- [ ] `packages/buffers/src/toBuf.ts` -> `crates/buffers/src/toBuf.rs`
-- [ ] `packages/buffers/src/toUint8Array.ts` -> `crates/buffers/src/toUint8Array.rs`
-- [ ] `packages/buffers/src/types.ts` -> `crates/buffers/src/types.rs`
-- [ ] `packages/buffers/src/utf8/CachedUtf8Decoder.ts` -> `crates/buffers/src/utf8/CachedUtf8Decoder.rs`
-- [ ] `packages/buffers/src/utf8/__tests__/encode.spec.ts` -> `crates/buffers/src/utf8/__tests__/encode.spec.rs`
-- [ ] `packages/buffers/src/utf8/__tests__/isUtf8.spec.ts` -> `crates/buffers/src/utf8/__tests__/isUtf8.spec.rs`
-- [ ] `packages/buffers/src/utf8/decodeAscii.ts` -> `crates/buffers/src/utf8/decodeAscii.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/README.md` -> `crates/buffers/src/utf8/decodeUtf8/README.md`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/__tests__/decodeUtf8.spec.ts` -> `crates/buffers/src/utf8/decodeUtf8/__tests__/decodeUtf8.spec.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/index.ts` -> `crates/buffers/src/utf8/decodeUtf8/mod.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v1.ts` -> `crates/buffers/src/utf8/decodeUtf8/v1.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v10.ts` -> `crates/buffers/src/utf8/decodeUtf8/v10.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v11.ts` -> `crates/buffers/src/utf8/decodeUtf8/v11.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v12.ts` -> `crates/buffers/src/utf8/decodeUtf8/v12.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v13.ts` -> `crates/buffers/src/utf8/decodeUtf8/v13.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v14.ts` -> `crates/buffers/src/utf8/decodeUtf8/v14.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v15.ts` -> `crates/buffers/src/utf8/decodeUtf8/v15.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v16.ts` -> `crates/buffers/src/utf8/decodeUtf8/v16.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v17.ts` -> `crates/buffers/src/utf8/decodeUtf8/v17.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v18.ts` -> `crates/buffers/src/utf8/decodeUtf8/v18.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v19.ts` -> `crates/buffers/src/utf8/decodeUtf8/v19.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v2.ts` -> `crates/buffers/src/utf8/decodeUtf8/v2.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v3.ts` -> `crates/buffers/src/utf8/decodeUtf8/v3.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v4.ts` -> `crates/buffers/src/utf8/decodeUtf8/v4.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v5.ts` -> `crates/buffers/src/utf8/decodeUtf8/v5.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v6.ts` -> `crates/buffers/src/utf8/decodeUtf8/v6.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v7.ts` -> `crates/buffers/src/utf8/decodeUtf8/v7.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v8.ts` -> `crates/buffers/src/utf8/decodeUtf8/v8.rs`
-- [ ] `packages/buffers/src/utf8/decodeUtf8/v9.ts` -> `crates/buffers/src/utf8/decodeUtf8/v9.rs`
-- [ ] `packages/buffers/src/utf8/encode.ts` -> `crates/buffers/src/utf8/encode.rs`
-- [ ] `packages/buffers/src/utf8/isUtf8.ts` -> `crates/buffers/src/utf8/isUtf8.rs`
-- [ ] `packages/buffers/src/utf8/sharedCachedUtf8Decoder.ts` -> `crates/buffers/src/utf8/sharedCachedUtf8Decoder.rs`
+- [x] `packages/buffers/src/Reader.ts` -> `crates/buffers/src/reader.rs` (COMPLETE)
+- [x] `packages/buffers/src/Slice.ts` -> `crates/buffers/src/slice.rs` (COMPLETE)
+- [ ] `packages/buffers/src/StreamingOctetReader.ts` -> `crates/buffers/src/streaming_octet_reader.rs` (PENDING)
+- [ ] `packages/buffers/src/StreamingReader.ts` -> `crates/buffers/src/streaming_reader.rs` (PENDING)
+- [ ] `packages/buffers/src/Uint8ArrayCut.ts` -> `crates/buffers/src/uint8_array_cut.rs` (PENDING)
+- [x] `packages/buffers/src/Writer.ts` -> `crates/buffers/src/writer.rs` (COMPLETE)
+- [ ] `packages/buffers/src/__bench__/bench.decodeUtf8.ts` -> `crates/buffers/src/__bench__/bench_decode_utf8.rs` (SKIPPED: benchmark)
+- [ ] `packages/buffers/src/__bench__/bench.encodeUtf8.ts` -> `crates/buffers/src/__bench__/bench_encode_utf8.rs` (SKIPPED: benchmark)
+- [ ] `packages/buffers/src/__bench__/runBenchmark.ts` -> `crates/buffers/src/__bench__/run_benchmark.rs` (SKIPPED: benchmark)
+- [ ] `packages/buffers/src/__tests__/Reader.slice-cut.spec.ts` -> `crates/buffers/tests/reader_slice_cut.rs` (PENDING)
+- [ ] `packages/buffers/src/__tests__/Reader.spec.ts` -> `crates/buffers/tests/reader.rs` (PENDING)
+- [ ] `packages/buffers/src/__tests__/StreamingReader.spec.ts` -> `crates/buffers/tests/streaming_reader.rs` (PENDING)
+- [ ] `packages/buffers/src/__tests__/Writer.spec.ts` -> `crates/buffers/tests/writer.rs` (PENDING)
+- [ ] `packages/buffers/src/__tests__/isFloat32.spec.ts` -> `crates/buffers/tests/is_float32.rs` (PENDING)
+- [ ] `packages/buffers/src/__tests__/peak-peek.spec.ts` -> `crates/buffers/tests/peak_peek.rs` (PENDING)
+- [ ] `packages/buffers/src/b.ts` -> `crates/buffers/src/b.rs` (SKIPPED: JS Buffer helper)
+- [ ] `packages/buffers/src/bufferToUint8Array.ts` -> `crates/buffers/src/buffer_to_uint8_array.rs` (SKIPPED: Node.js specific)
+- [ ] `packages/buffers/src/cmpUint8Array.ts` -> `crates/buffers/src/cmp_uint8_array.rs` (PENDING)
+- [ ] `packages/buffers/src/cmpUint8Array2.ts` -> `crates/buffers/src/cmp_uint8_array2.rs` (PENDING)
+- [ ] `packages/buffers/src/cmpUint8Array3.ts` -> `crates/buffers/src/cmp_uint8_array3.rs` (PENDING)
+- [ ] `packages/buffers/src/concat.ts` -> `crates/buffers/src/concat.rs` (PENDING)
+- [ ] `packages/buffers/src/copy.ts` -> `crates/buffers/src/copy.rs` (PENDING)
+- [ ] `packages/buffers/src/f16.ts` -> `crates/buffers/src/f16.rs` (PENDING)
+- [x] `packages/buffers/src/index.ts` -> `crates/buffers/src/lib.rs` (COMPLETE)
+- [ ] `packages/buffers/src/isArrayBuffer.ts` -> `crates/buffers/src/is_array_buffer.rs` (SKIPPED: JS type check)
+- [ ] `packages/buffers/src/isFloat32.ts` -> `crates/buffers/src/is_float32.rs` (PENDING)
+- [ ] `packages/buffers/src/isUint8Array.ts` -> `crates/buffers/src/is_uint8_array.rs` (SKIPPED: JS type check)
+- [ ] `packages/buffers/src/printOctets.ts` -> `crates/buffers/src/print_octets.rs` (PENDING: debug util)
+- [ ] `packages/buffers/src/strings.ts` -> `crates/buffers/src/strings.rs` (PENDING)
+- [ ] `packages/buffers/src/toBuf.ts` -> `crates/buffers/src/to_buf.rs` (SKIPPED: Node.js Buffer)
+- [ ] `packages/buffers/src/toUint8Array.ts` -> `crates/buffers/src/to_uint8_array.rs` (SKIPPED: JS specific)
+- [ ] `packages/buffers/src/types.ts` -> `crates/buffers/src/types.rs` (PENDING: interfaces)
+- [ ] `packages/buffers/src/utf8/CachedUtf8Decoder.ts` -> `crates/buffers/src/utf8/cached_decoder.rs` (SKIPPED: use std::str::from_utf8)
+- [ ] `packages/buffers/src/utf8/__tests__/encode.spec.ts` -> `crates/buffers/tests/utf8_encode.rs` (PENDING)
+- [ ] `packages/buffers/src/utf8/__tests__/isUtf8.spec.ts` -> `crates/buffers/tests/utf8_is.rs` (PENDING)
+- [ ] `packages/buffers/src/utf8/decodeAscii.ts` -> `crates/buffers/src/utf8/decode_ascii.rs` (SKIPPED: use std::str::from_utf8)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/README.md` -> `crates/buffers/src/utf8/decode_utf8/README.md` (SKIPPED: JS optimizations doc)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/__tests__/decodeUtf8.spec.ts` -> `crates/buffers/tests/decode_utf8.rs` (PENDING)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/index.ts` -> `crates/buffers/src/utf8/decode_utf8/mod.rs` (SKIPPED: use std::str::from_utf8)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v1.ts` -> `crates/buffers/src/utf8/decode_utf8/v1.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v10.ts` -> `crates/buffers/src/utf8/decode_utf8/v10.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v11.ts` -> `crates/buffers/src/utf8/decode_utf8/v11.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v12.ts` -> `crates/buffers/src/utf8/decode_utf8/v12.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v13.ts` -> `crates/buffers/src/utf8/decode_utf8/v13.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v14.ts` -> `crates/buffers/src/utf8/decode_utf8/v14.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v15.ts` -> `crates/buffers/src/utf8/decode_utf8/v15.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v16.ts` -> `crates/buffers/src/utf8/decode_utf8/v16.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v17.ts` -> `crates/buffers/src/utf8/decode_utf8/v17.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v18.ts` -> `crates/buffers/src/utf8/decode_utf8/v18.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v19.ts` -> `crates/buffers/src/utf8/decode_utf8/v19.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v2.ts` -> `crates/buffers/src/utf8/decode_utf8/v2.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v3.ts` -> `crates/buffers/src/utf8/decode_utf8/v3.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v4.ts` -> `crates/buffers/src/utf8/decode_utf8/v4.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v5.ts` -> `crates/buffers/src/utf8/decode_utf8/v5.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v6.ts` -> `crates/buffers/src/utf8/decode_utf8/v6.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v7.ts` -> `crates/buffers/src/utf8/decode_utf8/v7.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v8.ts` -> `crates/buffers/src/utf8/decode_utf8/v8.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/decodeUtf8/v9.ts` -> `crates/buffers/src/utf8/decode_utf8/v9.rs` (SKIPPED: JS V8 optimization)
+- [ ] `packages/buffers/src/utf8/encode.ts` -> `crates/buffers/src/utf8/encode.rs` (SKIPPED: use str::as_bytes())
+- [ ] `packages/buffers/src/utf8/isUtf8.ts` -> `crates/buffers/src/utf8/is_utf8.rs` (SKIPPED: use std::str::from_utf8().is_ok())
+- [ ] `packages/buffers/src/utf8/sharedCachedUtf8Decoder.ts` -> `crates/buffers/src/utf8/shared_cached_decoder.rs` (SKIPPED: use std::str::from_utf8)
 
 
 ## Package: codegen
