@@ -1,0 +1,20 @@
+{
+  "fixture_version": 1,
+  "name": "json_hash_parity_04_det_v1",
+  "scenario": "json_hash_parity",
+  "input": {
+    "value_json": "abc",
+    "sid": 96003
+  },
+  "expected": {
+    "hash_u32": 1162789872,
+    "struct_hash": "j8ameo",
+    "struct_hash_crdt": "j8ameo",
+    "struct_hash_schema": "j8ameo"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "manual oracle script"
+  }
+}

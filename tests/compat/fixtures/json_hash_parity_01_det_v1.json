@@ -1,0 +1,20 @@
+{
+  "fixture_version": 1,
+  "name": "json_hash_parity_01_det_v1",
+  "scenario": "json_hash_parity",
+  "input": {
+    "value_json": null,
+    "sid": 96000
+  },
+  "expected": {
+    "hash_u32": 982630420,
+    "struct_hash": "N",
+    "struct_hash_crdt": "N",
+    "struct_hash_schema": "N"
+  },
+  "meta": {
+    "upstream_package": "json-joy",
+    "upstream_version": "17.67.0",
+    "generator": "manual oracle script"
+  }
+}

@@ -47,15 +47,15 @@ A row is only considered complete when all four gates are `yes`.
 
 | Upstream function | Rust target | Status | upstream test mapped | fixture coverage | differential parity | perf checked | Notes |
 |---|---|---|---|---|---|---|---|
-| `hash.ts` (`hashJson/hashStr/hashBin`) | `crates/json-joy-core/src/json_hash.rs` | approx | yes | no | yes | no | Differential parity added in `tests/differential_json_hash_seeded.rs`; fixture integration still pending. |
-| `structHash.ts` (`structHash`) | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_json`) | approx | yes | no | yes | yes | Differential parity added; string/key hashing now matches upstream `hash(value)` semantics. |
-| `structHashCrdt.ts` | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_crdt`) | approx | yes | no | yes | yes | Differential parity added in `tests/differential_json_hash_seeded.rs`. |
-| `structHashSchema.ts` | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_schema`) | approx | yes | no | yes | yes | Differential parity added in `tests/differential_json_hash_seeded.rs`; fixture integration still pending. |
+| `hash.ts` (`hashJson/hashStr/hashBin`) | `crates/json-joy-core/src/json_hash.rs` | exact | yes | yes | yes | no | Differential + fixture parity now in `tests/differential_json_hash_seeded.rs` and `tests/json_hash_from_fixtures.rs`. |
+| `structHash.ts` (`structHash`) | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_json`) | exact | yes | yes | yes | yes | Differential + fixture parity in place; string/key hashing matches upstream `hash(value)` semantics. |
+| `structHashCrdt.ts` | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_crdt`) | exact | yes | yes | yes | yes | Differential + fixture parity in place. |
+| `structHashSchema.ts` | `crates/json-joy-core/src/json_hash.rs` (`struct_hash_schema`) | exact | yes | yes | yes | yes | Differential + fixture parity in place. |
 
 ## Current hot-path queue
 
 1. `JsonCrdtDiff.diffAny` exactness audit: document every error/throw-to-replace case and map to Rust branch.
 2. `JsonCrdtDiff.diffObj` exactness audit: op ordering, delete encoding, insertion value constructor parity.
 3. `JsonCrdtDiff.diffVec` exactness audit: stale/deleted slot behavior and const-vs-json replacement semantics.
-4. `json-hash` fixture integration (differential is now in place).
-5. Server-clock diff route: direct runtime path now uses `server_clock_time` base and passes `upstream_port_diff_server_clock_matrix`; keep validating via broader parity suites.
+4. Server-clock diff route: direct runtime path now uses `server_clock_time` base and passes `upstream_port_diff_server_clock_matrix`; keep validating via broader parity suites.
+5. Consolidate remaining doc status rows (`CORE_PARITY_MATRIX.md`) to match function-level `exact` state where applicable.
