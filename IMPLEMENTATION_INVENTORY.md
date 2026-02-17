@@ -58,4 +58,4 @@ A row is only considered complete when all four gates are `yes`.
 2. `JsonCrdtDiff.diffObj` exactness audit: op ordering, delete encoding, insertion value constructor parity.
 3. `JsonCrdtDiff.diffVec` exactness audit: stale/deleted slot behavior and const-vs-json replacement semantics.
 4. `json-hash` fixture integration (differential is now in place).
-5. Server-clock diff route: remove legacy path once parity evidence is in place (current direct-route experiment fails `upstream_port_diff_server_clock_matrix`).
+5. Server-clock diff route: direct runtime path now uses `server_clock_time` base and passes `upstream_port_diff_server_clock_matrix`; keep validating via broader parity suites.

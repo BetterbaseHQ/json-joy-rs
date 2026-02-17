@@ -55,10 +55,7 @@ pub fn diff_model_to_patch_bytes(
     sid: u64,
 ) -> Result<Option<Vec<u8>>, DiffError> {
     if let Ok(runtime) = RuntimeModel::from_model_binary(base_model_binary) {
-        // Keep server-clock models on the legacy path for now.
-        if !runtime.is_server_clock_model() {
-            return diff_runtime_to_patch_bytes(&runtime, next_view, sid);
-        }
+        return diff_runtime_to_patch_bytes(&runtime, next_view, sid);
     }
     diff_model_to_patch_bytes_legacy(base_model_binary, next_view, sid)
 }
@@ -212,6 +209,12 @@ fn is_visible_child(runtime: &RuntimeModel, id: Timestamp) -> bool {
     )
 }
 
+fn runtime_base_time(runtime: &RuntimeModel) -> u64 {
+    runtime
+        .server_clock_time
+        .unwrap_or_else(|| runtime.clock_table.first().map(|c| c.time).unwrap_or(0))
+}
+
 fn object_visible_fields(runtime: &RuntimeModel, obj: Timestamp) -> Option<BTreeMap<String, Timestamp>> {
     let obj = runtime.resolve_object_node(obj)?;
     let entries = match runtime.nodes.get(&Id::from(obj))? {
@@ -282,7 +285,7 @@ pub fn diff_runtime_to_ops(
     next_view: &Value,
     sid: u64,
 ) -> Result<Option<Vec<DecodedOp>>, DiffError> {
-    let base_time = runtime.clock_table.first().map(|c| c.time).unwrap_or(0);
+    let base_time = runtime_base_time(runtime);
     let mut emitter = NativeEmitter::new(sid, base_time.saturating_add(1));
 
     match (runtime.root_id(), next_view) {
@@ -334,7 +337,7 @@ pub fn diff_runtime(
     let Some(ops) = diff_runtime_to_ops(runtime, next_view, sid)? else {
         return Ok(None);
     };
-    let base_time = runtime.clock_table.first().map(|c| c.time).unwrap_or(0);
+    let base_time = runtime_base_time(runtime);
     let patch_binary = encode_patch_from_ops(sid, base_time.saturating_add(1), &ops)?;
     Ok(Some(RuntimeDiffResult { ops, patch_binary }))
 }
