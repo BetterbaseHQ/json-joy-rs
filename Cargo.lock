@@ -359,6 +359,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-joy-base64"
+version = "0.1.0"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "json-joy-core"
 version = "0.1.0"
 dependencies = [
