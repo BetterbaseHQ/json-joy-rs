@@ -6,8 +6,10 @@ Rust-first JSON CRDT implementation with Python bindings.
 
 - `crates/json-joy-core`: core Rust library (CRDT engine).
 - `crates/json-joy-ffi`: UniFFI bridge crate exported as `cdylib` for other languages.
+- `crates/json-joy-wasm`: coarse-grained WASM bridge crate for JS.
 - `tools/embedded-uniffi-bindgen`: pinned local bindgen CLI wrapper.
 - `bindings/python`: generated Python package artifacts.
+- `bindings/wasm`: wasm benchmark harness and scripts.
 - `bin/`: helper scripts for generating bindings.
 
 ## Quick start
@@ -20,6 +22,12 @@ Generate bindings:
 
 ```bash
 make bindings-python
+```
+
+Build and run the current WASM coarse-API benchmark:
+
+```bash
+make wasm-bench
 ```
 
 Generate compatibility fixtures from upstream `json-joy@17.67.0`:
