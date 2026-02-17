@@ -446,6 +446,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-joy-json-random"
+version = "0.1.0"
+dependencies = [
+ "json-joy-util",
+ "rand 0.8.5",
+ "serde_json",
+]
+
+[[package]]
 name = "json-joy-util"
 version = "0.1.0"
 dependencies = [

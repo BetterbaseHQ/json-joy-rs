@@ -1,0 +1,15 @@
+[package]
+name = "json-joy-json-random"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/nicoth-in/json-joy-rs"
+description = "Random JSON value generator for testing"
+
+[dependencies]
+json-joy-util = { path = "../util" }
+rand = "0.8"
+serde_json = "1.0"
+
+[dev-dependencies]
+serde_json = { version = "1.0", features = ["preserve_order"] }
