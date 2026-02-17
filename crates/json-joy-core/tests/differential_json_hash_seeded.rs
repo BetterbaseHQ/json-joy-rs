@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use json_joy_core::json_hash::{hash_json, struct_hash_crdt, struct_hash_json};
+use json_joy_core::json_hash::{hash_json, struct_hash_crdt, struct_hash_json, struct_hash_schema};
 use json_joy_core::model_runtime::RuntimeModel;
 use json_joy_core::patch::Timestamp;
 use json_joy_core::schema::json as schema_json;
@@ -37,6 +37,7 @@ fn differential_json_hash_seeded_matches_oracle() {
         let rust_hash = hash_json(value);
         let rust_struct_hash = struct_hash_json(value);
         let rust_struct_crdt = struct_hash_crdt_for_json(value, 95000 + idx as u64);
+        let rust_struct_schema = struct_hash_schema_for_json(value);
 
         assert_eq!(rust_hash, oracle.hash, "hash mismatch at case {idx}");
         assert_eq!(
@@ -46,6 +47,10 @@ fn differential_json_hash_seeded_matches_oracle() {
         assert_eq!(
             rust_struct_crdt, oracle.struct_hash_crdt,
             "struct_hash_crdt mismatch at case {idx}"
+        );
+        assert_eq!(
+            rust_struct_schema, oracle.struct_hash_schema,
+            "struct_hash_schema mismatch at case {idx}"
         );
     }
 }
@@ -59,26 +64,36 @@ fn struct_hash_crdt_for_json(value: &Value, sid: u64) -> String {
     struct_hash_crdt(&runtime, Some(root))
 }
 
+fn struct_hash_schema_for_json(value: &Value) -> String {
+    let schema = schema_json(value);
+    struct_hash_schema(Some(&schema))
+}
+
 struct OracleHashTriplet {
     hash: u32,
     struct_hash: String,
     struct_hash_crdt: String,
+    struct_hash_schema: String,
 }
 
 fn oracle_hash_triplet(value: &Value) -> OracleHashTriplet {
     let script = r#"
 const {hash, structHash} = require('json-joy/lib/json-hash');
 const {structHashCrdt} = require('json-joy/lib/json-hash/structHashCrdt');
+const {structHashSchema} = require('json-joy/lib/json-hash/structHashSchema');
 const {Model} = require('json-joy/lib/json-crdt');
+const {toSchema} = require('json-joy/lib/json-crdt/schema/toSchema');
 const input = JSON.parse(process.argv[1]);
 const model = Model.create();
 model.api.set(input.value);
 model.api.flush();
 const root = model.root.node();
+const schema = toSchema(root);
 process.stdout.write(JSON.stringify({
   hash: hash(input.value),
   structHash: structHash(input.value),
   structHashCrdt: structHashCrdt(root),
+  structHashSchema: structHashSchema(schema),
 }));
 "#;
 
@@ -105,6 +120,10 @@ process.stdout.write(JSON.stringify({
         struct_hash_crdt: parsed["structHashCrdt"]
             .as_str()
             .expect("structHashCrdt must be str")
+            .to_string(),
+        struct_hash_schema: parsed["structHashSchema"]
+            .as_str()
+            .expect("structHashSchema must be str")
             .to_string(),
     }
 }
@@ -184,4 +203,3 @@ fn random_string(rng: &mut Lcg, min_len: usize, max_len: usize) -> String {
     }
     s
 }
-
