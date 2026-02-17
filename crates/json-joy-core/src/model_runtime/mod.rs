@@ -8,7 +8,7 @@
 
 use crate::crdt_binary::{first_logical_clock_sid_time, LogicalClockBase};
 use crate::model::{Model, ModelError};
-use crate::patch::Patch;
+use crate::patch::{DecodedOp, Patch};
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -96,7 +96,11 @@ impl RuntimeModel {
     }
 
     pub fn apply_patch(&mut self, patch: &Patch) -> Result<(), ApplyError> {
-        for op in patch.decoded_ops() {
+        self.apply_ops(patch.decoded_ops())
+    }
+
+    pub fn apply_ops(&mut self, ops: &[DecodedOp]) -> Result<(), ApplyError> {
+        for op in ops {
             let id = Id::from(op.id());
             let span = op.span();
             self.clock.observe(id.sid, id.time, span);
@@ -164,6 +168,10 @@ impl RuntimeModel {
         cloned.clock_table = next;
         cloned.clock = ClockState::default();
         cloned
+    }
+
+    pub fn is_server_clock_model(&self) -> bool {
+        self.server_clock_time.is_some()
     }
 
     pub fn validate_invariants(&self) -> Result<(), String> {

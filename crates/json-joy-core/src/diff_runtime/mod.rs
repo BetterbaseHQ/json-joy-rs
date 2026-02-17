@@ -8,9 +8,11 @@
 use crate::crdt_binary::first_model_clock_sid_time;
 use crate::model::Model;
 use crate::model_runtime::RuntimeModel;
-use crate::patch::{ConValue, DecodedOp, Timestamp};
+use crate::model_runtime::types::{ConCell, Id, RuntimeNode};
+use crate::patch::{ConValue, DecodedOp, Patch, Timestamp};
 use crate::patch_builder::{encode_patch_from_ops, PatchBuildError};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -22,6 +24,12 @@ pub enum DiffError {
 }
 
 pub struct RuntimeDiffer;
+
+#[derive(Debug, Clone)]
+pub struct RuntimeDiffResult {
+    pub ops: Vec<DecodedOp>,
+    pub patch_binary: Vec<u8>,
+}
 
 impl RuntimeDiffer {
     pub fn diff_model_to_patch_bytes(
@@ -46,6 +54,14 @@ pub fn diff_model_to_patch_bytes(
     next_view: &Value,
     sid: u64,
 ) -> Result<Option<Vec<u8>>, DiffError> {
+    diff_model_to_patch_bytes_legacy(base_model_binary, next_view, sid)
+}
+
+fn diff_model_to_patch_bytes_legacy(
+    base_model_binary: &[u8],
+    next_view: &Value,
+    sid: u64,
+) -> Result<Option<Vec<u8>>, DiffError> {
     // Native no-op fast path. Upstream diff returns no patch for exact-equal
     // views, so this is parity-safe and avoids subprocess overhead.
     if let Ok(model) = Model::from_binary(base_model_binary) {
@@ -58,16 +74,9 @@ pub fn diff_model_to_patch_bytes(
         return Ok(native);
     }
 
-    // Broad upstream-style object recursion path.
-    //
-    // Mirrors JsonCrdtDiff.diffObj two-pass ordering (deletes first, then
-    // destination traversal with recursive child diff attempts) and covers
-    // mixed nested families in one native dispatcher.
     if let Some(native) = try_native_root_obj_recursive_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
-
-    // Native logical empty-object root path.
     if let Some(native) = try_native_empty_obj_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
@@ -164,26 +173,18 @@ pub fn diff_model_to_patch_bytes(
     {
         return Ok(native);
     }
-    // Native non-empty root-object scalar delta path (add/update/remove).
     if let Some(native) = try_native_root_obj_scalar_delta_diff(base_model_binary, next_view, sid)?
     {
         return Ok(native);
     }
-    // Native generic root-object delta path.
     if let Some(native) = try_native_root_obj_generic_delta_diff(base_model_binary, next_view, sid)?
     {
         return Ok(native);
     }
-
-    // Native catch-all: replace root value when no specialized shape matched.
-    //
-    // Compatibility policy:
-    // runtime-core JSON shape paths should never surface UnsupportedShape.
-    // This mirrors upstream `diffAny` fallback semantics where type mismatch
-    // yields replacement behavior rather than terminating the diff pipeline.
     if let Some(native) = try_native_root_replace_diff(base_model_binary, next_view, sid)? {
         return Ok(native);
     }
+
     let base_time = first_model_clock_sid_time(base_model_binary)
         .map(|(_, t)| t)
         .unwrap_or(0);
@@ -196,6 +197,169 @@ pub fn diff_model_to_patch_bytes(
     });
     let encoded = encode_patch_from_ops(sid, base_time.saturating_add(1), &emitter.ops)?;
     Ok(Some(encoded))
+}
+
+fn is_visible_child(runtime: &RuntimeModel, id: Timestamp) -> bool {
+    !matches!(
+        runtime.nodes.get(&Id::from(id)),
+        None | Some(RuntimeNode::Con(ConCell::Undef))
+    )
+}
+
+fn object_visible_fields(runtime: &RuntimeModel, obj: Timestamp) -> Option<BTreeMap<String, Timestamp>> {
+    let obj = runtime.resolve_object_node(obj)?;
+    let entries = match runtime.nodes.get(&Id::from(obj))? {
+        RuntimeNode::Obj(entries) => entries,
+        _ => return None,
+    };
+    let mut out = BTreeMap::new();
+    for (k, v) in entries {
+        let ts: Timestamp = (*v).into();
+        if is_visible_child(runtime, ts) {
+            out.insert(k.clone(), ts);
+        } else {
+            out.remove(k);
+        }
+    }
+    Some(out)
+}
+
+fn try_emit_object_recursive_diff_runtime(
+    runtime: &RuntimeModel,
+    emitter: &mut NativeEmitter,
+    obj_node: Timestamp,
+    new_obj: &serde_json::Map<String, Value>,
+) -> Result<bool, DiffError> {
+    let old_fields = match object_visible_fields(runtime, obj_node) {
+        Some(v) => v,
+        None => return Ok(false),
+    };
+    let mut pairs: Vec<(String, Timestamp)> = Vec::new();
+
+    for k in old_fields.keys() {
+        if !new_obj.contains_key(k) {
+            let id = emitter.next_id();
+            emitter.push(DecodedOp::NewCon {
+                id,
+                value: ConValue::Undef,
+            });
+            pairs.push((k.clone(), id));
+        }
+    }
+
+    for (k, v) in new_obj {
+        if let Some(child_id) = old_fields.get(k) {
+            if runtime.node_json_value(*child_id).as_ref() == Some(v) {
+                continue;
+            }
+            let old_v = runtime.node_json_value(*child_id);
+            if try_emit_child_recursive_diff(runtime, emitter, *child_id, old_v.as_ref(), v)? {
+                continue;
+            }
+        }
+        let id = emitter.emit_value(v);
+        pairs.push((k.clone(), id));
+    }
+
+    if !pairs.is_empty() {
+        emitter.push(DecodedOp::InsObj {
+            id: emitter.next_id(),
+            obj: obj_node,
+            data: pairs,
+        });
+    }
+    Ok(true)
+}
+
+pub fn diff_runtime_to_ops(
+    runtime: &RuntimeModel,
+    next_view: &Value,
+    sid: u64,
+) -> Result<Option<Vec<DecodedOp>>, DiffError> {
+    let base_time = runtime.clock_table.first().map(|c| c.time).unwrap_or(0);
+    let mut emitter = NativeEmitter::new(sid, base_time.saturating_add(1));
+
+    match (runtime.root_id(), next_view) {
+        (Some(root_id), Value::Object(next_obj))
+            if runtime.resolve_object_node(root_id).is_some() =>
+        {
+            let root_obj = runtime
+                .resolve_object_node(root_id)
+                .expect("checked is_some");
+            let _ = try_emit_object_recursive_diff_runtime(runtime, &mut emitter, root_obj, next_obj)?;
+        }
+        (Some(root_id), _) => {
+            if runtime.node_json_value(root_id).as_ref() == Some(next_view) {
+                return Ok(None);
+            }
+            let old = runtime.node_json_value(root_id);
+            if !try_emit_child_recursive_diff(runtime, &mut emitter, root_id, old.as_ref(), next_view)?
+            {
+                let next_root = emitter.emit_value(next_view);
+                emitter.push(DecodedOp::InsVal {
+                    id: emitter.next_id(),
+                    obj: Timestamp { sid: 0, time: 0 },
+                    val: next_root,
+                });
+            }
+        }
+        (None, _) => {
+            let next_root = emitter.emit_value(next_view);
+            emitter.push(DecodedOp::InsVal {
+                id: emitter.next_id(),
+                obj: Timestamp { sid: 0, time: 0 },
+                val: next_root,
+            });
+        }
+    }
+
+    if emitter.ops.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(emitter.ops))
+    }
+}
+
+pub fn diff_runtime(
+    runtime: &RuntimeModel,
+    next_view: &Value,
+    sid: u64,
+) -> Result<Option<RuntimeDiffResult>, DiffError> {
+    let Some(ops) = diff_runtime_to_ops(runtime, next_view, sid)? else {
+        return Ok(None);
+    };
+    let base_time = runtime.clock_table.first().map(|c| c.time).unwrap_or(0);
+    let patch_binary = encode_patch_from_ops(sid, base_time.saturating_add(1), &ops)?;
+    let mut probe = runtime.clone();
+    let probe_ok = Patch::from_binary(&patch_binary)
+        .ok()
+        .and_then(|p| probe.apply_patch(&p).ok())
+        .is_some()
+        && probe.to_model_binary_like().is_ok();
+    if probe_ok {
+        return Ok(Some(RuntimeDiffResult { ops, patch_binary }));
+    }
+
+    let base = runtime
+        .to_model_binary_like()
+        .map_err(|_| DiffError::UnsupportedShape)?;
+    let legacy_bytes = diff_model_to_patch_bytes_legacy(&base, next_view, sid)?;
+    let Some(patch_binary) = legacy_bytes else {
+        return Ok(None);
+    };
+    let patch = Patch::from_binary(&patch_binary).map_err(|_| DiffError::UnsupportedShape)?;
+    Ok(Some(RuntimeDiffResult {
+        ops: patch.decoded_ops().to_vec(),
+        patch_binary,
+    }))
+}
+
+pub fn diff_runtime_to_patch_bytes(
+    runtime: &RuntimeModel,
+    next_view: &Value,
+    sid: u64,
+) -> Result<Option<Vec<u8>>, DiffError> {
+    Ok(diff_runtime(runtime, next_view, sid)?.map(|r| r.patch_binary))
 }
 
 include!("dst_keys.rs");

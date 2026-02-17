@@ -204,68 +204,120 @@ fn try_emit_child_recursive_diff(
                 Value::Array(v) => v,
                 _ => unreachable!(),
             };
-            if let (Some(slots), Some(values)) = (
-                runtime.array_visible_slots(child),
-                runtime.array_visible_values(child),
-            ) {
-                if try_emit_array_indexwise_diff(
-                    runtime,
-                    emitter,
-                    child,
-                    &slots,
-                    &values,
-                    old_arr,
-                    new_arr,
-                )? {
-                    return Ok(true);
-                }
-            }
-            if old_arr.len() == new_arr.len() && !old_arr.is_empty() {
-                let mut any_change = false;
-                let mut all_changed_are_object_mutations = true;
-                if let Some(values) = runtime.array_visible_values(child) {
-                    for i in 0..old_arr.len() {
-                        if old_arr[i] == new_arr[i] {
-                            continue;
-                        }
-                        any_change = true;
-                        let (Some(old_obj), Some(new_obj)) = (old_arr[i].as_object(), new_arr[i].as_object()) else {
-                            all_changed_are_object_mutations = false;
-                            break;
-                        };
-                        if i >= values.len() || runtime.resolve_object_node(values[i]).is_none() {
-                            all_changed_are_object_mutations = false;
-                            break;
-                        }
-                        let value_obj = runtime
-                            .resolve_object_node(values[i])
-                            .expect("checked is_some");
-                        let _ = try_emit_object_recursive_diff(
-                            runtime,
-                            emitter,
-                            value_obj,
-                            old_obj,
-                            new_obj,
-                        )?;
-                    }
-                    if any_change && all_changed_are_object_mutations {
-                        return Ok(true);
-                    }
-                }
-            }
-            if old_arr.iter().any(|v| !is_array_native_supported(v))
-                || new_arr.iter().any(|v| !is_array_native_supported(v))
-            {
-                return Ok(false);
-            }
             let slots = match runtime.array_visible_slots(child) {
                 Some(v) => v,
                 None => return Ok(false),
             };
-            if slots.len() != old_arr.len() {
+            let values = match runtime.array_visible_values(child) {
+                Some(v) => v,
+                None => return Ok(false),
+            };
+            if slots.len() != old_arr.len() || values.len() != old_arr.len() {
                 return Ok(false);
             }
-            emit_array_delta_ops(emitter, child, &slots, old_arr, new_arr);
+
+            let mut src_lines: Vec<String> = Vec::with_capacity(values.len());
+            for value in &values {
+                src_lines.push(crate::json_hash::struct_hash_crdt(runtime, Some(*value)));
+            }
+            let mut dst_lines: Vec<String> = Vec::with_capacity(new_arr.len());
+            for value in new_arr {
+                dst_lines.push(crate::json_hash::struct_hash_json(value));
+            }
+            let line_patch = crate::util_diff::line::diff(&src_lines, &dst_lines);
+            if line_patch.is_empty() {
+                return Ok(true);
+            }
+
+            let inserts: std::cell::RefCell<Vec<(Timestamp, Vec<Value>)>> =
+                std::cell::RefCell::new(Vec::new());
+            let deletes: std::cell::RefCell<Vec<crate::patch::Timespan>> =
+                std::cell::RefCell::new(Vec::new());
+            crate::util_diff::line::apply(
+                &line_patch,
+                |pos_src| {
+                    let slot = slots[pos_src];
+                    let mut deletes = deletes.borrow_mut();
+                    if let Some(last) = deletes.last_mut() {
+                        if last.sid == slot.sid && last.time + last.span == slot.time {
+                            last.span += 1;
+                            return;
+                        }
+                    }
+                    deletes.push(crate::patch::Timespan {
+                        sid: slot.sid,
+                        time: slot.time,
+                        span: 1,
+                    });
+                },
+                |pos_src, pos_dst| {
+                    let after = if pos_src >= 0 {
+                        slots[pos_src as usize]
+                    } else {
+                        child
+                    };
+                    inserts.borrow_mut().push((after, vec![new_arr[pos_dst].clone()]));
+                },
+                |pos_src, pos_dst| {
+                    let src_idx = pos_src;
+                    let dst_idx = pos_dst;
+                    let child_id = values[src_idx];
+                    if let Ok(true) = try_emit_child_recursive_diff(
+                        runtime,
+                        emitter,
+                        child_id,
+                        old_arr.get(src_idx),
+                        &new_arr[dst_idx],
+                    ) {
+                        return;
+                    }
+
+                    let slot = slots[src_idx];
+                    let mut deletes = deletes.borrow_mut();
+                    if let Some(last) = deletes.last_mut() {
+                        if last.sid == slot.sid && last.time + last.span == slot.time {
+                            last.span += 1;
+                        } else {
+                            deletes.push(crate::patch::Timespan {
+                                sid: slot.sid,
+                                time: slot.time,
+                                span: 1,
+                            });
+                        }
+                    } else {
+                        deletes.push(crate::patch::Timespan {
+                            sid: slot.sid,
+                            time: slot.time,
+                            span: 1,
+                        });
+                    }
+
+                    let after = if src_idx > 0 { slots[src_idx - 1] } else { child };
+                    inserts.borrow_mut().push((after, vec![new_arr[dst_idx].clone()]));
+                },
+            );
+
+            let inserts = inserts.into_inner();
+            let deletes = deletes.into_inner();
+            for (after, views) in inserts {
+                let mut children = Vec::with_capacity(views.len());
+                for view in views {
+                    children.push(emitter.emit_array_item(&view));
+                }
+                emitter.push(DecodedOp::InsArr {
+                    id: emitter.next_id(),
+                    obj: child,
+                    reference: after,
+                    data: children,
+                });
+            }
+            if !deletes.is_empty() {
+                emitter.push(DecodedOp::Del {
+                    id: emitter.next_id(),
+                    obj: child,
+                    what: deletes,
+                });
+            }
             return Ok(true);
         }
         Some(Value::Array(_))
@@ -395,22 +447,7 @@ impl NativeEmitter {
                 if !items.is_empty() {
                     let mut children = Vec::with_capacity(items.len());
                     for item in items {
-                        if is_con_scalar(item) {
-                            // Array scalar elements are emitted as VAL wrappers
-                            // around CON nodes to mirror upstream diff op shape.
-                            let val_id = self.next_id();
-                            self.push(DecodedOp::NewVal { id: val_id });
-                            let con_id = self.emit_value(item);
-                            let ins_id = self.next_id();
-                            self.push(DecodedOp::InsVal {
-                                id: ins_id,
-                                obj: val_id,
-                                val: con_id,
-                            });
-                            children.push(val_id);
-                        } else {
-                            children.push(self.emit_value(item));
-                        }
+                        children.push(self.emit_array_item(item));
                     }
                     let ins_id = self.next_id();
                     self.push(DecodedOp::InsArr {
@@ -441,6 +478,23 @@ impl NativeEmitter {
                 obj_id
             }
         }
+    }
+
+    // Upstream builder.json() wraps array scalar elements as val->con.
+    fn emit_array_item(&mut self, value: &Value) -> Timestamp {
+        if is_con_scalar(value) {
+            let val_id = self.next_id();
+            self.push(DecodedOp::NewVal { id: val_id });
+            let con_id = self.emit_value(value);
+            let ins_id = self.next_id();
+            self.push(DecodedOp::InsVal {
+                id: ins_id,
+                obj: val_id,
+                val: con_id,
+            });
+            return val_id;
+        }
+        self.emit_value(value)
     }
 }
 
