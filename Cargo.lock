@@ -368,9 +368,6 @@ dependencies = [
 [[package]]
 name = "json-joy-buffers"
 version = "0.1.0"
-dependencies = [
- "json-joy-base64",
-]
 
 [[package]]
 name = "json-joy-codegen"
