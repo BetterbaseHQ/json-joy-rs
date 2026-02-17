@@ -3,6 +3,10 @@
 Upstream target: `json-joy@17.67.0`  
 Local upstream source: `/Users/nchapman/Code/json-joy`
 
+Function-level tracking companion:
+- `IMPLEMENTATION_INVENTORY.md` (upstream-function to Rust-function mapping,
+  exactness status, and per-row evidence gates).
+
 Status legend:
 - `native`: no runtime oracle subprocess dependency.
 - `partial`: implemented but behavior/model coverage is incomplete.

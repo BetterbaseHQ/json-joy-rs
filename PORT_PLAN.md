@@ -149,6 +149,25 @@ Every fixture should include:
 
 ## 7. Milestone Plan (Implementation Against Tests)
 
+## 7.0 Function-Level Port Inventory (Execution Control)
+
+To avoid approximation drift and "whack-a-mole" fixes, all active runtime-core
+port work must be tracked at function granularity in:
+
+- `/Users/nchapman/Drive/Code/json-joy-rs/IMPLEMENTATION_INVENTORY.md`
+
+Execution rule for each row:
+1. Map upstream function -> Rust function(s).
+2. Add/expand failing tests and fixture coverage first.
+3. Port behavior exactly (or document explicit deltas).
+4. Record evidence gates (`upstream test mapped`, `fixture coverage`,
+   `differential parity`, `perf checked`) before marking complete.
+
+Row status semantics:
+- `exact`: expected upstream-equivalent semantics for covered inputs.
+- `approx`: implemented but not yet proven exact.
+- `missing`: not implemented.
+
 ## M0: Harness and Contracts
 
 Deliverables:
