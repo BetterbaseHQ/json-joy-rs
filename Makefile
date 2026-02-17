@@ -1,4 +1,4 @@
-.PHONY: check fmt test bindings-python compat-fixtures test-core-fixtures test-core-upstream test-core-differential test-core-property test-core
+.PHONY: check fmt test bindings-python compat-fixtures test-core-fixtures test-core-upstream test-core-differential test-core-property test-core test-core-fast-diff test-core-fast-hash test-core-full wasm-build wasm-bench wasm-bench-one wasm-bench-engine-one wasm-interop wasm-bench-realistic
 
 check:
 	mise x -- cargo check
@@ -24,8 +24,35 @@ test-core-property:
 test-core:
 	mise x -- cargo test -p json-joy-core
 
+test-core-fast-diff:
+	mise x -- cargo test -p json-joy-core --test upstream_port_diff_any_matrix --test upstream_port_diff_obj_matrix --test upstream_port_diff_vec_matrix --test upstream_port_diff_smoke --test model_diff_parity_from_fixtures --offline
+
+test-core-fast-hash:
+	mise x -- cargo test -p json-joy-core --test upstream_port_json_hash_matrix --offline
+
+test-core-full:
+	mise x -- cargo test -p json-joy-core --offline
+
 bindings-python:
 	bin/generate-bindings.sh python
 
 compat-fixtures:
 	bin/generate-compat-fixtures.sh
+
+wasm-build:
+	CARGO_NET_OFFLINE=true wasm-pack build crates/json-joy-wasm --target nodejs --release
+
+wasm-bench: wasm-build
+	node bindings/wasm/bench/replay-batch-matrix.cjs
+
+wasm-bench-one: wasm-build
+	node bindings/wasm/bench/replay-batch.cjs
+
+wasm-bench-engine-one: wasm-build
+	node bindings/wasm/bench/replay-engine-one.cjs
+
+wasm-interop: wasm-build
+	node bindings/wasm/bench/interop-mixed.cjs
+
+wasm-bench-realistic: wasm-build
+	node bindings/wasm/bench/lessdb-realistic.cjs
