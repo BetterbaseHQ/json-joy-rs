@@ -326,6 +326,20 @@ fn emit_vec_delta_ops(
             {
                 continue;
             }
+            // Upstream diffVec special-case:
+            // if child is ConNode and incoming value is primitive (JS typeof != "object"),
+            // replace with new_con(value) instead of buildConView/json node construction.
+            let child_is_con = matches!(runtime.nodes.get(&Id::from(child)), Some(RuntimeNode::Con(_)));
+            let js_non_object_primitive = matches!(value, Value::String(_) | Value::Number(_) | Value::Bool(_));
+            if child_is_con && js_non_object_primitive {
+                let con_id = emitter.next_id();
+                emitter.push(DecodedOp::NewCon {
+                    id: con_id,
+                    value: ConValue::Json(value.clone()),
+                });
+                edits.push((i as u64, con_id));
+                continue;
+            }
         }
         edits.push((i as u64, emitter.emit_value(value)));
     }
@@ -344,4 +358,3 @@ fn emit_vec_delta_ops(
     }
     Ok(())
 }
-

@@ -18,7 +18,10 @@ const CONST_BINARY: i64 = 982_454_837;
 
 #[inline]
 fn update_num(state: i64, num: i64) -> i64 {
-    (state << 5) + state + num
+    state
+        .wrapping_shl(5)
+        .wrapping_add(state)
+        .wrapping_add(num)
 }
 
 fn update_str(mut state: i64, s: &str) -> i64 {
@@ -26,7 +29,10 @@ fn update_str(mut state: i64, s: &str) -> i64 {
     state = update_num(state, CONST_STRING);
     state = update_num(state, units.len() as i64);
     for u in units.iter().rev() {
-        state = (state << 5) + state + (*u as i64);
+        state = state
+            .wrapping_shl(5)
+            .wrapping_add(state)
+            .wrapping_add(*u as i64);
     }
     state
 }
@@ -35,7 +41,10 @@ fn update_bin(mut state: i64, bytes: &[u8]) -> i64 {
     state = update_num(state, CONST_BINARY);
     state = update_num(state, bytes.len() as i64);
     for b in bytes.iter().rev() {
-        state = (state << 5) + state + (*b as i64);
+        state = state
+            .wrapping_shl(5)
+            .wrapping_add(state)
+            .wrapping_add(*b as i64);
     }
     state
 }
@@ -134,7 +143,7 @@ fn number_to_base36(n: &Number) -> String {
 
 pub fn struct_hash_json(value: &Value) -> String {
     match value {
-        Value::String(s) => to_base36_u64(hash_str(s) as u64),
+        Value::String(s) => to_base36_u64(hash_json(&Value::String(s.clone())) as u64),
         Value::Number(n) => number_to_base36(n),
         Value::Bool(v) => {
             if *v {
@@ -158,7 +167,7 @@ pub fn struct_hash_json(value: &Value) -> String {
             keys.sort_unstable();
             let mut out = String::from("{");
             for key in keys {
-                out.push_str(&to_base36_u64(hash_str(key) as u64));
+                out.push_str(&to_base36_u64(hash_json(&Value::String(key.to_string())) as u64));
                 out.push(':');
                 out.push_str(&struct_hash_json(&fields[key]));
                 out.push(',');
@@ -181,7 +190,7 @@ fn runtime_struct_hash(runtime: &RuntimeModel, id: Id) -> String {
         Some(RuntimeNode::Val(child)) => runtime_struct_hash(runtime, *child),
         Some(RuntimeNode::Str(atoms)) => {
             let s: String = atoms.iter().filter_map(|a| a.ch).collect();
-            to_base36_u64(hash_str(&s) as u64)
+            to_base36_u64(hash_json(&Value::String(s)) as u64)
         }
         Some(RuntimeNode::Bin(atoms)) => {
             let bytes: Vec<u8> = atoms.iter().filter_map(|a| a.byte).collect();
@@ -221,7 +230,7 @@ fn runtime_struct_hash(runtime: &RuntimeModel, id: Id) -> String {
             }
             let mut out = String::from("{");
             for (k, v) in latest {
-                out.push_str(&to_base36_u64(hash_str(&k) as u64));
+                out.push_str(&to_base36_u64(hash_json(&Value::String(k.clone())) as u64));
                 out.push(':');
                 out.push_str(&runtime_struct_hash(runtime, v));
                 out.push(',');
@@ -258,7 +267,7 @@ pub fn struct_hash_schema(node: Option<&SchemaNode>) -> String {
             }
             let mut out = String::from("{");
             for (k, v) in fields {
-                out.push_str(&to_base36_u64(hash_str(&k) as u64));
+                out.push_str(&to_base36_u64(hash_json(&Value::String(k.clone())) as u64));
                 out.push(':');
                 out.push_str(&struct_hash_schema(Some(v)));
                 out.push(',');
