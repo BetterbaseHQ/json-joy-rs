@@ -1690,8 +1690,8 @@ Rules:
 
 ## Package: json-type
 
-- [ ] `packages/json-type/package.json` -> `crates/json-type/Cargo.toml`
-- [ ] `Create mirrored package root: crates/json-type/src`
+- [x] `packages/json-type/package.json` -> `crates/json-joy-json-type/Cargo.toml`
+- [x] `Create mirrored package root: crates/json-joy-json-type/src`
 - [ ] `Complete all 123 file ports below`
 
 - [ ] `packages/json-type/src/__bench__/encode.ts` -> `crates/json-type/src/__bench__/encode.rs`
@@ -1716,48 +1716,48 @@ Rules:
 - [ ] `packages/json-type/src/codegen/capacity/CapacityEstimatorCodegen.ts` -> `crates/json-type/src/codegen/capacity/CapacityEstimatorCodegen.rs`
 - [ ] `packages/json-type/src/codegen/capacity/README.md` -> `crates/json-type/src/codegen/capacity/README.md`
 - [ ] `packages/json-type/src/codegen/capacity/__tests__/CapacityEstimatorCodegenContext.spec.ts` -> `crates/json-type/src/codegen/capacity/__tests__/CapacityEstimatorCodegenContext.spec.rs`
-- [ ] `packages/json-type/src/codegen/capacity/index.ts` -> `crates/json-type/src/codegen/capacity/mod.rs`
-- [ ] `packages/json-type/src/codegen/discriminator/index.ts` -> `crates/json-type/src/codegen/discriminator/mod.rs`
+- [x] `packages/json-type/src/codegen/capacity/index.ts` -> `crates/json-type/src/codegen/capacity/mod.rs`
+- [x] `packages/json-type/src/codegen/discriminator/index.ts` -> `crates/json-type/src/codegen/discriminator/mod.rs`
 - [ ] `packages/json-type/src/codegen/json/JsonTextCodegen.ts` -> `crates/json-type/src/codegen/json/JsonTextCodegen.rs`
 - [ ] `packages/json-type/src/codegen/json/__tests__/JsonTextCodegen.spec.ts` -> `crates/json-type/src/codegen/json/__tests__/JsonTextCodegen.spec.rs`
 - [ ] `packages/json-type/src/codegen/json/__tests__/json.spec.ts` -> `crates/json-type/src/codegen/json/__tests__/json.spec.rs`
 - [ ] `packages/json-type/src/codegen/types.ts` -> `crates/json-type/src/codegen/types.rs`
 - [ ] `packages/json-type/src/codegen/util.ts` -> `crates/json-type/src/codegen/util.rs`
 - [ ] `packages/json-type/src/codegen/validator/README.md` -> `crates/json-type/src/codegen/validator/README.md`
-- [ ] `packages/json-type/src/codegen/validator/ValidatorCodegen.ts` -> `crates/json-type/src/codegen/validator/ValidatorCodegen.rs`
+- [x] `packages/json-type/src/codegen/validator/ValidatorCodegen.ts` -> `crates/json-type/src/codegen/validator/ValidatorCodegen.rs`
 - [ ] `packages/json-type/src/codegen/validator/__tests__/codegen.spec.ts` -> `crates/json-type/src/codegen/validator/__tests__/codegen.spec.rs`
-- [ ] `packages/json-type/src/codegen/validator/types.ts` -> `crates/json-type/src/codegen/validator/types.rs`
+- [x] `packages/json-type/src/codegen/validator/types.ts` -> `crates/json-type/src/codegen/validator/types.rs`
 - [ ] `packages/json-type/src/codegen/validator/util.ts` -> `crates/json-type/src/codegen/validator/util.rs`
-- [ ] `packages/json-type/src/constants.ts` -> `crates/json-type/src/constants.rs`
-- [ ] `packages/json-type/src/index.ts` -> `crates/json-type/src/mod.rs`
+- [x] `packages/json-type/src/constants.ts` -> `crates/json-type/src/constants.rs`
+- [x] `packages/json-type/src/index.ts` -> `crates/json-type/src/mod.rs`
 - [ ] `packages/json-type/src/json-schema/__tests__/alias.spec.ts` -> `crates/json-type/src/json-schema/__tests__/alias.spec.rs`
-- [ ] `packages/json-type/src/json-schema/converter.ts` -> `crates/json-type/src/json-schema/converter.rs`
-- [ ] `packages/json-type/src/json-schema/index.ts` -> `crates/json-type/src/json-schema/mod.rs`
-- [ ] `packages/json-type/src/json-schema/types.ts` -> `crates/json-type/src/json-schema/types.rs`
+- [x] `packages/json-type/src/json-schema/converter.ts` -> `crates/json-type/src/json-schema/converter.rs`
+- [x] `packages/json-type/src/json-schema/index.ts` -> `crates/json-type/src/json-schema/mod.rs`
+- [x] `packages/json-type/src/json-schema/types.ts` -> `crates/json-type/src/json-schema/types.rs`
 - [ ] `packages/json-type/src/jtd/__tests__/converter.spec.ts` -> `crates/json-type/src/jtd/__tests__/converter.spec.rs`
-- [ ] `packages/json-type/src/jtd/converter.ts` -> `crates/json-type/src/jtd/converter.rs`
-- [ ] `packages/json-type/src/jtd/index.ts` -> `crates/json-type/src/jtd/mod.rs`
-- [ ] `packages/json-type/src/jtd/types.ts` -> `crates/json-type/src/jtd/types.rs`
+- [x] `packages/json-type/src/jtd/converter.ts` -> `crates/json-type/src/jtd/converter.rs`
+- [x] `packages/json-type/src/jtd/index.ts` -> `crates/json-type/src/jtd/mod.rs`
+- [x] `packages/json-type/src/jtd/types.ts` -> `crates/json-type/src/jtd/types.rs`
 - [ ] `packages/json-type/src/metaschema/README.md` -> `crates/json-type/src/metaschema/README.md`
 - [ ] `packages/json-type/src/metaschema/__tests__/__snapshots__/metaschema.spec.ts.snap` -> `crates/json-type/src/metaschema/__tests__/__snapshots__/metaschema.spec.ts.snap`
 - [ ] `packages/json-type/src/metaschema/__tests__/metaschema.spec.ts` -> `crates/json-type/src/metaschema/__tests__/metaschema.spec.rs`
-- [ ] `packages/json-type/src/metaschema/metaschema.ts` -> `crates/json-type/src/metaschema/metaschema.rs`
-- [ ] `packages/json-type/src/random/Random.ts` -> `crates/json-type/src/random/Random.rs`
+- [x] `packages/json-type/src/metaschema/metaschema.ts` -> `crates/json-type/src/metaschema/metaschema.rs`
+- [x] `packages/json-type/src/random/Random.ts` -> `crates/json-type/src/random/Random.rs`
 - [ ] `packages/json-type/src/random/__tests__/random.spec.ts` -> `crates/json-type/src/random/__tests__/random.spec.rs`
-- [ ] `packages/json-type/src/random/index.ts` -> `crates/json-type/src/random/mod.rs`
+- [x] `packages/json-type/src/random/index.ts` -> `crates/json-type/src/random/mod.rs`
 - [ ] `packages/json-type/src/random/types.ts` -> `crates/json-type/src/random/types.rs`
-- [ ] `packages/json-type/src/schema/SchemaBuilder.ts` -> `crates/json-type/src/schema/SchemaBuilder.rs`
-- [ ] `packages/json-type/src/schema/Walker.ts` -> `crates/json-type/src/schema/Walker.rs`
+- [x] `packages/json-type/src/schema/SchemaBuilder.ts` -> `crates/json-type/src/schema/SchemaBuilder.rs`
+- [x] `packages/json-type/src/schema/Walker.ts` -> `crates/json-type/src/schema/Walker.rs`
 - [ ] `packages/json-type/src/schema/__tests__/SchemaBuilder.spec.ts` -> `crates/json-type/src/schema/__tests__/SchemaBuilder.spec.rs`
 - [ ] `packages/json-type/src/schema/__tests__/TypeOf.spec.ts` -> `crates/json-type/src/schema/__tests__/TypeOf.spec.rs`
 - [ ] `packages/json-type/src/schema/__tests__/metadata.spec.ts` -> `crates/json-type/src/schema/__tests__/metadata.spec.rs`
 - [ ] `packages/json-type/src/schema/__tests__/type.spec.ts` -> `crates/json-type/src/schema/__tests__/type.spec.rs`
 - [ ] `packages/json-type/src/schema/__tests__/validate.spec.ts` -> `crates/json-type/src/schema/__tests__/validate.spec.rs`
-- [ ] `packages/json-type/src/schema/common.ts` -> `crates/json-type/src/schema/common.rs`
-- [ ] `packages/json-type/src/schema/index.ts` -> `crates/json-type/src/schema/mod.rs`
-- [ ] `packages/json-type/src/schema/schema.ts` -> `crates/json-type/src/schema/schema.rs`
-- [ ] `packages/json-type/src/schema/validate.ts` -> `crates/json-type/src/schema/validate.rs`
-- [ ] `packages/json-type/src/type/TypeBuilder.ts` -> `crates/json-type/src/type/TypeBuilder.rs`
+- [x] `packages/json-type/src/schema/common.ts` -> `crates/json-type/src/schema/common.rs`
+- [x] `packages/json-type/src/schema/index.ts` -> `crates/json-type/src/schema/mod.rs`
+- [x] `packages/json-type/src/schema/schema.ts` -> `crates/json-type/src/schema/schema.rs`
+- [x] `packages/json-type/src/schema/validate.ts` -> `crates/json-type/src/schema/validate.rs`
+- [x] `packages/json-type/src/type/TypeBuilder.ts` -> `crates/json-type/src/type/TypeBuilder.rs`
 - [ ] `packages/json-type/src/type/__tests__/SchemaOf.spec.ts` -> `crates/json-type/src/type/__tests__/SchemaOf.spec.rs`
 - [ ] `packages/json-type/src/type/__tests__/TypeBuilder-from.spec.ts` -> `crates/json-type/src/type/__tests__/TypeBuilder-from.spec.rs`
 - [ ] `packages/json-type/src/type/__tests__/TypeBuilder.spec.ts` -> `crates/json-type/src/type/__tests__/TypeBuilder.spec.rs`
@@ -1771,51 +1771,51 @@ Rules:
 - [ ] `packages/json-type/src/type/__tests__/toTypeScriptAst.spec.ts` -> `crates/json-type/src/type/__tests__/toTypeScriptAst.spec.rs`
 - [ ] `packages/json-type/src/type/__tests__/validate.spec.ts` -> `crates/json-type/src/type/__tests__/validate.spec.rs`
 - [ ] `packages/json-type/src/type/__tests__/validateTestSuite.ts` -> `crates/json-type/src/type/__tests__/validateTestSuite.rs`
-- [ ] `packages/json-type/src/type/classes.ts` -> `crates/json-type/src/type/classes.rs`
-- [ ] `packages/json-type/src/type/classes/AbsType.ts` -> `crates/json-type/src/type/classes/AbsType.rs`
-- [ ] `packages/json-type/src/type/classes/AliasType.ts` -> `crates/json-type/src/type/classes/AliasType.rs`
-- [ ] `packages/json-type/src/type/classes/AnyType.ts` -> `crates/json-type/src/type/classes/AnyType.rs`
-- [ ] `packages/json-type/src/type/classes/ArrType.ts` -> `crates/json-type/src/type/classes/ArrType.rs`
-- [ ] `packages/json-type/src/type/classes/BinType.ts` -> `crates/json-type/src/type/classes/BinType.rs`
-- [ ] `packages/json-type/src/type/classes/BoolType.ts` -> `crates/json-type/src/type/classes/BoolType.rs`
-- [ ] `packages/json-type/src/type/classes/ConType.ts` -> `crates/json-type/src/type/classes/ConType.rs`
-- [ ] `packages/json-type/src/type/classes/FnType.ts` -> `crates/json-type/src/type/classes/FnType.rs`
-- [ ] `packages/json-type/src/type/classes/MapType.ts` -> `crates/json-type/src/type/classes/MapType.rs`
+- [x] `packages/json-type/src/type/classes.ts` -> `crates/json-type/src/type/classes.rs`
+- [x] `packages/json-type/src/type/classes/AbsType.ts` -> `crates/json-type/src/type/classes/AbsType.rs`
+- [x] `packages/json-type/src/type/classes/AliasType.ts` -> `crates/json-type/src/type/classes/AliasType.rs`
+- [x] `packages/json-type/src/type/classes/AnyType.ts` -> `crates/json-type/src/type/classes/AnyType.rs`
+- [x] `packages/json-type/src/type/classes/ArrType.ts` -> `crates/json-type/src/type/classes/ArrType.rs`
+- [x] `packages/json-type/src/type/classes/BinType.ts` -> `crates/json-type/src/type/classes/BinType.rs`
+- [x] `packages/json-type/src/type/classes/BoolType.ts` -> `crates/json-type/src/type/classes/BoolType.rs`
+- [x] `packages/json-type/src/type/classes/ConType.ts` -> `crates/json-type/src/type/classes/ConType.rs`
+- [x] `packages/json-type/src/type/classes/FnType.ts` -> `crates/json-type/src/type/classes/FnType.rs`
+- [x] `packages/json-type/src/type/classes/MapType.ts` -> `crates/json-type/src/type/classes/MapType.rs`
 - [ ] `packages/json-type/src/type/classes/ModuleType/TypeExportContext.ts` -> `crates/json-type/src/type/classes/ModuleType/TypeExportContext.rs`
 - [ ] `packages/json-type/src/type/classes/ModuleType/__tests__/TypeSystem.spec.ts` -> `crates/json-type/src/type/classes/ModuleType/__tests__/TypeSystem.spec.rs`
 - [ ] `packages/json-type/src/type/classes/ModuleType/__tests__/toTypeScript.spec.ts` -> `crates/json-type/src/type/classes/ModuleType/__tests__/toTypeScript.spec.rs`
-- [ ] `packages/json-type/src/type/classes/ModuleType/index.ts` -> `crates/json-type/src/type/classes/ModuleType/mod.rs`
-- [ ] `packages/json-type/src/type/classes/NumType.ts` -> `crates/json-type/src/type/classes/NumType.rs`
-- [ ] `packages/json-type/src/type/classes/ObjType.ts` -> `crates/json-type/src/type/classes/ObjType.rs`
-- [ ] `packages/json-type/src/type/classes/OrType.ts` -> `crates/json-type/src/type/classes/OrType.rs`
-- [ ] `packages/json-type/src/type/classes/RefType.ts` -> `crates/json-type/src/type/classes/RefType.rs`
-- [ ] `packages/json-type/src/type/classes/StrType.ts` -> `crates/json-type/src/type/classes/StrType.rs`
+- [x] `packages/json-type/src/type/classes/ModuleType/index.ts` -> `crates/json-type/src/type/classes/ModuleType/mod.rs`
+- [x] `packages/json-type/src/type/classes/NumType.ts` -> `crates/json-type/src/type/classes/NumType.rs`
+- [x] `packages/json-type/src/type/classes/ObjType.ts` -> `crates/json-type/src/type/classes/ObjType.rs`
+- [x] `packages/json-type/src/type/classes/OrType.ts` -> `crates/json-type/src/type/classes/OrType.rs`
+- [x] `packages/json-type/src/type/classes/RefType.ts` -> `crates/json-type/src/type/classes/RefType.rs`
+- [x] `packages/json-type/src/type/classes/StrType.ts` -> `crates/json-type/src/type/classes/StrType.rs`
 - [ ] `packages/json-type/src/type/classes/__tests__/AliasType.spec.ts` -> `crates/json-type/src/type/classes/__tests__/AliasType.spec.rs`
 - [ ] `packages/json-type/src/type/classes/__tests__/BinType.spec.ts` -> `crates/json-type/src/type/classes/__tests__/BinType.spec.rs`
 - [ ] `packages/json-type/src/type/classes/__tests__/NumType.spec.ts` -> `crates/json-type/src/type/classes/__tests__/NumType.spec.rs`
 - [ ] `packages/json-type/src/type/classes/__tests__/ObjType.spec.ts` -> `crates/json-type/src/type/classes/__tests__/ObjType.spec.rs`
 - [ ] `packages/json-type/src/type/classes/__tests__/StrType.spec.ts` -> `crates/json-type/src/type/classes/__tests__/StrType.spec.rs`
-- [ ] `packages/json-type/src/type/discriminator.ts` -> `crates/json-type/src/type/discriminator.rs`
-- [ ] `packages/json-type/src/type/index.ts` -> `crates/json-type/src/type/mod.rs`
-- [ ] `packages/json-type/src/type/types.ts` -> `crates/json-type/src/type/types.rs`
-- [ ] `packages/json-type/src/typescript/converter.ts` -> `crates/json-type/src/typescript/converter.rs`
-- [ ] `packages/json-type/src/typescript/toText.ts` -> `crates/json-type/src/typescript/toText.rs`
-- [ ] `packages/json-type/src/typescript/types.ts` -> `crates/json-type/src/typescript/types.rs`
+- [x] `packages/json-type/src/type/discriminator.ts` -> `crates/json-type/src/type/discriminator.rs`
+- [x] `packages/json-type/src/type/index.ts` -> `crates/json-type/src/type/mod.rs`
+- [x] `packages/json-type/src/type/types.ts` -> `crates/json-type/src/type/types.rs`
+- [x] `packages/json-type/src/typescript/converter.ts` -> `crates/json-type/src/typescript/converter.rs`
+- [x] `packages/json-type/src/typescript/toText.ts` -> `crates/json-type/src/typescript/toText.rs`
+- [x] `packages/json-type/src/typescript/types.ts` -> `crates/json-type/src/typescript/types.rs`
 - [ ] `packages/json-type/src/typescript/util.ts` -> `crates/json-type/src/typescript/util.rs`
 - [ ] `packages/json-type/src/util.ts` -> `crates/json-type/src/util.rs`
 - [ ] `packages/json-type/src/util/__tests__/stringFormats.spec.ts` -> `crates/json-type/src/util/__tests__/stringFormats.spec.rs`
 - [ ] `packages/json-type/src/util/stringFormats.ts` -> `crates/json-type/src/util/stringFormats.rs`
 - [ ] `packages/json-type/src/util/types.ts` -> `crates/json-type/src/util/types.rs`
-- [ ] `packages/json-type/src/value/FnValue.ts` -> `crates/json-type/src/value/FnValue.rs`
-- [ ] `packages/json-type/src/value/ObjValue.ts` -> `crates/json-type/src/value/ObjValue.rs`
+- [x] `packages/json-type/src/value/FnValue.ts` -> `crates/json-type/src/value/FnValue.rs`
+- [x] `packages/json-type/src/value/ObjValue.ts` -> `crates/json-type/src/value/ObjValue.rs`
 - [ ] `packages/json-type/src/value/README.md` -> `crates/json-type/src/value/README.md`
-- [ ] `packages/json-type/src/value/Value.ts` -> `crates/json-type/src/value/Value.rs`
+- [x] `packages/json-type/src/value/Value.ts` -> `crates/json-type/src/value/Value.rs`
 - [ ] `packages/json-type/src/value/__tests__/ObjValue-router.spec.ts` -> `crates/json-type/src/value/__tests__/ObjValue-router.spec.rs`
 - [ ] `packages/json-type/src/value/__tests__/ObjValue.fixtures.ts` -> `crates/json-type/src/value/__tests__/ObjValue.fixtures.rs`
 - [ ] `packages/json-type/src/value/__tests__/ObjValue.spec.ts` -> `crates/json-type/src/value/__tests__/ObjValue.spec.rs`
 - [ ] `packages/json-type/src/value/__tests__/Value.spec.ts` -> `crates/json-type/src/value/__tests__/Value.spec.rs`
 - [ ] `packages/json-type/src/value/__tests__/__snapshots__/ObjValue.spec.ts.snap` -> `crates/json-type/src/value/__tests__/__snapshots__/ObjValue.spec.ts.snap`
-- [ ] `packages/json-type/src/value/index.ts` -> `crates/json-type/src/value/mod.rs`
+- [x] `packages/json-type/src/value/index.ts` -> `crates/json-type/src/value/mod.rs`
 - [ ] `packages/json-type/src/value/util.ts` -> `crates/json-type/src/value/util.rs`
 
 
@@ -1898,3 +1898,56 @@ Rules:
 - [x] `packages/util/src/types.ts` -> `crates/util/src/types.rs` (COMPLETE)
 
 
+
+
+## Package: json-joy
+
+- [x] `packages/json-joy/package.json` -> `crates/json-joy/Cargo.toml` (COMPLETE — Slice 0)
+- [x] `packages/json-joy/src/index.ts` -> `crates/json-joy/src/lib.rs` (COMPLETE — Slice 0, stub module declarations)
+
+### Slice 1 — Leaf utilities
+
+- [x] `packages/json-joy/src/json-walk/index.ts` -> `crates/json-joy/src/json_walk/mod.rs` (COMPLETE)
+- [x] `packages/json-joy/src/json-pretty/index.ts` -> `crates/json-joy/src/json_pretty/mod.rs` (COMPLETE)
+- [x] `packages/json-joy/src/json-stable/index.ts` -> `crates/json-joy/src/json_stable/mod.rs` (COMPLETE)
+- [x] `packages/json-joy/src/json-size/msgpackSizeFast.ts` -> `crates/json-joy/src/json_size/mod.rs` (COMPLETE)
+- [x] `packages/json-joy/src/json-ml/types.ts` -> `crates/json-joy/src/json_ml/mod.rs` (COMPLETE — types inlined)
+- [x] `packages/json-joy/src/json-ml/toHtml.ts` -> `crates/json-joy/src/json_ml/mod.rs` (COMPLETE — merged)
+- [x] `packages/json-joy/src/json-ml/walk.ts` -> `crates/json-joy/src/json_ml/mod.rs` (COMPLETE — merged)
+- [x] `packages/json-joy/src/json-ml/index.ts` -> `crates/json-joy/src/json_ml/mod.rs` (COMPLETE — re-exports)
+
+### Slice 2 — json-crdt-patch
+
+- [ ] `packages/json-joy/src/json-crdt-patch/` -> `crates/json-joy/src/json_crdt_patch/` (TODO)
+
+### Slice 3 — util (json-joy internal)
+
+- [ ] `packages/json-joy/src/util/` -> `crates/json-joy/src/util_inner/` (TODO)
+
+### Slice 4 — json-patch family
+
+- [ ] `packages/json-joy/src/json-patch/` -> `crates/json-joy/src/json_patch/` (TODO)
+- [ ] `packages/json-joy/src/json-patch-ot/` -> `crates/json-joy/src/json_patch_ot/` (TODO)
+- [ ] `packages/json-joy/src/json-ot/` -> `crates/json-joy/src/json_ot/` (TODO)
+- [ ] `packages/json-joy/src/json-patch-diff/` -> `crates/json-joy/src/json_patch_diff/` (TODO)
+
+### Slice 5 — json-hash + json-crdt
+
+- [ ] `packages/json-joy/src/json-hash/` -> `crates/json-joy/src/json_hash/` (TODO)
+- [ ] `packages/json-joy/src/json-crdt/` -> `crates/json-joy/src/json_crdt/` (TODO — largest slice)
+
+### Slice 6 — json-crdt-diff
+
+- [ ] `packages/json-joy/src/json-crdt-diff/` -> `crates/json-joy/src/json_crdt_diff/` (TODO)
+
+### Slice 7 — json-crdt-extensions
+
+- [ ] `packages/json-joy/src/json-crdt-extensions/` -> `crates/json-joy/src/json_crdt_extensions/` (TODO)
+
+### Slice 8 — json-crdt-peritext-ui (model/controller only)
+
+- [ ] `packages/json-joy/src/json-crdt-peritext-ui/` -> `crates/json-joy/src/json_crdt_peritext_ui/` (TODO — skip React bindings)
+
+### Slice 9 — json-cli
+
+- [ ] `packages/json-joy/src/json-cli/` -> `crates/json-joy/src/json_cli/` (TODO)

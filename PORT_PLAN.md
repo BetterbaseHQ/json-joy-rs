@@ -52,8 +52,45 @@ Checkpoint gates before marking a slice complete:
 1. `util`, `buffers`, `base64` (foundation dependencies)
 2. `json-pointer`, `json-path`, `json-type`, `json-random`, `json-expression`
 3. `json-pack`
-4. `json-joy` (all module families)
+4. `json-joy` (9 slices — see below)
 5. `codegen` and remaining support files
+
+## json-joy port — 9-slice sequence
+
+All 17 upstream sub-modules (`packages/json-joy/src/`) map to a single
+`crates/json-joy` crate with sibling modules.
+
+| Slice | Sub-modules | Status |
+|---|---|---|
+| 0 | Crate scaffold (Cargo.toml, lib.rs) | DONE |
+| 1 | json-walk, json-pretty, json-stable, json-size, json-ml | DONE |
+| 2 | json-crdt-patch (41 files — foundational patch protocol) | TODO |
+| 3 | util (15 files — wraps crdt-patch clock) | TODO |
+| 4 | json-patch, json-patch-ot, json-ot, json-patch-diff | TODO |
+| 5 | json-hash (12 files) + json-crdt (263 files — largest!) | TODO |
+| 6 | json-crdt-diff (4 files) | TODO |
+| 7 | json-crdt-extensions (225 files) | TODO |
+| 8 | json-crdt-peritext-ui (model/controller only, no React) | TODO |
+| 9 | json-cli (35 files) | TODO |
+
+Internal dependency order:
+```
+Leaves (no internal deps)
+  json-walk, json-pretty, json-stable, json-size, json-ml  ← Slice 1
+        │
+  json-crdt-patch  ← Slice 2 (foundational)
+        │
+  util  ← Slice 3
+     │
+  json-patch ── json-ot ── json-patch-ot  ← Slice 4
+                        └── json-patch-diff ← needs json-hash (Slice 5)
+  json-hash + json-crdt  ← Slice 5 (sibling modules; circular dep OK)
+     │
+  ├── json-crdt-diff  ← Slice 6
+  ├── json-crdt-extensions  ← Slice 7
+  └── json-crdt-peritext-ui  ← Slice 8
+json-cli  ← Slice 9
+```
 
 ## Working model
 

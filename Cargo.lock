@@ -368,6 +368,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-joy"
+version = "0.1.0"
+dependencies = [
+ "json-joy-buffers",
+ "json-joy-json-pack",
+ "json-joy-json-type",
+ "json-joy-util",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "json-joy-base64"
 version = "0.1.0"
 dependencies = [
@@ -436,6 +448,20 @@ dependencies = [
  "json-joy-util",
  "rand 0.8.5",
  "serde_json",
+]
+
+[[package]]
+name = "json-joy-json-type"
+version = "0.1.0"
+dependencies = [
+ "json-expression",
+ "json-joy-buffers",
+ "json-joy-json-pack",
+ "json-joy-json-random",
+ "json-joy-util",
+ "rand 0.8.5",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
