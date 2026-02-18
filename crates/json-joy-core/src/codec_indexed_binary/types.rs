@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::PackValue;
 use json_joy_json_pack::{
     write_cbor_text_like_json_pack, write_cbor_uint_major, write_json_like_json_pack,
 };
@@ -146,7 +146,7 @@ pub(super) fn write_uint_major(out: &mut Vec<u8>, major: u8, n: u64) {
     write_cbor_uint_major(out, major, n);
 }
 
-pub(super) fn json_from_cbor(v: &CborValue) -> Result<Value, IndexedBinaryCodecError> {
+pub(super) fn json_from_cbor(v: &PackValue) -> Result<Value, IndexedBinaryCodecError> {
     json_joy_json_pack::cbor_to_json(v).map_err(|_| IndexedBinaryCodecError::InvalidNode)
 }
 

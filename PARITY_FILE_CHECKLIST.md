@@ -1249,18 +1249,18 @@ Rules:
 - [ ] `packages/json-pack/src/__tests__/msgpack-documents.ts` -> `crates/json-pack/src/__tests__/msgpack-documents.rs`
 - [ ] `packages/json-pack/src/__tests__/setup.js` -> `crates/json-pack/src/__tests__/setup.rs`
 - [ ] `packages/json-pack/src/__tests__/util.ts` -> `crates/json-pack/src/__tests__/util.rs`
-- [ ] `packages/json-pack/src/avro/AvroDecoder.ts` -> `crates/json-pack/src/avro/AvroDecoder.rs`
-- [ ] `packages/json-pack/src/avro/AvroEncoder.ts` -> `crates/json-pack/src/avro/AvroEncoder.rs`
-- [ ] `packages/json-pack/src/avro/AvroSchemaDecoder.ts` -> `crates/json-pack/src/avro/AvroSchemaDecoder.rs`
-- [ ] `packages/json-pack/src/avro/AvroSchemaEncoder.ts` -> `crates/json-pack/src/avro/AvroSchemaEncoder.rs`
-- [ ] `packages/json-pack/src/avro/AvroSchemaValidator.ts` -> `crates/json-pack/src/avro/AvroSchemaValidator.rs`
-- [ ] `packages/json-pack/src/avro/__tests__/AvroDecoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroDecoder.spec.rs`
-- [ ] `packages/json-pack/src/avro/__tests__/AvroEncoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroEncoder.spec.rs`
-- [ ] `packages/json-pack/src/avro/__tests__/AvroSchemaDecoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaDecoder.spec.rs`
-- [ ] `packages/json-pack/src/avro/__tests__/AvroSchemaEncoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaEncoder.spec.rs`
-- [ ] `packages/json-pack/src/avro/__tests__/AvroSchemaValidator.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaValidator.spec.rs`
-- [ ] `packages/json-pack/src/avro/index.ts` -> `crates/json-pack/src/avro/mod.rs`
-- [ ] `packages/json-pack/src/avro/types.ts` -> `crates/json-pack/src/avro/types.rs`
+- [x] `packages/json-pack/src/avro/AvroDecoder.ts` -> `crates/json-pack/src/avro/AvroDecoder.rs`
+- [x] `packages/json-pack/src/avro/AvroEncoder.ts` -> `crates/json-pack/src/avro/AvroEncoder.rs`
+- [x] `packages/json-pack/src/avro/AvroSchemaDecoder.ts` -> `crates/json-pack/src/avro/AvroSchemaDecoder.rs`
+- [x] `packages/json-pack/src/avro/AvroSchemaEncoder.ts` -> `crates/json-pack/src/avro/AvroSchemaEncoder.rs`
+- [x] `packages/json-pack/src/avro/AvroSchemaValidator.ts` -> `crates/json-pack/src/avro/AvroSchemaValidator.rs`
+- [x] `packages/json-pack/src/avro/__tests__/AvroDecoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroDecoder.spec.rs`
+- [x] `packages/json-pack/src/avro/__tests__/AvroEncoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroEncoder.spec.rs`
+- [x] `packages/json-pack/src/avro/__tests__/AvroSchemaDecoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaDecoder.spec.rs`
+- [x] `packages/json-pack/src/avro/__tests__/AvroSchemaEncoder.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaEncoder.spec.rs`
+- [x] `packages/json-pack/src/avro/__tests__/AvroSchemaValidator.spec.ts` -> `crates/json-pack/src/avro/__tests__/AvroSchemaValidator.spec.rs`
+- [x] `packages/json-pack/src/avro/index.ts` -> `crates/json-pack/src/avro/mod.rs`
+- [x] `packages/json-pack/src/avro/types.ts` -> `crates/json-pack/src/avro/types.rs`
 - [ ] `packages/json-pack/src/bencode/BencodeDecoder.ts` -> `crates/json-pack/src/bencode/BencodeDecoder.rs`
 - [ ] `packages/json-pack/src/bencode/BencodeEncoder.ts` -> `crates/json-pack/src/bencode/BencodeEncoder.rs`
 - [ ] `packages/json-pack/src/bencode/README.md` -> `crates/json-pack/src/bencode/README.md`
@@ -1321,22 +1321,22 @@ Rules:
 - [ ] `packages/json-pack/src/ejson/__tests__/integration.spec.ts` -> `crates/json-pack/src/ejson/__tests__/integration.spec.rs`
 - [ ] `packages/json-pack/src/ejson/index.ts` -> `crates/json-pack/src/ejson/mod.rs`
 - [ ] `packages/json-pack/src/index.ts` -> `crates/json-pack/src/mod.rs`
-- [ ] `packages/json-pack/src/ion/Import.ts` -> `crates/json-pack/src/ion/Import.rs`
-- [ ] `packages/json-pack/src/ion/IonDecoder.ts` -> `crates/json-pack/src/ion/IonDecoder.rs`
-- [ ] `packages/json-pack/src/ion/IonDecoderBase.ts` -> `crates/json-pack/src/ion/IonDecoderBase.rs`
-- [ ] `packages/json-pack/src/ion/IonEncoderFast.ts` -> `crates/json-pack/src/ion/IonEncoderFast.rs`
-- [ ] `packages/json-pack/src/ion/README.md` -> `crates/json-pack/src/ion/README.md`
-- [ ] `packages/json-pack/src/ion/__tests__/Import.spec.ts` -> `crates/json-pack/src/ion/__tests__/Import.spec.rs`
-- [ ] `packages/json-pack/src/ion/__tests__/IonDecoder.simple.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonDecoder.simple.spec.rs`
-- [ ] `packages/json-pack/src/ion/__tests__/IonDecoder.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonDecoder.spec.rs`
-- [ ] `packages/json-pack/src/ion/__tests__/IonEncoder.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonEncoder.spec.rs`
-- [ ] `packages/json-pack/src/ion/__tests__/automated.spec.ts` -> `crates/json-pack/src/ion/__tests__/automated.spec.rs`
-- [ ] `packages/json-pack/src/ion/__tests__/fuzzing.spec.ts` -> `crates/json-pack/src/ion/__tests__/fuzzing.spec.rs`
-- [ ] `packages/json-pack/src/ion/ast.ts` -> `crates/json-pack/src/ion/ast.rs`
-- [ ] `packages/json-pack/src/ion/constants.ts` -> `crates/json-pack/src/ion/constants.rs`
-- [ ] `packages/json-pack/src/ion/index.ts` -> `crates/json-pack/src/ion/mod.rs`
-- [ ] `packages/json-pack/src/ion/symbols.ts` -> `crates/json-pack/src/ion/symbols.rs`
-- [ ] `packages/json-pack/src/ion/types.ts` -> `crates/json-pack/src/ion/types.rs`
+- [x] `packages/json-pack/src/ion/Import.ts` -> `crates/json-pack/src/ion/Import.rs`
+- [x] `packages/json-pack/src/ion/IonDecoder.ts` -> `crates/json-pack/src/ion/IonDecoder.rs`
+- [x] `packages/json-pack/src/ion/IonDecoderBase.ts` -> `crates/json-pack/src/ion/IonDecoderBase.rs`
+- [x] `packages/json-pack/src/ion/IonEncoderFast.ts` -> `crates/json-pack/src/ion/IonEncoderFast.rs`
+- [x] `packages/json-pack/src/ion/README.md` -> `crates/json-pack/src/ion/README.md`
+- [x] `packages/json-pack/src/ion/__tests__/Import.spec.ts` -> `crates/json-pack/src/ion/__tests__/Import.spec.rs`
+- [x] `packages/json-pack/src/ion/__tests__/IonDecoder.simple.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonDecoder.simple.spec.rs`
+- [x] `packages/json-pack/src/ion/__tests__/IonDecoder.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonDecoder.spec.rs`
+- [x] `packages/json-pack/src/ion/__tests__/IonEncoder.spec.ts` -> `crates/json-pack/src/ion/__tests__/IonEncoder.spec.rs`
+- [x] `packages/json-pack/src/ion/__tests__/automated.spec.ts` -> `crates/json-pack/src/ion/__tests__/automated.spec.rs`
+- [x] `packages/json-pack/src/ion/__tests__/fuzzing.spec.ts` -> `crates/json-pack/src/ion/__tests__/fuzzing.spec.rs`
+- [x] `packages/json-pack/src/ion/ast.ts` -> `crates/json-pack/src/ion/ast.rs`
+- [x] `packages/json-pack/src/ion/constants.ts` -> `crates/json-pack/src/ion/constants.rs`
+- [x] `packages/json-pack/src/ion/index.ts` -> `crates/json-pack/src/ion/mod.rs`
+- [x] `packages/json-pack/src/ion/symbols.ts` -> `crates/json-pack/src/ion/symbols.rs`
+- [x] `packages/json-pack/src/ion/types.ts` -> `crates/json-pack/src/ion/types.rs`
 - [ ] `packages/json-pack/src/json-binary/README.md` -> `crates/json-pack/src/json-binary/README.md`
 - [ ] `packages/json-pack/src/json-binary/__tests__/automated.spec.ts` -> `crates/json-pack/src/json-binary/__tests__/automated.spec.rs`
 - [ ] `packages/json-pack/src/json-binary/__tests__/stringify.spec.ts` -> `crates/json-pack/src/json-binary/__tests__/stringify.spec.rs`
@@ -1391,121 +1391,121 @@ Rules:
 - [ ] `packages/json-pack/src/msgpack/shallow-read.ts` -> `crates/json-pack/src/msgpack/shallow-read.rs`
 - [ ] `packages/json-pack/src/msgpack/types.ts` -> `crates/json-pack/src/msgpack/types.rs`
 - [ ] `packages/json-pack/src/msgpack/util.ts` -> `crates/json-pack/src/msgpack/util.rs`
-- [ ] `packages/json-pack/src/nfs/README.md` -> `crates/json-pack/src/nfs/README.md`
-- [ ] `packages/json-pack/src/nfs/v3/FullNfsv3Encoder.ts` -> `crates/json-pack/src/nfs/v3/FullNfsv3Encoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/Nfsv3Decoder.ts` -> `crates/json-pack/src/nfs/v3/Nfsv3Decoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/Nfsv3Encoder.ts` -> `crates/json-pack/src/nfs/v3/Nfsv3Encoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/README.md` -> `crates/json-pack/src/nfs/v3/README.md`
-- [ ] `packages/json-pack/src/nfs/v3/__demos__/README.md` -> `crates/json-pack/src/nfs/v3/__demos__/README.md`
-- [ ] `packages/json-pack/src/nfs/v3/__demos__/tcp-client.ts` -> `crates/json-pack/src/nfs/v3/__demos__/tcp-client.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__demos__/tcp-server.ts` -> `crates/json-pack/src/nfs/v3/__demos__/tcp-server.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/FullNfsv3Encoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/FullNfsv3Encoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/Nfsv3Decoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/Nfsv3Decoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/Nfsv3Encoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/Nfsv3Encoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/fixtures.ts` -> `crates/json-pack/src/nfs/v3/__tests__/fixtures.rs`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/rfc1813.txt` -> `crates/json-pack/src/nfs/v3/__tests__/rfc1813.txt`
-- [ ] `packages/json-pack/src/nfs/v3/__tests__/roundtrip.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/roundtrip.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/constants.ts` -> `crates/json-pack/src/nfs/v3/constants.rs`
-- [ ] `packages/json-pack/src/nfs/v3/errors.ts` -> `crates/json-pack/src/nfs/v3/errors.rs`
-- [ ] `packages/json-pack/src/nfs/v3/index.ts` -> `crates/json-pack/src/nfs/v3/mod.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/NlmDecoder.ts` -> `crates/json-pack/src/nfs/v3/locks/NlmDecoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/NlmEncoder.ts` -> `crates/json-pack/src/nfs/v3/locks/NlmEncoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/__tests__/NlmEncoder.spec.ts` -> `crates/json-pack/src/nfs/v3/locks/__tests__/NlmEncoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/constants.ts` -> `crates/json-pack/src/nfs/v3/locks/constants.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/messages.ts` -> `crates/json-pack/src/nfs/v3/locks/messages.rs`
-- [ ] `packages/json-pack/src/nfs/v3/locks/structs.ts` -> `crates/json-pack/src/nfs/v3/locks/structs.rs`
-- [ ] `packages/json-pack/src/nfs/v3/messages.ts` -> `crates/json-pack/src/nfs/v3/messages.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/MountDecoder.ts` -> `crates/json-pack/src/nfs/v3/mount/MountDecoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/MountEncoder.ts` -> `crates/json-pack/src/nfs/v3/mount/MountEncoder.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/__tests__/MountEncoder.spec.ts` -> `crates/json-pack/src/nfs/v3/mount/__tests__/MountEncoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/constants.ts` -> `crates/json-pack/src/nfs/v3/mount/constants.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/messages.ts` -> `crates/json-pack/src/nfs/v3/mount/messages.rs`
-- [ ] `packages/json-pack/src/nfs/v3/mount/structs.ts` -> `crates/json-pack/src/nfs/v3/mount/structs.rs`
-- [ ] `packages/json-pack/src/nfs/v3/structs.ts` -> `crates/json-pack/src/nfs/v3/structs.rs`
-- [ ] `packages/json-pack/src/nfs/v4/Nfsv4Decoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4Decoder.rs`
-- [ ] `packages/json-pack/src/nfs/v4/Nfsv4Encoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4Encoder.rs`
-- [ ] `packages/json-pack/src/nfs/v4/Nfsv4FullEncoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4FullEncoder.rs`
-- [ ] `packages/json-pack/src/nfs/v4/README.md` -> `crates/json-pack/src/nfs/v4/README.md`
-- [ ] `packages/json-pack/src/nfs/v4/__demos__/formatters.ts` -> `crates/json-pack/src/nfs/v4/__demos__/formatters.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/FullNfsv4Encoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/FullNfsv4Encoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/Nfsv4Decoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/Nfsv4Decoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/Nfsv4Encoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/Nfsv4Encoder.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/attributes.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/attributes.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/fixtures.ts` -> `crates/json-pack/src/nfs/v4/__tests__/fixtures.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/rfc5661.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc5661.txt`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/rfc5663.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc5663.txt`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/rfc7530.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7530.txt`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/rfc7531.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7531.txt`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/rfc7862.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7862.txt`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/roundtrip.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/roundtrip.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/__tests__/util.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/util.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/attributes.ts` -> `crates/json-pack/src/nfs/v4/attributes.rs`
-- [ ] `packages/json-pack/src/nfs/v4/builder.ts` -> `crates/json-pack/src/nfs/v4/builder.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/NfsFsDir.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsDir.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/NfsFsDirent.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsDirent.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/NfsFsFileHandle.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsFileHandle.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/NfsFsStats.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsStats.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/Nfsv4FsClient.ts` -> `crates/json-pack/src/nfs/v4/client/Nfsv4FsClient.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/Nfsv4TcpClient.ts` -> `crates/json-pack/src/nfs/v4/client/Nfsv4TcpClient.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/__tests__/NfsFsFileHandle.spec.ts` -> `crates/json-pack/src/nfs/v4/client/__tests__/NfsFsFileHandle.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/__tests__/Nfsv4FsClient.spec.ts` -> `crates/json-pack/src/nfs/v4/client/__tests__/Nfsv4FsClient.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/client/types.ts` -> `crates/json-pack/src/nfs/v4/client/types.rs`
-- [ ] `packages/json-pack/src/nfs/v4/constants.ts` -> `crates/json-pack/src/nfs/v4/constants.rs`
-- [ ] `packages/json-pack/src/nfs/v4/errors.ts` -> `crates/json-pack/src/nfs/v4/errors.rs`
-- [ ] `packages/json-pack/src/nfs/v4/format.ts` -> `crates/json-pack/src/nfs/v4/format.rs`
-- [ ] `packages/json-pack/src/nfs/v4/index.ts` -> `crates/json-pack/src/nfs/v4/mod.rs`
-- [ ] `packages/json-pack/src/nfs/v4/messages.ts` -> `crates/json-pack/src/nfs/v4/messages.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/Nfsv4CompoundProcCtx.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4CompoundProcCtx.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/Nfsv4Connection.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4Connection.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/Nfsv4TcpServer.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4TcpServer.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/__demos__/README.md` -> `crates/json-pack/src/nfs/v4/server/__demos__/README.md`
-- [ ] `packages/json-pack/src/nfs/v4/server/__demos__/tcp-client.ts` -> `crates/json-pack/src/nfs/v4/server/__demos__/tcp-client.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/__demos__/tcp-server.ts` -> `crates/json-pack/src/nfs/v4/server/__demos__/tcp-server.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/__demos__/test-demo.sh` -> `crates/json-pack/src/nfs/v4/server/__demos__/test-demo.sh`
-- [ ] `packages/json-pack/src/nfs/v4/server/__tests__/Nfsv4Connection.spec.ts` -> `crates/json-pack/src/nfs/v4/server/__tests__/Nfsv4Connection.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/__tests__/setup.ts` -> `crates/json-pack/src/nfs/v4/server/__tests__/setup.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/ByteRangeLock.ts` -> `crates/json-pack/src/nfs/v4/server/operations/ByteRangeLock.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/ClientRecord.ts` -> `crates/json-pack/src/nfs/v4/server/operations/ClientRecord.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/FilesystemStats.ts` -> `crates/json-pack/src/nfs/v4/server/operations/FilesystemStats.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/LockOwnerState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/LockOwnerState.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/LockStateid.ts` -> `crates/json-pack/src/nfs/v4/server/operations/LockStateid.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/Nfsv4Operations.ts` -> `crates/json-pack/src/nfs/v4/server/operations/Nfsv4Operations.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/Nfsv4OperationsNotImpl.ts` -> `crates/json-pack/src/nfs/v4/server/operations/Nfsv4OperationsNotImpl.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/OpenFileState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/OpenFileState.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/OpenOwnerState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/OpenOwnerState.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/Nfsv4OperationsNode.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/Nfsv4OperationsNode.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/CLOSE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/CLOSE.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/COMMIT.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/COMMIT.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/CREATE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/CREATE.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/ILLEGAL.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/ILLEGAL.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LINK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LINK.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-CONFLICTS.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-CONFLICTS.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-ERRORS.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-ERRORS.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-OWNER.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-OWNER.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-seqid.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-seqid.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKT.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKT.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKU.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKU.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/NVERIFY.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/NVERIFY.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPENATTR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPENATTR.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_CONFIRM.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_CONFIRM.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_DOWNGRADE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_DOWNGRADE.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READ.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READ.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READDIR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READDIR.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READLINK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READLINK.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/REMOVE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/REMOVE.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/RENAME.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/RENAME.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/SETATTR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/SETATTR.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/STATEID.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/STATEID.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/VERIFY.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/VERIFY.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/WRITE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/WRITE.spec.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/attrs.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/attrs.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/fh.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/fh.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/operations/node/util.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/util.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/types.ts` -> `crates/json-pack/src/nfs/v4/server/types.rs`
-- [ ] `packages/json-pack/src/nfs/v4/server/util.ts` -> `crates/json-pack/src/nfs/v4/server/util.rs`
-- [ ] `packages/json-pack/src/nfs/v4/structs.ts` -> `crates/json-pack/src/nfs/v4/structs.rs`
+- [~] `packages/json-pack/src/nfs/README.md` -> `crates/json-pack/src/nfs/README.md` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/FullNfsv3Encoder.ts` -> `crates/json-pack/src/nfs/v3/FullNfsv3Encoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/Nfsv3Decoder.ts` -> `crates/json-pack/src/nfs/v3/Nfsv3Decoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/Nfsv3Encoder.ts` -> `crates/json-pack/src/nfs/v3/Nfsv3Encoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/README.md` -> `crates/json-pack/src/nfs/v3/README.md` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__demos__/README.md` -> `crates/json-pack/src/nfs/v3/__demos__/README.md` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__demos__/tcp-client.ts` -> `crates/json-pack/src/nfs/v3/__demos__/tcp-client.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__demos__/tcp-server.ts` -> `crates/json-pack/src/nfs/v3/__demos__/tcp-server.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/FullNfsv3Encoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/FullNfsv3Encoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/Nfsv3Decoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/Nfsv3Decoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/Nfsv3Encoder.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/Nfsv3Encoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/fixtures.ts` -> `crates/json-pack/src/nfs/v3/__tests__/fixtures.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/rfc1813.txt` -> `crates/json-pack/src/nfs/v3/__tests__/rfc1813.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/__tests__/roundtrip.spec.ts` -> `crates/json-pack/src/nfs/v3/__tests__/roundtrip.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/constants.ts` -> `crates/json-pack/src/nfs/v3/constants.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/errors.ts` -> `crates/json-pack/src/nfs/v3/errors.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/index.ts` -> `crates/json-pack/src/nfs/v3/mod.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/NlmDecoder.ts` -> `crates/json-pack/src/nfs/v3/locks/NlmDecoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/NlmEncoder.ts` -> `crates/json-pack/src/nfs/v3/locks/NlmEncoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/__tests__/NlmEncoder.spec.ts` -> `crates/json-pack/src/nfs/v3/locks/__tests__/NlmEncoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/constants.ts` -> `crates/json-pack/src/nfs/v3/locks/constants.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/messages.ts` -> `crates/json-pack/src/nfs/v3/locks/messages.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/locks/structs.ts` -> `crates/json-pack/src/nfs/v3/locks/structs.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/messages.ts` -> `crates/json-pack/src/nfs/v3/messages.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/MountDecoder.ts` -> `crates/json-pack/src/nfs/v3/mount/MountDecoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/MountEncoder.ts` -> `crates/json-pack/src/nfs/v3/mount/MountEncoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/__tests__/MountEncoder.spec.ts` -> `crates/json-pack/src/nfs/v3/mount/__tests__/MountEncoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/constants.ts` -> `crates/json-pack/src/nfs/v3/mount/constants.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/messages.ts` -> `crates/json-pack/src/nfs/v3/mount/messages.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/mount/structs.ts` -> `crates/json-pack/src/nfs/v3/mount/structs.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v3/structs.ts` -> `crates/json-pack/src/nfs/v3/structs.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/Nfsv4Decoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4Decoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/Nfsv4Encoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4Encoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/Nfsv4FullEncoder.ts` -> `crates/json-pack/src/nfs/v4/Nfsv4FullEncoder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/README.md` -> `crates/json-pack/src/nfs/v4/README.md` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__demos__/formatters.ts` -> `crates/json-pack/src/nfs/v4/__demos__/formatters.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/FullNfsv4Encoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/FullNfsv4Encoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/Nfsv4Decoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/Nfsv4Decoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/Nfsv4Encoder.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/Nfsv4Encoder.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/attributes.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/attributes.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/fixtures.ts` -> `crates/json-pack/src/nfs/v4/__tests__/fixtures.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/rfc5661.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc5661.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/rfc5663.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc5663.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/rfc7530.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7530.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/rfc7531.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7531.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/rfc7862.txt` -> `crates/json-pack/src/nfs/v4/__tests__/rfc7862.txt` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/roundtrip.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/roundtrip.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/__tests__/util.spec.ts` -> `crates/json-pack/src/nfs/v4/__tests__/util.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/attributes.ts` -> `crates/json-pack/src/nfs/v4/attributes.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/builder.ts` -> `crates/json-pack/src/nfs/v4/builder.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/NfsFsDir.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsDir.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/NfsFsDirent.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsDirent.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/NfsFsFileHandle.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsFileHandle.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/NfsFsStats.ts` -> `crates/json-pack/src/nfs/v4/client/NfsFsStats.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/Nfsv4FsClient.ts` -> `crates/json-pack/src/nfs/v4/client/Nfsv4FsClient.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/Nfsv4TcpClient.ts` -> `crates/json-pack/src/nfs/v4/client/Nfsv4TcpClient.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/__tests__/NfsFsFileHandle.spec.ts` -> `crates/json-pack/src/nfs/v4/client/__tests__/NfsFsFileHandle.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/__tests__/Nfsv4FsClient.spec.ts` -> `crates/json-pack/src/nfs/v4/client/__tests__/Nfsv4FsClient.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/client/types.ts` -> `crates/json-pack/src/nfs/v4/client/types.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/constants.ts` -> `crates/json-pack/src/nfs/v4/constants.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/errors.ts` -> `crates/json-pack/src/nfs/v4/errors.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/format.ts` -> `crates/json-pack/src/nfs/v4/format.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/index.ts` -> `crates/json-pack/src/nfs/v4/mod.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/messages.ts` -> `crates/json-pack/src/nfs/v4/messages.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/Nfsv4CompoundProcCtx.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4CompoundProcCtx.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/Nfsv4Connection.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4Connection.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/Nfsv4TcpServer.ts` -> `crates/json-pack/src/nfs/v4/server/Nfsv4TcpServer.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__demos__/README.md` -> `crates/json-pack/src/nfs/v4/server/__demos__/README.md` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__demos__/tcp-client.ts` -> `crates/json-pack/src/nfs/v4/server/__demos__/tcp-client.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__demos__/tcp-server.ts` -> `crates/json-pack/src/nfs/v4/server/__demos__/tcp-server.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__demos__/test-demo.sh` -> `crates/json-pack/src/nfs/v4/server/__demos__/test-demo.sh` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__tests__/Nfsv4Connection.spec.ts` -> `crates/json-pack/src/nfs/v4/server/__tests__/Nfsv4Connection.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/__tests__/setup.ts` -> `crates/json-pack/src/nfs/v4/server/__tests__/setup.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/ByteRangeLock.ts` -> `crates/json-pack/src/nfs/v4/server/operations/ByteRangeLock.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/ClientRecord.ts` -> `crates/json-pack/src/nfs/v4/server/operations/ClientRecord.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/FilesystemStats.ts` -> `crates/json-pack/src/nfs/v4/server/operations/FilesystemStats.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/LockOwnerState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/LockOwnerState.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/LockStateid.ts` -> `crates/json-pack/src/nfs/v4/server/operations/LockStateid.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/Nfsv4Operations.ts` -> `crates/json-pack/src/nfs/v4/server/operations/Nfsv4Operations.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/Nfsv4OperationsNotImpl.ts` -> `crates/json-pack/src/nfs/v4/server/operations/Nfsv4OperationsNotImpl.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/OpenFileState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/OpenFileState.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/OpenOwnerState.ts` -> `crates/json-pack/src/nfs/v4/server/operations/OpenOwnerState.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/Nfsv4OperationsNode.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/Nfsv4OperationsNode.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/CLOSE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/CLOSE.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/COMMIT.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/COMMIT.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/CREATE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/CREATE.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/ILLEGAL.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/ILLEGAL.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LINK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LINK.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-CONFLICTS.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-CONFLICTS.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-ERRORS.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-ERRORS.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-OWNER.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-OWNER.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-seqid.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK-seqid.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCK.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKT.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKT.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKU.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/LOCKU.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/NVERIFY.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/NVERIFY.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPENATTR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPENATTR.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_CONFIRM.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_CONFIRM.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_DOWNGRADE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/OPEN_DOWNGRADE.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READ.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READ.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READDIR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READDIR.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/READLINK.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/READLINK.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/REMOVE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/REMOVE.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/RENAME.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/RENAME.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/SETATTR.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/SETATTR.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/STATEID.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/STATEID.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/VERIFY.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/VERIFY.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/__tests__/WRITE.spec.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/__tests__/WRITE.spec.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/attrs.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/attrs.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/fh.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/fh.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/operations/node/util.ts` -> `crates/json-pack/src/nfs/v4/server/operations/node/util.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/types.ts` -> `crates/json-pack/src/nfs/v4/server/types.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/server/util.ts` -> `crates/json-pack/src/nfs/v4/server/util.rs` (SKIPPED: deferred — NFS protocol stack)
+- [~] `packages/json-pack/src/nfs/v4/structs.ts` -> `crates/json-pack/src/nfs/v4/structs.rs` (SKIPPED: deferred — NFS protocol stack)
 - [ ] `packages/json-pack/src/resp/README.md` -> `crates/json-pack/src/resp/README.md`
 - [ ] `packages/json-pack/src/resp/RespDecoder.ts` -> `crates/json-pack/src/resp/RespDecoder.rs`
 - [ ] `packages/json-pack/src/resp/RespEncoder.ts` -> `crates/json-pack/src/resp/RespEncoder.rs`
@@ -1527,22 +1527,22 @@ Rules:
 - [ ] `packages/json-pack/src/rm/__tests__/RmRecordDecoder.spec.ts` -> `crates/json-pack/src/rm/__tests__/RmRecordDecoder.spec.rs`
 - [ ] `packages/json-pack/src/rm/__tests__/RmRecordEncoder.spec.ts` -> `crates/json-pack/src/rm/__tests__/RmRecordEncoder.spec.rs`
 - [ ] `packages/json-pack/src/rm/index.ts` -> `crates/json-pack/src/rm/mod.rs`
-- [ ] `packages/json-pack/src/rpc/README.md` -> `crates/json-pack/src/rpc/README.md`
-- [ ] `packages/json-pack/src/rpc/RpcMessageDecoder.ts` -> `crates/json-pack/src/rpc/RpcMessageDecoder.rs`
-- [ ] `packages/json-pack/src/rpc/RpcMessageEncoder.ts` -> `crates/json-pack/src/rpc/RpcMessageEncoder.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/RFC_SUMMARY.md` -> `crates/json-pack/src/rpc/__tests__/RFC_SUMMARY.md`
-- [ ] `packages/json-pack/src/rpc/__tests__/decoder.spec.ts` -> `crates/json-pack/src/rpc/__tests__/decoder.spec.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/encoder.spec.ts` -> `crates/json-pack/src/rpc/__tests__/encoder.spec.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/fixtures.spec.ts` -> `crates/json-pack/src/rpc/__tests__/fixtures.spec.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/fixtures.ts` -> `crates/json-pack/src/rpc/__tests__/fixtures.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/real-traces.spec.ts` -> `crates/json-pack/src/rpc/__tests__/real-traces.spec.rs`
-- [ ] `packages/json-pack/src/rpc/__tests__/rfc1057.txt` -> `crates/json-pack/src/rpc/__tests__/rfc1057.txt`
-- [ ] `packages/json-pack/src/rpc/__tests__/rfc1831.txt` -> `crates/json-pack/src/rpc/__tests__/rfc1831.txt`
-- [ ] `packages/json-pack/src/rpc/__tests__/rfc5531.txt` -> `crates/json-pack/src/rpc/__tests__/rfc5531.txt`
-- [ ] `packages/json-pack/src/rpc/constants.ts` -> `crates/json-pack/src/rpc/constants.rs`
-- [ ] `packages/json-pack/src/rpc/errors.ts` -> `crates/json-pack/src/rpc/errors.rs`
-- [ ] `packages/json-pack/src/rpc/index.ts` -> `crates/json-pack/src/rpc/mod.rs`
-- [ ] `packages/json-pack/src/rpc/messages.ts` -> `crates/json-pack/src/rpc/messages.rs`
+- [x] `packages/json-pack/src/rpc/README.md` -> `crates/json-pack/src/rpc/README.md`
+- [x] `packages/json-pack/src/rpc/RpcMessageDecoder.ts` -> `crates/json-pack/src/rpc/RpcMessageDecoder.rs`
+- [x] `packages/json-pack/src/rpc/RpcMessageEncoder.ts` -> `crates/json-pack/src/rpc/RpcMessageEncoder.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/RFC_SUMMARY.md` -> `crates/json-pack/src/rpc/__tests__/RFC_SUMMARY.md`
+- [x] `packages/json-pack/src/rpc/__tests__/decoder.spec.ts` -> `crates/json-pack/src/rpc/__tests__/decoder.spec.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/encoder.spec.ts` -> `crates/json-pack/src/rpc/__tests__/encoder.spec.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/fixtures.spec.ts` -> `crates/json-pack/src/rpc/__tests__/fixtures.spec.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/fixtures.ts` -> `crates/json-pack/src/rpc/__tests__/fixtures.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/real-traces.spec.ts` -> `crates/json-pack/src/rpc/__tests__/real-traces.spec.rs`
+- [x] `packages/json-pack/src/rpc/__tests__/rfc1057.txt` -> `crates/json-pack/src/rpc/__tests__/rfc1057.txt`
+- [x] `packages/json-pack/src/rpc/__tests__/rfc1831.txt` -> `crates/json-pack/src/rpc/__tests__/rfc1831.txt`
+- [x] `packages/json-pack/src/rpc/__tests__/rfc5531.txt` -> `crates/json-pack/src/rpc/__tests__/rfc5531.txt`
+- [x] `packages/json-pack/src/rpc/constants.ts` -> `crates/json-pack/src/rpc/constants.rs`
+- [x] `packages/json-pack/src/rpc/errors.ts` -> `crates/json-pack/src/rpc/errors.rs`
+- [x] `packages/json-pack/src/rpc/index.ts` -> `crates/json-pack/src/rpc/mod.rs`
+- [x] `packages/json-pack/src/rpc/messages.ts` -> `crates/json-pack/src/rpc/messages.rs`
 - [ ] `packages/json-pack/src/ssh/SshDecoder.ts` -> `crates/json-pack/src/ssh/SshDecoder.rs`
 - [ ] `packages/json-pack/src/ssh/SshEncoder.ts` -> `crates/json-pack/src/ssh/SshEncoder.rs`
 - [ ] `packages/json-pack/src/ssh/__tests__/SshDecoder.spec.ts` -> `crates/json-pack/src/ssh/__tests__/SshDecoder.spec.rs`
@@ -1571,24 +1571,24 @@ Rules:
 - [ ] `packages/json-pack/src/ws/errors.ts` -> `crates/json-pack/src/ws/errors.rs`
 - [ ] `packages/json-pack/src/ws/frames.ts` -> `crates/json-pack/src/ws/frames.rs`
 - [ ] `packages/json-pack/src/ws/index.ts` -> `crates/json-pack/src/ws/mod.rs`
-- [ ] `packages/json-pack/src/xdr/README.md` -> `crates/json-pack/src/xdr/README.md`
-- [ ] `packages/json-pack/src/xdr/XdrDecoder.ts` -> `crates/json-pack/src/xdr/XdrDecoder.rs`
-- [ ] `packages/json-pack/src/xdr/XdrEncoder.ts` -> `crates/json-pack/src/xdr/XdrEncoder.rs`
-- [ ] `packages/json-pack/src/xdr/XdrSchemaDecoder.ts` -> `crates/json-pack/src/xdr/XdrSchemaDecoder.rs`
-- [ ] `packages/json-pack/src/xdr/XdrSchemaEncoder.ts` -> `crates/json-pack/src/xdr/XdrSchemaEncoder.rs`
-- [ ] `packages/json-pack/src/xdr/XdrSchemaValidator.ts` -> `crates/json-pack/src/xdr/XdrSchemaValidator.rs`
-- [ ] `packages/json-pack/src/xdr/XdrUnion.ts` -> `crates/json-pack/src/xdr/XdrUnion.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/RFC_SUMMARY.md` -> `crates/json-pack/src/xdr/__tests__/RFC_SUMMARY.md`
-- [ ] `packages/json-pack/src/xdr/__tests__/XdrDecoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrDecoder.spec.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/XdrEncoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrEncoder.spec.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/XdrSchemaDecoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaDecoder.spec.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/XdrSchemaEncoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaEncoder.spec.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/XdrSchemaValidator.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaValidator.spec.rs`
-- [ ] `packages/json-pack/src/xdr/__tests__/rfc1014.txt` -> `crates/json-pack/src/xdr/__tests__/rfc1014.txt`
-- [ ] `packages/json-pack/src/xdr/__tests__/rfc1832.txt` -> `crates/json-pack/src/xdr/__tests__/rfc1832.txt`
-- [ ] `packages/json-pack/src/xdr/__tests__/rfc4506.txt` -> `crates/json-pack/src/xdr/__tests__/rfc4506.txt`
-- [ ] `packages/json-pack/src/xdr/index.ts` -> `crates/json-pack/src/xdr/mod.rs`
-- [ ] `packages/json-pack/src/xdr/types.ts` -> `crates/json-pack/src/xdr/types.rs`
+- [x] `packages/json-pack/src/xdr/README.md` -> `crates/json-pack/src/xdr/README.md`
+- [x] `packages/json-pack/src/xdr/XdrDecoder.ts` -> `crates/json-pack/src/xdr/XdrDecoder.rs`
+- [x] `packages/json-pack/src/xdr/XdrEncoder.ts` -> `crates/json-pack/src/xdr/XdrEncoder.rs`
+- [x] `packages/json-pack/src/xdr/XdrSchemaDecoder.ts` -> `crates/json-pack/src/xdr/XdrSchemaDecoder.rs`
+- [x] `packages/json-pack/src/xdr/XdrSchemaEncoder.ts` -> `crates/json-pack/src/xdr/XdrSchemaEncoder.rs`
+- [x] `packages/json-pack/src/xdr/XdrSchemaValidator.ts` -> `crates/json-pack/src/xdr/XdrSchemaValidator.rs`
+- [x] `packages/json-pack/src/xdr/XdrUnion.ts` -> `crates/json-pack/src/xdr/XdrUnion.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/RFC_SUMMARY.md` -> `crates/json-pack/src/xdr/__tests__/RFC_SUMMARY.md`
+- [x] `packages/json-pack/src/xdr/__tests__/XdrDecoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrDecoder.spec.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/XdrEncoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrEncoder.spec.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/XdrSchemaDecoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaDecoder.spec.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/XdrSchemaEncoder.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaEncoder.spec.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/XdrSchemaValidator.spec.ts` -> `crates/json-pack/src/xdr/__tests__/XdrSchemaValidator.spec.rs`
+- [x] `packages/json-pack/src/xdr/__tests__/rfc1014.txt` -> `crates/json-pack/src/xdr/__tests__/rfc1014.txt`
+- [x] `packages/json-pack/src/xdr/__tests__/rfc1832.txt` -> `crates/json-pack/src/xdr/__tests__/rfc1832.txt`
+- [x] `packages/json-pack/src/xdr/__tests__/rfc4506.txt` -> `crates/json-pack/src/xdr/__tests__/rfc4506.txt`
+- [x] `packages/json-pack/src/xdr/index.ts` -> `crates/json-pack/src/xdr/mod.rs`
+- [x] `packages/json-pack/src/xdr/types.ts` -> `crates/json-pack/src/xdr/types.rs`
 
 
 ## Package: json-path

@@ -3,7 +3,7 @@
 //! These helpers mirror `json-joy@17.67.0` `CrdtReader/CrdtWriter` behavior
 //! for `vu57`, `b1vu56`, and logical clock-table/id handling.
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::PackValue;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogicalClockBase {
@@ -94,7 +94,7 @@ impl<'a> BinaryCursor<'a> {
         Some(())
     }
 
-    pub fn read_one_cbor(&mut self) -> Option<CborValue> {
+    pub fn read_one_cbor(&mut self) -> Option<PackValue> {
         let slice = &self.data[self.pos..];
         let (val, consumed) = json_joy_json_pack::decode_cbor_value_with_consumed(slice).ok()?;
         self.skip(consumed)?;

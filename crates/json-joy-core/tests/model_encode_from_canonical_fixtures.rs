@@ -1,8 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use ciborium::value::{Integer, Value as CborValue};
 use json_joy_core::model::Model;
+use json_joy_json_pack::cbor::CborEncoder;
 use serde_json::Value;
 
 fn fixtures_dir() -> PathBuf {
@@ -50,24 +50,6 @@ fn as_ts(v: &Value, label: &str) -> (u64, u64) {
         .unwrap_or_else(|| panic!("{label} must be [sid,time]"));
     assert_eq!(arr.len(), 2, "{label} must have two elements");
     (as_u64(&arr[0], "sid"), as_u64(&arr[1], "time"))
-}
-
-fn json_scalar_to_cbor(v: &Value) -> CborValue {
-    match v {
-        Value::Null => CborValue::Null,
-        Value::Bool(b) => CborValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                CborValue::Integer(Integer::from(i))
-            } else if let Some(u) = n.as_u64() {
-                CborValue::Integer(Integer::from(u))
-            } else {
-                panic!("canonical model encoder supports integer numbers only");
-            }
-        }
-        Value::String(s) => CborValue::Text(s.clone()),
-        _ => panic!("canonical model encoder supports scalar CBOR values only"),
-    }
 }
 
 #[derive(Default)]
@@ -180,8 +162,8 @@ fn encode_model_canonical(input: &Value) -> Vec<u8> {
         match kind {
             "con" => {
                 w.u8(0b0000_0000);
-                let cbor = json_scalar_to_cbor(&node["value"]);
-                ciborium::ser::into_writer(&cbor, &mut w.bytes).expect("CBOR encode must succeed");
+                w.bytes
+                    .extend_from_slice(&CborEncoder::new().encode_json(&node["value"]));
             }
             "val" => {
                 w.u8(0b0010_0000);
@@ -194,9 +176,9 @@ fn encode_model_canonical(input: &Value) -> Vec<u8> {
                 write_type_len(w, 2, entries.len() as u64);
                 for e in entries {
                     let key = as_str(&e["key"], "obj entry key");
-                    let key_cbor = CborValue::Text(key.to_string());
-                    ciborium::ser::into_writer(&key_cbor, &mut w.bytes)
-                        .expect("CBOR key encode must succeed");
+                    w.bytes.extend_from_slice(
+                        &CborEncoder::new().encode_json(&Value::String(key.to_string())),
+                    );
                     encode_node(w, &e["value"], encode_id);
                 }
             }
@@ -218,15 +200,16 @@ fn encode_model_canonical(input: &Value) -> Vec<u8> {
                     let cid = as_ts(&ch["id"], "str chunk id");
                     encode_id(w, cid);
                     if ch.get("text").is_some() {
-                        let cbor =
-                            CborValue::Text(as_str(&ch["text"], "str chunk text").to_string());
-                        ciborium::ser::into_writer(&cbor, &mut w.bytes)
-                            .expect("CBOR str encode must succeed");
+                        let text = as_str(&ch["text"], "str chunk text").to_string();
+                        w.bytes.extend_from_slice(
+                            &CborEncoder::new().encode_json(&Value::String(text)),
+                        );
                     } else {
                         let del = as_u64(&ch["deleted"], "str chunk deleted");
-                        let cbor = CborValue::Integer(Integer::from(del));
-                        ciborium::ser::into_writer(&cbor, &mut w.bytes)
-                            .expect("CBOR del encode must succeed");
+                        w.bytes.extend_from_slice(
+                            &CborEncoder::new()
+                                .encode_json(&Value::Number(del.into())),
+                        );
                     }
                 }
             }

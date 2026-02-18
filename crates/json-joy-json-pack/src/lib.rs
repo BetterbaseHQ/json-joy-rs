@@ -1,21 +1,50 @@
-//! CBOR-focused `json-pack` primitives for workspace-wide reuse.
+//! Binary serialization formats for json-joy (CBOR, MessagePack, JSON, and more).
 //!
 //! Upstream reference:
-//! - `/Users/nchapman/Code/json-joy/packages/json-pack/src/cbor/*`
+//! - `/Users/nchapman/Code/json-joy/packages/json-pack/src/`
 
+mod constants;
+mod json_pack_extension;
+mod json_pack_mpint;
+mod json_pack_value;
+mod pack_value;
+
+pub mod avro;
+pub mod bencode;
+pub mod bson;
 pub mod cbor;
+pub mod ion;
+pub mod json;
+pub mod json_binary;
+pub mod msgpack;
+pub mod resp;
+pub mod rm;
+pub mod rpc;
+pub mod ssh;
+pub mod ubjson;
+pub mod ws;
+pub mod xdr;
+
+pub use constants::EncodingFormat;
+pub use json_pack_extension::JsonPackExtension;
+pub use json_pack_mpint::JsonPackMpint;
+pub use json_pack_value::JsonPackValue;
+pub use pack_value::PackValue;
 
 pub use cbor::{
     cbor_to_json, cbor_to_json_owned, decode_cbor_value, decode_cbor_value_with_consumed,
     decode_json_from_cbor_bytes, encode_cbor_value, encode_json_to_cbor_bytes, json_to_cbor,
     validate_cbor_exact_size, write_cbor_signed, write_cbor_text_like_json_pack,
-    write_cbor_uint_major, write_cbor_value_like_json_pack, write_json_like_json_pack, CborError,
-    CborJsonValueCodec,
+    write_cbor_uint_major, write_json_like_json_pack, CborEncoder, CborError, CborJsonValueCodec,
 };
 
 #[cfg(test)]
 mod tests {
+    use super::bencode::{BencodeDecoder, BencodeEncoder};
     use super::cbor::*;
+    use super::ubjson::{UbjsonDecoder, UbjsonEncoder};
+    use super::json_binary;
+    use super::PackValue;
     use serde_json::json;
 
     #[test]
@@ -29,10 +58,8 @@ mod tests {
             json!({"a": 1, "b": [true, null, "x"]}),
         ];
         for case in cases {
-            let cbor = json_to_cbor(&case);
-            let bin = encode_cbor_value(&cbor).expect("encode cbor");
-            let decoded = decode_cbor_value(&bin).expect("decode cbor");
-            let back = cbor_to_json(&decoded).expect("cbor to json");
+            let bin = encode_json_to_cbor_bytes(&case).expect("encode cbor");
+            let back = decode_json_from_cbor_bytes(&bin).expect("decode cbor");
             assert_eq!(back, case);
         }
     }
@@ -60,11 +87,1118 @@ mod tests {
 
     #[test]
     fn cbor_json_value_codec_roundtrip() {
-        let codec = CborJsonValueCodec;
+        let mut codec = CborJsonValueCodec::new();
         let value = json!({"a":[1,2,3],"b":"x"});
         let bytes = codec.encode(&value).expect("encode");
         assert!(validate_cbor_exact_size(&bytes, bytes.len()).is_ok());
         let out = codec.decode(&bytes).expect("decode");
         assert_eq!(out, value);
+    }
+
+    #[test]
+    fn bencode_roundtrip_json_values() {
+        let cases = vec![
+            (PackValue::Null, b"n".as_slice()),
+            (PackValue::Bool(true), b"t".as_slice()),
+            (PackValue::Bool(false), b"f".as_slice()),
+            (PackValue::Integer(42), b"i42e".as_slice()),
+            (PackValue::Integer(-7), b"i-7e".as_slice()),
+        ];
+        let mut enc = BencodeEncoder::new();
+        for (val, expected) in cases {
+            let bytes = enc.encode(&val);
+            assert_eq!(&bytes, expected);
+        }
+        // String round-trip
+        let mut enc = BencodeEncoder::new();
+        let bytes = enc.encode(&PackValue::Str("hello".into()));
+        assert_eq!(&bytes, b"5:hello");
+        // Decode back
+        let dec = BencodeDecoder::new();
+        let result = dec.decode(b"5:hello").unwrap();
+        // bencode strings decode as Bytes (raw binary)
+        assert!(matches!(result, PackValue::Bytes(b) if b == b"hello"));
+    }
+
+    #[test]
+    fn bencode_dict_sorted_keys() {
+        let mut enc = BencodeEncoder::new();
+        let value = PackValue::Object(vec![
+            ("z".into(), PackValue::Integer(1)),
+            ("a".into(), PackValue::Integer(2)),
+        ]);
+        let bytes = enc.encode(&value);
+        // Keys must be sorted: 'a' before 'z'
+        assert_eq!(&bytes, b"d1:ai2e1:zi1ee");
+    }
+
+    #[test]
+    fn ubjson_roundtrip_null_and_bool() {
+        let mut enc = UbjsonEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Null), &[0x5a]);
+        assert_eq!(enc.encode(&PackValue::Bool(true)), &[0x54]);
+        assert_eq!(enc.encode(&PackValue::Bool(false)), &[0x46]);
+    }
+
+    #[test]
+    fn ubjson_integer_encoding() {
+        let mut enc = UbjsonEncoder::new();
+        // uint8
+        assert_eq!(enc.encode(&PackValue::Integer(42)), &[0x55, 42]);
+        // int8 negative
+        let bytes = enc.encode(&PackValue::Integer(-5));
+        assert_eq!(bytes[0], 0x69);
+        assert_eq!(bytes[1] as i8, -5i8);
+        // int32
+        let bytes = enc.encode(&PackValue::Integer(100000));
+        assert_eq!(bytes[0], 0x6c);
+    }
+
+    #[test]
+    fn ubjson_string_roundtrip() {
+        let mut enc = UbjsonEncoder::new();
+        let dec = UbjsonDecoder::new();
+        let bytes = enc.encode(&PackValue::Str("hello".into()));
+        let result = dec.decode(&bytes).unwrap();
+        assert!(matches!(result, PackValue::Str(s) if s == "hello"));
+    }
+
+    #[test]
+    fn json_binary_wrap_unwrap_roundtrip() {
+        let original = PackValue::Bytes(vec![1, 2, 3, 4]);
+        let wrapped = json_binary::wrap_binary(original.clone());
+        // Should be a string with the data URI prefix
+        if let serde_json::Value::String(s) = &wrapped {
+            assert!(s.starts_with("data:application/octet-stream;base64,"));
+        } else {
+            panic!("expected string");
+        }
+        let unwrapped = json_binary::unwrap_binary(wrapped);
+        assert_eq!(unwrapped, original);
+    }
+
+    #[test]
+    fn json_binary_parse_stringify_roundtrip() {
+        let value = PackValue::Object(vec![
+            ("key".into(), PackValue::Str("val".into())),
+            ("bin".into(), PackValue::Bytes(vec![0xde, 0xad, 0xbe, 0xef])),
+        ]);
+        let json_str = json_binary::stringify(value.clone()).unwrap();
+        let parsed = json_binary::parse(&json_str).unwrap();
+        assert_eq!(parsed, value);
+    }
+
+    // --- Slice 2: JSON format ---
+
+    #[test]
+    fn json_encoder_primitives() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Null), b"null");
+        assert_eq!(enc.encode(&PackValue::Bool(true)), b"true");
+        assert_eq!(enc.encode(&PackValue::Bool(false)), b"false");
+        assert_eq!(enc.encode(&PackValue::Integer(42)), b"42");
+        assert_eq!(enc.encode(&PackValue::Integer(-7)), b"-7");
+        assert_eq!(enc.encode(&PackValue::Float(1.5)), b"1.5");
+    }
+
+    #[test]
+    fn json_encoder_string_and_binary() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Str("hello".into())), b"\"hello\"");
+        let bin_out = enc.encode(&PackValue::Bytes(vec![1, 2, 3]));
+        let s = std::str::from_utf8(&bin_out).unwrap();
+        assert!(s.starts_with("\"data:application/octet-stream;base64,"));
+        assert!(s.ends_with('"'));
+    }
+
+    #[test]
+    fn json_encoder_array_and_object() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        let arr = PackValue::Array(vec![PackValue::Integer(1), PackValue::Integer(2)]);
+        assert_eq!(enc.encode(&arr), b"[1,2]");
+        let obj = PackValue::Object(vec![("a".into(), PackValue::Integer(1))]);
+        assert_eq!(enc.encode(&obj), b"{\"a\":1}");
+    }
+
+    #[test]
+    fn json_encoder_stable_sorts_keys() {
+        use super::json::JsonEncoderStable;
+        let mut enc = JsonEncoderStable::new();
+        let obj = PackValue::Object(vec![
+            ("bb".into(), PackValue::Integer(2)),
+            ("a".into(), PackValue::Integer(1)),
+            ("ccc".into(), PackValue::Integer(3)),
+        ]);
+        let out = enc.encode(&obj);
+        let s = std::str::from_utf8(&out).unwrap();
+        // "a" (len 1) before "bb" (len 2) before "ccc" (len 3)
+        let a_pos = s.find("\"a\"").unwrap();
+        let bb_pos = s.find("\"bb\"").unwrap();
+        let ccc_pos = s.find("\"ccc\"").unwrap();
+        assert!(a_pos < bb_pos);
+        assert!(bb_pos < ccc_pos);
+    }
+
+    #[test]
+    fn json_encoder_dag_binary() {
+        use super::json::JsonEncoderDag;
+        let mut enc = JsonEncoderDag::new();
+        let out = enc.encode(&PackValue::Bytes(b"hello world".as_slice().to_vec()));
+        let s = std::str::from_utf8(&out).unwrap();
+        // DAG-JSON binary format: {"/":{"bytes":"<b64>"}}
+        assert!(s.starts_with("{\"/\":{\"bytes\":\""), "got: {s}");
+        assert!(s.ends_with("\"}}"), "got: {s}");
+    }
+
+    #[test]
+    fn json_decoder_primitives() {
+        use super::json::JsonDecoder;
+        let mut dec = JsonDecoder::new();
+        assert_eq!(dec.decode(b"null").unwrap(), PackValue::Null);
+        assert_eq!(dec.decode(b"true").unwrap(), PackValue::Bool(true));
+        assert_eq!(dec.decode(b"false").unwrap(), PackValue::Bool(false));
+        assert_eq!(dec.decode(b"42").unwrap(), PackValue::Integer(42));
+        assert_eq!(dec.decode(b"-7").unwrap(), PackValue::Integer(-7));
+        assert_eq!(dec.decode(b"1.5").unwrap(), PackValue::Float(1.5));
+    }
+
+    #[test]
+    fn json_decoder_string() {
+        use super::json::JsonDecoder;
+        let mut dec = JsonDecoder::new();
+        assert_eq!(dec.decode(b"\"hello\"").unwrap(), PackValue::Str("hello".into()));
+        assert_eq!(dec.decode(b"\"a\\nb\"").unwrap(), PackValue::Str("a\nb".into()));
+    }
+
+    #[test]
+    fn json_decoder_undefined_sentinel() {
+        use super::json::{JsonDecoder, JsonEncoder};
+        let mut enc = JsonEncoder::new();
+        let mut dec = JsonDecoder::new();
+        // Encode undefined, decode it back
+        let encoded = enc.encode(&PackValue::Undefined);
+        assert_eq!(dec.decode(&encoded).unwrap(), PackValue::Undefined);
+        // Also check undefined in an object context (regression for off-by-one cursor bug)
+        let obj = PackValue::Object(vec![
+            ("u".into(), PackValue::Undefined),
+            ("n".into(), PackValue::Integer(1)),
+        ]);
+        let encoded = enc.encode(&obj);
+        let decoded = dec.decode(&encoded).unwrap();
+        assert_eq!(decoded, obj);
+    }
+
+    #[test]
+    fn json_decoder_binary_data_uri() {
+        use super::json::JsonDecoder;
+        let mut dec = JsonDecoder::new();
+        // Encode some bytes and decode back
+        let mut enc = super::json::JsonEncoder::new();
+        let original = vec![1u8, 2, 3, 4, 5];
+        let encoded = enc.encode(&PackValue::Bytes(original.clone()));
+        let decoded = dec.decode(&encoded).unwrap();
+        assert_eq!(decoded, PackValue::Bytes(original));
+    }
+
+    #[test]
+    fn json_decoder_array_and_object() {
+        use super::json::JsonDecoder;
+        let mut dec = JsonDecoder::new();
+        let arr = dec.decode(b"[1,2,3]").unwrap();
+        assert_eq!(arr, PackValue::Array(vec![
+            PackValue::Integer(1), PackValue::Integer(2), PackValue::Integer(3),
+        ]));
+        let obj = dec.decode(b"{\"a\":1}").unwrap();
+        assert_eq!(obj, PackValue::Object(vec![("a".into(), PackValue::Integer(1))]));
+    }
+
+    #[test]
+    fn json_encoder_decoder_roundtrip() {
+        use super::json::{JsonDecoder, JsonEncoder};
+        let mut enc = JsonEncoder::new();
+        let mut dec = JsonDecoder::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Integer(12345),
+            PackValue::Float(3.14),
+            PackValue::Str("hello, world!".into()),
+            PackValue::Array(vec![PackValue::Integer(1), PackValue::Null]),
+            PackValue::Object(vec![
+                ("x".into(), PackValue::Bool(false)),
+                ("y".into(), PackValue::Str("z".into())),
+            ]),
+        ];
+        for v in values {
+            let encoded = enc.encode(&v);
+            let decoded = dec.decode(&encoded).unwrap();
+            assert_eq!(decoded, v, "roundtrip failed for {v:?}");
+        }
+    }
+
+    #[test]
+    fn json_decoder_partial_incomplete_array() {
+        use super::json::JsonDecoderPartial;
+        let mut dec = JsonDecoderPartial::new();
+        // Missing closing bracket
+        let v = dec.decode(b"[1, 2, 3").unwrap();
+        assert_eq!(v, PackValue::Array(vec![
+            PackValue::Integer(1), PackValue::Integer(2), PackValue::Integer(3),
+        ]));
+        // Trailing comma
+        let v = dec.decode(b"[1, 2, ").unwrap();
+        assert_eq!(v, PackValue::Array(vec![
+            PackValue::Integer(1), PackValue::Integer(2),
+        ]));
+        // Corrupt element — upstream drops it, returns prior elements
+        let v = dec.decode(b"[1, 2, x").unwrap();
+        assert_eq!(v, PackValue::Array(vec![
+            PackValue::Integer(1), PackValue::Integer(2),
+        ]));
+    }
+
+    #[test]
+    fn json_decoder_partial_incomplete_object() {
+        use super::json::JsonDecoderPartial;
+        let mut dec = JsonDecoderPartial::new();
+        // Missing value for last key — key-value pair is dropped
+        let v = dec.decode(b"{\"foo\": 1, \"bar\":").unwrap();
+        assert_eq!(v, PackValue::Object(vec![("foo".into(), PackValue::Integer(1))]));
+        // Complete pairs
+        let v = dec.decode(b"{\"a\":1,\"b\":2").unwrap();
+        assert_eq!(v, PackValue::Object(vec![
+            ("a".into(), PackValue::Integer(1)),
+            ("b".into(), PackValue::Integer(2)),
+        ]));
+    }
+
+    // --- Slice 4: MessagePack format ---
+
+    #[test]
+    fn msgpack_encoder_primitives() {
+        use super::msgpack::MsgPackEncoderFast;
+        let mut enc = MsgPackEncoderFast::new();
+        // null = 0xc0
+        assert_eq!(enc.encode(&PackValue::Null), &[0xc0]);
+        // true = 0xc3, false = 0xc2
+        assert_eq!(enc.encode(&PackValue::Bool(true)), &[0xc3]);
+        assert_eq!(enc.encode(&PackValue::Bool(false)), &[0xc2]);
+        // positive fixint
+        assert_eq!(enc.encode(&PackValue::Integer(0)), &[0x00]);
+        assert_eq!(enc.encode(&PackValue::Integer(127)), &[0x7f]);
+        // uint16
+        let out = enc.encode(&PackValue::Integer(1000));
+        assert_eq!(out[0], 0xcd);
+        // negative fixint
+        let out = enc.encode(&PackValue::Integer(-1));
+        assert_eq!(out[0], 0xff); // -1 as negative fixint
+    }
+
+    #[test]
+    fn msgpack_encoder_string() {
+        use super::msgpack::MsgPackEncoderFast;
+        let mut enc = MsgPackEncoderFast::new();
+        let out = enc.encode(&PackValue::Str("hello".into()));
+        // fixstr: 0xa0 | 5 = 0xa5, then 5 bytes
+        assert_eq!(out[0], 0xa5);
+        assert_eq!(&out[1..], b"hello");
+    }
+
+    #[test]
+    fn msgpack_encoder_binary() {
+        use super::msgpack::MsgPackEncoderFast;
+        let mut enc = MsgPackEncoderFast::new();
+        let data = vec![1u8, 2, 3];
+        let out = enc.encode(&PackValue::Bytes(data.clone()));
+        // bin8: 0xc4, length, data
+        assert_eq!(out[0], 0xc4);
+        assert_eq!(out[1], 3);
+        assert_eq!(&out[2..], &data);
+    }
+
+    #[test]
+    fn msgpack_encoder_array() {
+        use super::msgpack::MsgPackEncoderFast;
+        let mut enc = MsgPackEncoderFast::new();
+        let arr = PackValue::Array(vec![PackValue::Null, PackValue::Integer(1)]);
+        let out = enc.encode(&arr);
+        // fixarray: 0x92 (2 items)
+        assert_eq!(out[0], 0x92);
+        assert_eq!(out[1], 0xc0); // null
+        assert_eq!(out[2], 0x01); // 1
+    }
+
+    #[test]
+    fn msgpack_encoder_object() {
+        use super::msgpack::MsgPackEncoderFast;
+        let mut enc = MsgPackEncoderFast::new();
+        let obj = PackValue::Object(vec![("a".into(), PackValue::Integer(1))]);
+        let out = enc.encode(&obj);
+        // fixmap: 0x81 (1 pair)
+        assert_eq!(out[0], 0x81);
+    }
+
+    #[test]
+    fn msgpack_encoder_stable_sorts_keys() {
+        use super::msgpack::MsgPackEncoderStable;
+        let mut enc = MsgPackEncoderStable::new();
+        let obj = PackValue::Object(vec![
+            ("z".into(), PackValue::Integer(1)),
+            ("a".into(), PackValue::Integer(2)),
+        ]);
+        let out = enc.encode(&obj);
+        // fixmap: 0x82 (2 pairs) — first key should be "a"
+        assert_eq!(out[0], 0x82);
+        // Second byte is fixstr header for "a" (0xa1)
+        assert_eq!(out[1], 0xa1);
+        assert_eq!(out[2], b'a');
+    }
+
+    #[test]
+    fn msgpack_decoder_primitives() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        assert_eq!(dec.decode(&[0xc0]).unwrap(), PackValue::Null);
+        assert_eq!(dec.decode(&[0xc3]).unwrap(), PackValue::Bool(true));
+        assert_eq!(dec.decode(&[0xc2]).unwrap(), PackValue::Bool(false));
+        assert_eq!(dec.decode(&[0x7f]).unwrap(), PackValue::Integer(127));
+        assert_eq!(dec.decode(&[0xff]).unwrap(), PackValue::Integer(-1));
+    }
+
+    #[test]
+    fn msgpack_encoder_decoder_roundtrip() {
+        use super::msgpack::{MsgPackDecoderFast, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoderFast::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Bool(false),
+            PackValue::Integer(0),
+            PackValue::Integer(127),
+            PackValue::Integer(-1),
+            PackValue::Integer(1000),
+            PackValue::Integer(-1000),
+            PackValue::Float(3.14),
+            PackValue::Str("hello".into()),
+            PackValue::Bytes(vec![1, 2, 3]),
+            PackValue::Array(vec![PackValue::Integer(1), PackValue::Null]),
+            PackValue::Object(vec![("key".into(), PackValue::Integer(42))]),
+        ];
+        for v in values {
+            let encoded = enc.encode(&v);
+            let decoded = dec.decode(&encoded).unwrap();
+            assert_eq!(decoded, v, "roundtrip failed for {v:?}");
+        }
+    }
+
+    #[test]
+    fn msgpack_to_json_converter() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let obj = PackValue::Object(vec![
+            ("n".into(), PackValue::Null),
+            ("b".into(), PackValue::Bool(true)),
+            ("i".into(), PackValue::Integer(42)),
+            ("s".into(), PackValue::Str("hi".into())),
+        ]);
+        let msgpack = enc.encode(&obj);
+        let json_str = conv.convert(&msgpack);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("valid JSON");
+        assert_eq!(parsed["n"], serde_json::Value::Null);
+        assert_eq!(parsed["b"], serde_json::Value::Bool(true));
+        assert_eq!(parsed["i"], serde_json::json!(42));
+        assert_eq!(parsed["s"], serde_json::json!("hi"));
+    }
+
+    // --- Slice 5: RM (Record Marshalling) ---
+
+    #[test]
+    fn rm_encode_decode_simple_record() {
+        use super::rm::{RmRecordDecoder, RmRecordEncoder};
+        let mut enc = RmRecordEncoder::new();
+        let mut dec = RmRecordDecoder::new();
+        let payload = b"hello world";
+        let frame = enc.encode_record(payload);
+        // Header: 4 bytes (fin=1, length=11) + 11 bytes payload
+        assert_eq!(frame.len(), 4 + payload.len());
+        // fin bit should be set
+        assert_eq!(frame[0] & 0x80, 0x80);
+        // length = 11 in lower 31 bits
+        let len = u32::from_be_bytes([frame[0] & 0x7f, frame[1], frame[2], frame[3]]);
+        assert_eq!(len, payload.len() as u32);
+        dec.push(&frame);
+        let record = dec.read_record().expect("record should be available");
+        assert_eq!(record, payload);
+    }
+
+    #[test]
+    fn rm_encode_hdr() {
+        use super::rm::RmRecordEncoder;
+        let mut enc = RmRecordEncoder::new();
+        // fin=true, length=42
+        let hdr = enc.encode_hdr(true, 42);
+        assert_eq!(hdr.len(), 4);
+        let val = u32::from_be_bytes([hdr[0], hdr[1], hdr[2], hdr[3]]);
+        assert_eq!(val, 0x8000_0000 | 42);
+        // fin=false
+        let hdr2 = enc.encode_hdr(false, 100);
+        let val2 = u32::from_be_bytes([hdr2[0], hdr2[1], hdr2[2], hdr2[3]]);
+        assert_eq!(val2, 100);
+    }
+
+    #[test]
+    fn rm_decoder_needs_more_data() {
+        use super::rm::RmRecordDecoder;
+        let mut dec = RmRecordDecoder::new();
+        // Push only the header, not the payload
+        dec.push(&[0x80, 0x00, 0x00, 0x05]); // fin=1, len=5
+        // No payload yet => should return None
+        assert!(dec.read_record().is_none());
+        // Push the payload
+        dec.push(b"hello");
+        let record = dec.read_record().expect("should now have record");
+        assert_eq!(record, b"hello");
+    }
+
+    // --- Slice 5: SSH ---
+
+    #[test]
+    fn ssh_boolean_roundtrip() {
+        use super::ssh::{SshDecoder, SshEncoder};
+        let mut enc = SshEncoder::new();
+        let mut dec = SshDecoder::new();
+        for b in [true, false] {
+            enc.write_boolean(b);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_boolean(), b);
+        }
+    }
+
+    #[test]
+    fn ssh_uint32_roundtrip() {
+        use super::ssh::{SshDecoder, SshEncoder};
+        let mut enc = SshEncoder::new();
+        let mut dec = SshDecoder::new();
+        for val in [0u32, 1, 255, 65535, 0xffff_ffff] {
+            enc.write_uint32(val);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_uint32(), val);
+        }
+    }
+
+    #[test]
+    fn ssh_str_roundtrip() {
+        use super::ssh::{SshDecoder, SshEncoder};
+        let mut enc = SshEncoder::new();
+        let mut dec = SshDecoder::new();
+        enc.write_str("hello, world!");
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_str(), "hello, world!");
+    }
+
+    #[test]
+    fn ssh_name_list_roundtrip() {
+        use super::ssh::{SshDecoder, SshEncoder};
+        use super::PackValue;
+        let mut enc = SshEncoder::new();
+        let mut dec = SshDecoder::new();
+        let names = vec![
+            PackValue::Str("aes128-ctr".into()),
+            PackValue::Str("aes256-ctr".into()),
+        ];
+        enc.write_name_list(&names);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        let decoded = dec.read_name_list();
+        assert_eq!(decoded, vec!["aes128-ctr", "aes256-ctr"]);
+    }
+
+    // --- Slice 5: WebSocket ---
+
+    #[test]
+    fn ws_encode_ping_empty() {
+        use super::ws::WsFrameEncoder;
+        let mut enc = WsFrameEncoder::new();
+        let frame = enc.encode_ping(None);
+        // Minimum ping: 2-byte header (fin=1, opcode=9, no mask, length=0)
+        assert_eq!(frame.len(), 2);
+        assert_eq!(frame[0], 0b1000_1001); // fin=1, opcode=9
+        assert_eq!(frame[1], 0x00); // no mask, length=0
+    }
+
+    #[test]
+    fn ws_encode_ping_with_data() {
+        use super::ws::WsFrameEncoder;
+        let mut enc = WsFrameEncoder::new();
+        let frame = enc.encode_ping(Some(b"test"));
+        assert_eq!(frame.len(), 2 + 4);
+        assert_eq!(frame[0], 0b1000_1001);
+        assert_eq!(frame[1], 4); // length=4
+        assert_eq!(&frame[2..], b"test");
+    }
+
+    #[test]
+    fn ws_encode_hdr_short_length() {
+        use super::ws::{WsFrameEncoder, WsFrameOpcode};
+        let mut enc = WsFrameEncoder::new();
+        let frame = enc.encode_hdr(true, WsFrameOpcode::Binary, 100, 0);
+        assert_eq!(frame.len(), 2);
+        assert_eq!(frame[0], 0b1000_0010); // fin=1, opcode=2
+        assert_eq!(frame[1], 100);
+    }
+
+    #[test]
+    fn ws_encode_data_msg_hdr_fast_small() {
+        use super::ws::WsFrameEncoder;
+        let mut enc = WsFrameEncoder::new();
+        let frame = enc.encode_data_msg_hdr_fast(10);
+        assert_eq!(frame.len(), 2);
+        assert_eq!(frame[0], 0b1000_0010); // fin=1, binary
+        assert_eq!(frame[1], 10);
+    }
+
+    #[test]
+    fn ws_decode_simple_frame_header() {
+        use super::ws::{WsFrame, WsFrameDecoder};
+        let mut dec = WsFrameDecoder::new();
+        // fin=1, opcode=2 (binary), no mask, length=5
+        dec.push(vec![0b1000_0010, 5, b'h', b'e', b'l', b'l', b'o']);
+        let frame = dec.read_frame_header().expect("ok").expect("frame");
+        match frame {
+            WsFrame::Data(h) => {
+                assert!(h.fin);
+                assert_eq!(h.opcode, 2);
+                assert_eq!(h.length, 5);
+                assert!(h.mask.is_none());
+            }
+            _ => panic!("expected Data frame"),
+        }
+    }
+
+    // --- Slice 5: BSON ---
+
+    #[test]
+    fn bson_encode_decode_simple_document() {
+        use super::bson::{BsonDecoder, BsonEncoder, BsonValue};
+        let enc = BsonEncoder::new();
+        let mut dec = BsonDecoder::new();
+        let fields = vec![
+            ("name".to_string(), BsonValue::Str("Alice".to_string())),
+            ("age".to_string(), BsonValue::Int32(30)),
+            ("active".to_string(), BsonValue::Boolean(true)),
+        ];
+        let bytes = enc.encode(&fields);
+        let decoded = dec.decode(&bytes);
+        assert_eq!(decoded.len(), 3);
+        assert_eq!(decoded[0].0, "name");
+        assert!(matches!(decoded[0].1, BsonValue::Str(ref s) if s == "Alice"));
+        assert_eq!(decoded[1].0, "age");
+        assert!(matches!(decoded[1].1, BsonValue::Int32(30)));
+        assert_eq!(decoded[2].0, "active");
+        assert!(matches!(decoded[2].1, BsonValue::Boolean(true)));
+    }
+
+    #[test]
+    fn bson_null_and_float() {
+        use super::bson::{BsonDecoder, BsonEncoder, BsonValue};
+        let enc = BsonEncoder::new();
+        let mut dec = BsonDecoder::new();
+        let fields = vec![
+            ("n".to_string(), BsonValue::Null),
+            ("f".to_string(), BsonValue::Float(3.14)),
+        ];
+        let bytes = enc.encode(&fields);
+        let decoded = dec.decode(&bytes);
+        assert!(matches!(decoded[0].1, BsonValue::Null));
+        if let BsonValue::Float(f) = decoded[1].1 {
+            assert!((f - 3.14).abs() < 1e-10);
+        } else {
+            panic!("expected float");
+        }
+    }
+
+    #[test]
+    fn bson_nested_document() {
+        use super::bson::{BsonDecoder, BsonEncoder, BsonValue};
+        let enc = BsonEncoder::new();
+        let mut dec = BsonDecoder::new();
+        let inner = vec![("x".to_string(), BsonValue::Int32(1))];
+        let fields = vec![("obj".to_string(), BsonValue::Document(inner))];
+        let bytes = enc.encode(&fields);
+        let decoded = dec.decode(&bytes);
+        if let BsonValue::Document(inner_dec) = &decoded[0].1 {
+            assert_eq!(inner_dec[0].0, "x");
+            assert!(matches!(inner_dec[0].1, BsonValue::Int32(1)));
+        } else {
+            panic!("expected nested document");
+        }
+    }
+
+    // --- Slice 5: RESP3 ---
+
+    #[test]
+    fn resp_encode_null() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::Null);
+        assert_eq!(out, b"_\r\n");
+    }
+
+    #[test]
+    fn resp_encode_bool() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Bool(true)), b"#t\r\n");
+        assert_eq!(enc.encode(&PackValue::Bool(false)), b"#f\r\n");
+    }
+
+    #[test]
+    fn resp_encode_integer() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Integer(42)), b":42\r\n");
+        assert_eq!(enc.encode(&PackValue::Integer(-7)), b":-7\r\n");
+        assert_eq!(enc.encode(&PackValue::Integer(0)), b":0\r\n");
+    }
+
+    #[test]
+    fn resp_encode_simple_string() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::Str("hello".into()));
+        assert_eq!(out, b"+hello\r\n");
+    }
+
+    #[test]
+    fn resp_encode_binary() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::Bytes(b"bin".to_vec()));
+        assert_eq!(out, b"$3\r\nbin\r\n");
+    }
+
+    #[test]
+    fn resp_encode_array() {
+        use super::resp::RespEncoder;
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        let arr = PackValue::Array(vec![
+            PackValue::Integer(1),
+            PackValue::Integer(2),
+        ]);
+        let out = enc.encode(&arr);
+        assert_eq!(out, b"*2\r\n:1\r\n:2\r\n");
+    }
+
+    #[test]
+    fn resp_decode_null() {
+        use super::resp::RespDecoder;
+        use super::PackValue;
+        let mut dec = RespDecoder::new();
+        assert_eq!(dec.decode(b"_\r\n").unwrap(), PackValue::Null);
+    }
+
+    #[test]
+    fn resp_decode_bool() {
+        use super::resp::RespDecoder;
+        use super::PackValue;
+        let mut dec = RespDecoder::new();
+        assert_eq!(dec.decode(b"#t\r\n").unwrap(), PackValue::Bool(true));
+        assert_eq!(dec.decode(b"#f\r\n").unwrap(), PackValue::Bool(false));
+    }
+
+    #[test]
+    fn resp_decode_integer() {
+        use super::resp::RespDecoder;
+        use super::PackValue;
+        let mut dec = RespDecoder::new();
+        assert_eq!(dec.decode(b":42\r\n").unwrap(), PackValue::Integer(42));
+        assert_eq!(dec.decode(b":-7\r\n").unwrap(), PackValue::Integer(-7));
+    }
+
+    #[test]
+    fn resp_decode_simple_string() {
+        use super::resp::RespDecoder;
+        use super::PackValue;
+        let mut dec = RespDecoder::new();
+        assert_eq!(dec.decode(b"+hello\r\n").unwrap(), PackValue::Str("hello".into()));
+    }
+
+    #[test]
+    fn resp_encode_decode_roundtrip() {
+        use super::resp::{RespDecoder, RespEncoder};
+        use super::PackValue;
+        let mut enc = RespEncoder::new();
+        let mut dec = RespDecoder::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Bool(false),
+            PackValue::Integer(0),
+            PackValue::Integer(42),
+            PackValue::Integer(-100),
+            PackValue::Float(3.14),
+            PackValue::Str("hello".into()),
+            PackValue::Array(vec![PackValue::Integer(1), PackValue::Null]),
+        ];
+        for v in values {
+            let bytes = enc.encode(&v);
+            let decoded = dec.decode(&bytes).unwrap_or_else(|e| panic!("decode failed for {v:?}: {e}"));
+            // For arrays, check recursively
+            match (&v, &decoded) {
+                (PackValue::Array(a), PackValue::Array(b)) => assert_eq!(a.len(), b.len()),
+                _ => assert_eq!(decoded, v, "roundtrip failed for {v:?}"),
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- Slice 6: XDR
+
+    #[test]
+    fn xdr_int_roundtrip() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let mut dec = XdrDecoder::new();
+        for n in [-1i32, 0, 1, 42, -2147483648, 2147483647] {
+            enc.write_int(n);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_int().unwrap(), n, "int {n}");
+        }
+    }
+
+    #[test]
+    fn xdr_unsigned_int_roundtrip() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let mut dec = XdrDecoder::new();
+        for n in [0u32, 1, 255, 65535, 4294967295] {
+            enc.write_unsigned_int(n);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_unsigned_int().unwrap(), n, "uint {n}");
+        }
+    }
+
+    #[test]
+    fn xdr_string_roundtrip() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let mut dec = XdrDecoder::new();
+        let s = "hello world";
+        enc.write_str(s);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_string().unwrap(), s);
+    }
+
+    #[test]
+    fn xdr_opaque_padding() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let data = b"abc"; // 3 bytes → padded to 4
+        enc.write_unsigned_int(data.len() as u32);
+        enc.write_opaque(data);
+        let bytes = enc.writer.flush();
+        // Should be 4 bytes (length) + 4 bytes (padded data) = 8
+        assert_eq!(bytes.len(), 8);
+        let mut dec = XdrDecoder::new();
+        dec.reset(&bytes);
+        let decoded = dec.read_varlen_opaque().unwrap();
+        assert_eq!(decoded, data.to_vec());
+    }
+
+    #[test]
+    fn xdr_double_roundtrip() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let mut dec = XdrDecoder::new();
+        enc.write_double(3.14159);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        let decoded = dec.read_double().unwrap();
+        assert!((decoded - 3.14159).abs() < 1e-10);
+    }
+
+    #[test]
+    fn xdr_boolean_roundtrip() {
+        use super::xdr::{XdrDecoder, XdrEncoder};
+        let mut enc = XdrEncoder::new();
+        let mut dec = XdrDecoder::new();
+        enc.write_boolean(true);
+        enc.write_boolean(false);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_boolean().unwrap(), true);
+        assert_eq!(dec.read_boolean().unwrap(), false);
+    }
+
+    // ---------------------------------------------------------------- Slice 6: RPC
+
+    #[test]
+    fn rpc_call_message_roundtrip() {
+        use super::rpc::{RpcMessage, RpcMessageDecoder, RpcMessageEncoder, RpcOpaqueAuth};
+        let mut enc = RpcMessageEncoder::new();
+        let cred = RpcOpaqueAuth::none();
+        let verf = RpcOpaqueAuth::none();
+        let bytes = enc.encode_call(42, 100003, 3, 1, &cred, &verf, &[]).unwrap();
+        let dec = RpcMessageDecoder::new();
+        let msg = dec.decode_message(&bytes).unwrap().unwrap();
+        if let RpcMessage::Call(call) = msg {
+            assert_eq!(call.xid, 42);
+            assert_eq!(call.prog, 100003);
+            assert_eq!(call.vers, 3);
+            assert_eq!(call.proc_, 1);
+        } else {
+            panic!("expected Call message");
+        }
+    }
+
+    #[test]
+    fn rpc_accepted_reply_roundtrip() {
+        use super::rpc::{RpcAcceptStat, RpcMessage, RpcMessageDecoder, RpcMessageEncoder, RpcOpaqueAuth};
+        let mut enc = RpcMessageEncoder::new();
+        let verf = RpcOpaqueAuth::none();
+        let results = b"\x00\x00\x00\x01";
+        let bytes = enc.encode_accepted_reply(99, &verf, 0, None, results).unwrap();
+        let dec = RpcMessageDecoder::new();
+        let msg = dec.decode_message(&bytes).unwrap().unwrap();
+        if let RpcMessage::AcceptedReply(reply) = msg {
+            assert_eq!(reply.xid, 99);
+            assert_eq!(reply.stat, RpcAcceptStat::Success);
+            assert_eq!(reply.results, Some(results.to_vec()));
+        } else {
+            panic!("expected AcceptedReply");
+        }
+    }
+
+    #[test]
+    fn rpc_rejected_reply_auth_error() {
+        use super::rpc::{RpcAuthStat, RpcMessage, RpcMessageDecoder, RpcMessageEncoder, RpcRejectStat};
+        let mut enc = RpcMessageEncoder::new();
+        let bytes = enc.encode_rejected_reply(7, 1, None, Some(1));
+        let dec = RpcMessageDecoder::new();
+        let msg = dec.decode_message(&bytes).unwrap().unwrap();
+        if let RpcMessage::RejectedReply(reply) = msg {
+            assert_eq!(reply.xid, 7);
+            assert_eq!(reply.stat, RpcRejectStat::AuthError);
+            assert_eq!(reply.auth_stat, Some(RpcAuthStat::AuthBadcred));
+        } else {
+            panic!("expected RejectedReply");
+        }
+    }
+
+    #[test]
+    fn rpc_opaque_auth_body() {
+        use super::rpc::{RpcAuthFlavor, RpcMessage, RpcMessageDecoder, RpcMessageEncoder, RpcOpaqueAuth};
+        let mut enc = RpcMessageEncoder::new();
+        let cred = RpcOpaqueAuth { flavor: RpcAuthFlavor::AuthSys, body: b"uid\x00".to_vec() };
+        let verf = RpcOpaqueAuth::none();
+        let bytes = enc.encode_call(1, 1, 1, 1, &cred, &verf, &[]).unwrap();
+        let dec = RpcMessageDecoder::new();
+        let msg = dec.decode_message(&bytes).unwrap().unwrap();
+        if let RpcMessage::Call(call) = msg {
+            assert_eq!(call.cred.flavor, RpcAuthFlavor::AuthSys);
+            assert_eq!(call.cred.body, b"uid\x00".to_vec());
+        } else {
+            panic!("expected Call");
+        }
+    }
+
+    // ---------------------------------------------------------------- Slice 6: Avro
+
+    #[test]
+    fn avro_null_is_zero_bytes() {
+        use super::avro::AvroEncoder;
+        let mut enc = AvroEncoder::new();
+        enc.write_null();
+        assert!(enc.writer.flush().is_empty());
+    }
+
+    #[test]
+    fn avro_boolean_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_boolean(true);
+        enc.write_boolean(false);
+        let bytes = enc.writer.flush();
+        assert_eq!(bytes, [1, 0]);
+        dec.reset(&bytes);
+        assert_eq!(dec.read_boolean().unwrap(), true);
+        assert_eq!(dec.read_boolean().unwrap(), false);
+    }
+
+    #[test]
+    fn avro_int_zigzag_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        for n in [-64i32, -1, 0, 1, 63, 127, -2147483648, 2147483647] {
+            enc.write_int(n);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_int().unwrap(), n, "int {n}");
+        }
+    }
+
+    #[test]
+    fn avro_long_zigzag_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        for n in [-1i64, 0, 1, 1000, -9876543210, 9876543210] {
+            enc.write_long(n);
+            let bytes = enc.writer.flush();
+            dec.reset(&bytes);
+            assert_eq!(dec.read_long().unwrap(), n, "long {n}");
+        }
+    }
+
+    #[test]
+    fn avro_string_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_str("hello");
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_str().unwrap(), "hello");
+    }
+
+    #[test]
+    fn avro_bytes_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        let data = b"\x01\x02\x03\xff";
+        enc.write_bytes(data);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_bytes().unwrap(), data.to_vec());
+    }
+
+    #[test]
+    fn avro_double_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_double(2.71828);
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        let v = dec.read_double().unwrap();
+        assert!((v - 2.71828).abs() < 1e-10);
+    }
+
+    #[test]
+    fn avro_str_encode_decode() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_str("test");
+        let bytes = enc.writer.flush();
+        // String: zigzag(byteLen) + UTF-8 bytes. zigzag(4) = 8.
+        assert_eq!(bytes[0], 8); // zigzag(4) = 8
+        assert_eq!(&bytes[1..], b"test");
+        dec.reset(&bytes);
+        assert_eq!(dec.read_str().unwrap(), "test");
+    }
+
+    // ---------------------------------------------------------------- Slice 6: Ion
+
+    #[test]
+    fn ion_encode_null() {
+        use super::ion::IonEncoder;
+        let mut enc = IonEncoder::new();
+        let bytes = enc.encode(&PackValue::Null);
+        // IVM (4 bytes) + null typedesc (0x0f = 1 byte)
+        assert_eq!(bytes, [0xe0, 0x01, 0x00, 0xea, 0x0f]);
+    }
+
+    #[test]
+    fn ion_encode_bool() {
+        use super::ion::IonEncoder;
+        let mut enc = IonEncoder::new();
+        let bytes = enc.encode(&PackValue::Bool(true));
+        // IVM + BOOL|1 = 0x11
+        assert_eq!(bytes, [0xe0, 0x01, 0x00, 0xea, 0x11]);
+        let bytes2 = enc.encode(&PackValue::Bool(false));
+        assert_eq!(bytes2, [0xe0, 0x01, 0x00, 0xea, 0x10]);
+    }
+
+    #[test]
+    fn ion_encode_uint_zero() {
+        use super::ion::IonEncoder;
+        let mut enc = IonEncoder::new();
+        let bytes = enc.encode(&PackValue::UInteger(0));
+        // IVM + UINT|0 = 0x20
+        assert_eq!(bytes, [0xe0, 0x01, 0x00, 0xea, 0x20]);
+    }
+
+    #[test]
+    fn ion_roundtrip_primitives() {
+        use super::ion::{IonDecoder, IonEncoder};
+        let mut enc = IonEncoder::new();
+        let mut dec = IonDecoder::new();
+        let cases = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Bool(false),
+            PackValue::UInteger(0),
+            PackValue::UInteger(42),
+            PackValue::Integer(-7),
+            PackValue::Str("hello".to_string()),
+        ];
+        for val in cases {
+            let bytes = enc.encode(&val);
+            let decoded = dec.decode(&bytes).expect("ion decode");
+            assert_eq!(decoded, val, "ion roundtrip for {val:?}");
+        }
+    }
+
+    #[test]
+    fn ion_roundtrip_object_with_string_key() {
+        use super::ion::{IonDecoder, IonEncoder};
+        let mut enc = IonEncoder::new();
+        let mut dec = IonDecoder::new();
+        let val = PackValue::Object(vec![("key".to_string(), PackValue::UInteger(42))]);
+        let bytes = enc.encode(&val);
+        let decoded = dec.decode(&bytes).expect("ion decode object");
+        if let PackValue::Object(fields) = decoded {
+            assert_eq!(fields.len(), 1);
+            assert_eq!(fields[0].0, "key");
+            assert_eq!(fields[0].1, PackValue::UInteger(42));
+        } else {
+            panic!("expected Object, got {decoded:?}");
+        }
+    }
+
+    #[test]
+    fn ion_roundtrip_array() {
+        use super::ion::{IonDecoder, IonEncoder};
+        let mut enc = IonEncoder::new();
+        let mut dec = IonDecoder::new();
+        // Ion encodes non-negative integers as UINT, so Integer(n >= 0) decodes as UInteger.
+        let val = PackValue::Array(vec![
+            PackValue::UInteger(1),
+            PackValue::UInteger(2),
+            PackValue::UInteger(3),
+        ]);
+        let bytes = enc.encode(&val);
+        let decoded = dec.decode(&bytes).expect("ion decode array");
+        assert_eq!(decoded, val);
     }
 }

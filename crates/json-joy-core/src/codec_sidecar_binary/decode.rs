@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::{decode_cbor_value_with_consumed, PackValue};
 use serde_json::Value;
 
 use crate::crdt_binary::{read_b1vu56, LogicalClockBase};
@@ -37,7 +37,7 @@ pub fn decode_sidecar_to_model_binary(
             .map_err(|_| SidecarBinaryCodecError::InvalidPayload)?;
         None
     } else {
-        let view: CborValue = ciborium::de::from_reader(view_binary)
+        let (view, _consumed) = decode_cbor_value_with_consumed(view_binary)
             .map_err(|_| SidecarBinaryCodecError::InvalidPayload)?;
         Some(decode_node_from_sidecar(
             &view, &mut dec, &table, &mut nodes,
@@ -62,7 +62,7 @@ pub fn decode_sidecar_to_model_binary(
 }
 
 fn decode_node_from_sidecar(
-    view: &CborValue,
+    view: &PackValue,
     meta: &mut MetaCursor<'_>,
     table: &[LogicalClockBase],
     nodes: &mut HashMap<Id, RuntimeNode>,
@@ -88,28 +88,19 @@ fn decode_node_from_sidecar(
         }
         2 => {
             let map = match view {
-                CborValue::Map(m) => m,
+                PackValue::Object(m) => m,
                 _ => return Err(SidecarBinaryCodecError::InvalidPayload),
             };
             if map.len() != len as usize {
                 return Err(SidecarBinaryCodecError::InvalidPayload);
             }
-            let mut keys: Vec<String> = map
-                .iter()
-                .map(|(k, _)| match k {
-                    CborValue::Text(s) => Ok(s.clone()),
-                    _ => Err(SidecarBinaryCodecError::InvalidPayload),
-                })
-                .collect::<Result<_, _>>()?;
+            let mut keys: Vec<String> = map.iter().map(|(k, _)| k.clone()).collect();
             keys.sort();
             let mut entries = Vec::with_capacity(keys.len());
             for k in keys {
                 let child_view = map
                     .iter()
-                    .find_map(|(kk, vv)| match kk {
-                        CborValue::Text(s) if s == &k => Some(vv),
-                        _ => None,
-                    })
+                    .find_map(|(kk, vv)| if kk == &k { Some(vv) } else { None })
                     .ok_or(SidecarBinaryCodecError::InvalidPayload)?;
                 let child = decode_node_from_sidecar(child_view, meta, table, nodes)?;
                 entries.push((k, child));
@@ -118,7 +109,7 @@ fn decode_node_from_sidecar(
         }
         3 => {
             let arr = match view {
-                CborValue::Array(a) => a,
+                PackValue::Array(a) => a,
                 _ => return Err(SidecarBinaryCodecError::InvalidPayload),
             };
             if arr.len() != len as usize {
@@ -135,7 +126,7 @@ fn decode_node_from_sidecar(
         }
         4 => {
             let s = match view {
-                CborValue::Text(s) => s,
+                PackValue::Str(s) => s,
                 _ => return Err(SidecarBinaryCodecError::InvalidPayload),
             };
             let mut chars = s.chars();
@@ -173,7 +164,7 @@ fn decode_node_from_sidecar(
         }
         5 => {
             let bytes = match view {
-                CborValue::Bytes(b) => b,
+                PackValue::Bytes(b) => b,
                 _ => return Err(SidecarBinaryCodecError::InvalidPayload),
             };
             let mut byte_pos = 0usize;
@@ -212,7 +203,7 @@ fn decode_node_from_sidecar(
         }
         6 => {
             let arr = match view {
-                CborValue::Array(a) => a,
+                PackValue::Array(a) => a,
                 _ => return Err(SidecarBinaryCodecError::InvalidPayload),
             };
             let mut view_idx = 0usize;

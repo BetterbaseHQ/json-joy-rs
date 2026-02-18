@@ -1,6 +1,4 @@
-use json_joy_json_pack::write_cbor_value_like_json_pack;
-
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::{CborEncoder, PackValue};
 
 use crate::crdt_binary::write_b1vu56;
 use crate::model_runtime::types::{ConCell, Id, RuntimeNode};
@@ -24,11 +22,8 @@ pub fn encode_model_binary_to_sidecar(
     let mut meta = vec![0, 0, 0, 0];
     let view = match runtime.root {
         Some(root) if root.sid != 0 => {
-            let view_cbor = encode_node_view(root, &runtime, &mut ctx, &mut meta)?;
-            let mut encoded = Vec::new();
-            write_cbor_value_like_json_pack(&mut encoded, &view_cbor)
-                .map_err(|_| SidecarBinaryCodecError::InvalidPayload)?;
-            encoded
+            let view = encode_node_view(root, &runtime, &mut ctx, &mut meta)?;
+            CborEncoder::new().encode(&view)
         }
         _ => {
             meta.push(0);
@@ -52,7 +47,7 @@ fn encode_node_view(
     runtime: &RuntimeModel,
     clock: &mut ClockEncCtx,
     meta: &mut Vec<u8>,
-) -> Result<CborValue, SidecarBinaryCodecError> {
+) -> Result<PackValue, SidecarBinaryCodecError> {
     let node = runtime
         .nodes
         .get(&id)
@@ -66,11 +61,11 @@ fn encode_node_view(
         RuntimeNode::Con(ConCell::Ref(ref_id)) => {
             meta.push(1);
             clock.append(*ref_id, meta)?;
-            CborValue::Null
+            PackValue::Null
         }
         RuntimeNode::Con(ConCell::Undef) => {
             meta.push(0);
-            CborValue::Null
+            PackValue::Null
         }
         RuntimeNode::Val(child) => {
             meta.push(0b0010_0000);
@@ -84,9 +79,9 @@ fn encode_node_view(
             let mut map = Vec::with_capacity(sorted.len());
             for (k, child) in sorted {
                 let child_view = encode_node_view(child, runtime, clock, meta)?;
-                map.push((CborValue::Text(k.to_string()), child_view));
+                map.push((k.to_string(), child_view));
             }
-            CborValue::Map(map)
+            PackValue::Object(map)
         }
         RuntimeNode::Vec(elements) => {
             let len = elements.keys().max().map(|v| v + 1).unwrap_or(0);
@@ -98,10 +93,10 @@ fn encode_node_view(
                 } else {
                     // Missing vec slots are represented as undefined in upstream.
                     // For JSON-transport side this serializes as null.
-                    arr.push(CborValue::Null);
+                    arr.push(PackValue::Null);
                 }
             }
-            CborValue::Array(arr)
+            PackValue::Array(arr)
         }
         RuntimeNode::Str(atoms) => {
             let chunks = group_str_chunks(atoms);
@@ -116,7 +111,7 @@ fn encode_node_view(
                     s.push(ch);
                 }
             }
-            CborValue::Text(s)
+            PackValue::Str(s)
         }
         RuntimeNode::Bin(atoms) => {
             let chunks = group_bin_chunks(atoms);
@@ -131,7 +126,7 @@ fn encode_node_view(
                     b.push(x);
                 }
             }
-            CborValue::Bytes(b)
+            PackValue::Bytes(b)
         }
         RuntimeNode::Arr(atoms) => {
             let chunks = group_arr_chunks(atoms);
@@ -151,7 +146,7 @@ fn encode_node_view(
                     }
                 }
             }
-            CborValue::Array(values)
+            PackValue::Array(values)
         }
     })
 }

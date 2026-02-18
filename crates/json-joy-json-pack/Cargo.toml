@@ -1,11 +1,15 @@
 [package]
 name = "json-joy-json-pack"
 version = "0.1.0"
-edition = "2021"
-license = "MIT"
-description = "CBOR-focused json-pack primitives for json-joy-rs workspace"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Binary serialization formats for json-joy (CBOR, MessagePack, JSON, and more)"
 
 [dependencies]
-ciborium = "0.2"
+json-joy-buffers = { path = "../buffers" }
+json-joy-base64 = { path = "../base64" }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "2.0"
+
+[dev-dependencies]

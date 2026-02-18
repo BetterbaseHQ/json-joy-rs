@@ -6,7 +6,7 @@
 //! - Malformed payload handling is intentionally fixture-driven to match
 //!   upstream `json-joy@17.67.0` behavior (including permissive quirks).
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::PackValue;
 use serde_json::{Map, Number, Value};
 use thiserror::Error;
 

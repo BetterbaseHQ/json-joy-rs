@@ -136,7 +136,7 @@ fn decode_obj(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelErr
     let mut map = Map::new();
     for _ in 0..len {
         let key = match reader.read_one_cbor().ok_or(ModelError::InvalidModelBinary)? {
-            CborValue::Text(s) => s,
+            PackValue::Str(s) => s,
             _ => return Err(ModelError::InvalidModelBinary),
         };
         let val = decode_node(reader)?;
@@ -165,11 +165,14 @@ fn decode_str(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelErr
         reader.skip_id().ok_or(ModelError::InvalidModelBinary)?;
         let cbor = reader.read_one_cbor().ok_or(ModelError::InvalidModelBinary)?;
         match cbor {
-            CborValue::Text(s) => {
+            PackValue::Str(s) => {
                 out.push_str(&s);
             }
-            CborValue::Integer(i) => {
-                let _span: u64 = i.try_into().map_err(|_| ModelError::InvalidModelBinary)?;
+            PackValue::Integer(i) if i >= 0 => {
+                // deleted span — skip
+            }
+            PackValue::UInteger(_) => {
+                // deleted span — skip
             }
             _ => return Err(ModelError::InvalidModelBinary),
         }
@@ -217,6 +220,6 @@ fn decode_arr(reader: &mut BinaryCursor<'_>, len: u64) -> Result<Value, ModelErr
     Ok(Value::Array(out))
 }
 
-fn cbor_to_json(v: CborValue) -> Result<Value, ModelError> {
-    json_joy_json_pack::cbor_to_json_owned(v).map_err(|_| ModelError::InvalidModelBinary)
+fn cbor_to_json(v: PackValue) -> Result<Value, ModelError> {
+    Ok(json_joy_json_pack::cbor_to_json_owned(v))
 }

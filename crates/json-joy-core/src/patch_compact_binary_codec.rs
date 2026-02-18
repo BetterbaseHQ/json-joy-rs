@@ -24,10 +24,6 @@ pub fn decode_patch_compact_binary(data: &[u8]) -> Result<Patch, CompactBinaryCo
     Ok(decode_patch_compact(&compact)?)
 }
 
-fn map_cbor_error(error: JsonPackCborError) -> CompactBinaryCodecError {
-    match error {
-        JsonPackCborError::InvalidPayload | JsonPackCborError::Unsupported => {
-            CompactBinaryCodecError::InvalidCbor
-        }
-    }
+fn map_cbor_error(_error: JsonPackCborError) -> CompactBinaryCodecError {
+    CompactBinaryCodecError::InvalidCbor
 }

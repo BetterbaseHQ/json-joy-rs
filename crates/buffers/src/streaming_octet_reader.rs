@@ -137,6 +137,41 @@ impl StreamingOctetReader {
         self.assert_size(1);
         self.chunks[0][self.x]
     }
+
+    /// Reads `size` bytes, XOR-masking each byte with `mask[(offset + i) % 4]`.
+    ///
+    /// Used for WebSocket frame payload unmasking (RFC 6455 §5.3).
+    pub fn buf_xor(&mut self, size: usize, mask: [u8; 4], offset: usize) -> Vec<u8> {
+        let raw = self.buf(size);
+        raw.into_iter()
+            .enumerate()
+            .map(|(i, b)| b ^ mask[(offset + i) % 4])
+            .collect()
+    }
+
+    /// Copies `size` bytes to `dst[pos..]`, XOR-masking with `mask[(already_read + i) % 4]`.
+    ///
+    /// Used for streaming WebSocket frame data reads.
+    pub fn copy_xor(
+        &mut self,
+        size: usize,
+        dst: &mut [u8],
+        pos: usize,
+        mask: [u8; 4],
+        already_read: usize,
+    ) {
+        let raw = self.buf(size);
+        for (i, b) in raw.into_iter().enumerate() {
+            dst[pos + i] = b ^ mask[(already_read + i) % 4];
+        }
+    }
+
+    /// Reads `size` UTF-8 bytes, XOR-masking with `mask[(offset + i) % 4]`, and
+    /// decodes to a `String`.
+    pub fn utf8_masked(&mut self, size: usize, mask: [u8; 4], offset: usize) -> String {
+        let raw = self.buf_xor(size, mask, offset);
+        String::from_utf8(raw).unwrap_or_default()
+    }
 }
 
 #[cfg(test)]

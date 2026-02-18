@@ -1,7 +1,6 @@
 use crate::crdt_binary::{read_b1vu56, read_vu57, LogicalClockBase};
 use crate::model::ModelError;
-use ciborium::value::Value as CborValue;
-use json_joy_json_pack::{cbor_to_json_owned, decode_cbor_value_with_consumed};
+use json_joy_json_pack::{decode_cbor_value_with_consumed, PackValue};
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 
@@ -120,7 +119,7 @@ fn decode_node(ctx: &mut DecodeCtx<'_>) -> Result<Id, ModelError> {
             let mut entries = Vec::new();
             for _ in 0..len {
                 let key = match read_one_cbor(ctx)? {
-                    CborValue::Text(s) => s,
+                    PackValue::Str(s) => s,
                     _ => return Err(ModelError::InvalidModelBinary),
                 };
                 let child = decode_node(ctx)?;
@@ -156,7 +155,7 @@ fn decode_node(ctx: &mut DecodeCtx<'_>) -> Result<Id, ModelError> {
                 let chunk_id = decode_id(ctx)?;
                 let val = read_one_cbor(ctx)?;
                 match val {
-                    CborValue::Text(s) => {
+                    PackValue::Str(s) => {
                         for (i, ch) in s.chars().enumerate() {
                             atoms.push(StrAtom {
                                 slot: Id {
@@ -167,8 +166,20 @@ fn decode_node(ctx: &mut DecodeCtx<'_>) -> Result<Id, ModelError> {
                             });
                         }
                     }
-                    CborValue::Integer(i) => {
-                        let span: u64 = i.try_into().map_err(|_| ModelError::InvalidModelBinary)?;
+                    PackValue::Integer(i) if i >= 0 => {
+                        let span = i as u64;
+                        for i in 0..span {
+                            atoms.push(StrAtom {
+                                slot: Id {
+                                    sid: chunk_id.sid,
+                                    time: chunk_id.time + i,
+                                },
+                                ch: None,
+                            });
+                        }
+                    }
+                    PackValue::UInteger(u) => {
+                        let span = u;
                         for i in 0..span {
                             atoms.push(StrAtom {
                                 slot: Id {
@@ -367,8 +378,8 @@ impl ViewBootstrap {
     }
 }
 
-fn cbor_to_json(v: CborValue) -> Result<Value, ModelError> {
-    cbor_to_json_owned(v).map_err(|_| ModelError::InvalidModelBinary)
+fn cbor_to_json(v: PackValue) -> Result<Value, ModelError> {
+    Ok(json_joy_json_pack::cbor_to_json_owned(v))
 }
 
 fn decode_id(ctx: &mut DecodeCtx<'_>) -> Result<Id, ModelError> {
@@ -445,7 +456,7 @@ fn read_vu57_ctx(ctx: &mut DecodeCtx<'_>) -> Result<u64, ModelError> {
     read_vu57(ctx.data, &mut ctx.pos).ok_or(ModelError::InvalidModelBinary)
 }
 
-fn read_one_cbor(ctx: &mut DecodeCtx<'_>) -> Result<CborValue, ModelError> {
+fn read_one_cbor(ctx: &mut DecodeCtx<'_>) -> Result<PackValue, ModelError> {
     let slice = &ctx.data[ctx.pos..];
     let (val, consumed) =
         decode_cbor_value_with_consumed(slice).map_err(|_| ModelError::InvalidModelBinary)?;

@@ -1,7 +1,6 @@
 use crate::crdt_binary::{write_b1vu56, write_vu57, LogicalClockBase};
 use crate::model::ModelError;
-use ciborium::value::Value as CborValue;
-use json_joy_json_pack::{write_cbor_text_like_json_pack, write_json_like_json_pack};
+use json_joy_json_pack::{write_cbor_text_like_json_pack, write_cbor_uint_major, write_json_like_json_pack};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -212,9 +211,7 @@ fn encode_node(enc: &mut EncodeCtx<'_>, id: Id, model: &RuntimeModel) -> Result<
                 if let Some(text) = chunk.text {
                     cbor_text_bytes(&text, enc.out)?;
                 } else {
-                    let cbor = CborValue::Integer(ciborium::value::Integer::from(chunk.span));
-                    ciborium::ser::into_writer(&cbor, &mut *enc.out)
-                        .map_err(|_| ModelError::InvalidModelBinary)?;
+                    write_cbor_uint_major(&mut *enc.out, 0, chunk.span);
                 }
             }
         }

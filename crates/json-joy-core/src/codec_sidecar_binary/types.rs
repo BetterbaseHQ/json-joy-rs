@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::PackValue;
 use serde_json::Value;
 use thiserror::Error;
 
@@ -202,11 +202,11 @@ pub(super) fn write_type_len(out: &mut Vec<u8>, major: u8, len: u64) {
     }
 }
 
-pub(super) fn cbor_from_json(v: &Value) -> CborValue {
+pub(super) fn cbor_from_json(v: &Value) -> PackValue {
     json_joy_json_pack::json_to_cbor(v)
 }
 
-pub(super) fn json_from_cbor(v: &CborValue) -> Result<Value, SidecarBinaryCodecError> {
+pub(super) fn json_from_cbor(v: &PackValue) -> Result<Value, SidecarBinaryCodecError> {
     json_joy_json_pack::cbor_to_json(v).map_err(|_| SidecarBinaryCodecError::InvalidPayload)
 }
 

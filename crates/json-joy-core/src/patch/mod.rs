@@ -7,7 +7,7 @@
 //!   behavior observed via compatibility fixtures (including permissive
 //!   handling for many malformed payloads).
 
-use ciborium::value::Value;
+use json_joy_json_pack::PackValue;
 use thiserror::Error;
 
 include!("types.rs");

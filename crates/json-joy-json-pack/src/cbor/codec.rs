@@ -1,18 +1,31 @@
+//! `CborJsonValueCodec` — combined encoder/decoder pair.
+//!
+//! Mirrors `codecs/cbor.ts` from upstream.
+
 use serde_json::Value;
 
 use super::decoder::decode_json_from_cbor_bytes;
-use super::encoder_fast::encode_json_to_cbor_bytes;
+use super::encoder::CborEncoder;
 use super::error::CborError;
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct CborJsonValueCodec;
+#[derive(Default)]
+pub struct CborJsonValueCodec {
+    encoder: CborEncoder,
+}
 
 impl CborJsonValueCodec {
-    pub fn encode(self, value: &Value) -> Result<Vec<u8>, CborError> {
-        encode_json_to_cbor_bytes(value)
+    pub fn new() -> Self {
+        Self {
+            encoder: CborEncoder::new(),
+        }
     }
 
-    pub fn decode(self, bytes: &[u8]) -> Result<Value, CborError> {
+    pub fn encode(&mut self, value: &Value) -> Result<Vec<u8>, CborError> {
+        Ok(self.encoder.encode_json(value))
+    }
+
+    pub fn decode(&self, bytes: &[u8]) -> Result<Value, CborError> {
         decode_json_from_cbor_bytes(bytes)
     }
 }
+

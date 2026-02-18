@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::io::Cursor;
 
-use ciborium::value::Value as CborValue;
+use json_joy_json_pack::{decode_cbor_value_with_consumed, PackValue};
 use serde_json::Value;
 
 use crate::crdt_binary::{read_b1vu56, read_vu57, LogicalClockBase};
@@ -134,12 +133,9 @@ impl<'a> DecodeCursor<'a> {
         }
     }
 
-    fn read_one_cbor(&mut self) -> Result<CborValue, IndexedBinaryCodecError> {
-        let start = self.pos;
-        let mut cursor = Cursor::new(&self.data[start..]);
-        let value: CborValue = ciborium::de::from_reader(&mut cursor)
+    fn read_one_cbor(&mut self) -> Result<PackValue, IndexedBinaryCodecError> {
+        let (value, consumed) = decode_cbor_value_with_consumed(&self.data[self.pos..])
             .map_err(|_| IndexedBinaryCodecError::InvalidNode)?;
-        let consumed = cursor.position() as usize;
         self.pos += consumed;
         Ok(value)
     }
@@ -180,7 +176,7 @@ fn decode_node_payload(
             let mut entries = Vec::with_capacity(len as usize);
             for _ in 0..len {
                 let key = match r.read_one_cbor()? {
-                    CborValue::Text(s) => s,
+                    PackValue::Str(s) => s,
                     _ => return Err(IndexedBinaryCodecError::InvalidNode),
                 };
                 let id = r.read_indexed_id(clock_table)?;
@@ -204,7 +200,7 @@ fn decode_node_payload(
             for _ in 0..len {
                 let id = r.read_indexed_id(clock_table)?;
                 match r.read_one_cbor()? {
-                    CborValue::Text(s) => {
+                    PackValue::Str(s) => {
                         let chars: Vec<char> = s.chars().collect();
                         for (i, ch) in chars.iter().enumerate() {
                             atoms.push(StrAtom {
@@ -216,9 +212,19 @@ fn decode_node_payload(
                             });
                         }
                     }
-                    CborValue::Integer(n) => {
-                        let span =
-                            u64::try_from(n).map_err(|_| IndexedBinaryCodecError::InvalidNode)?;
+                    PackValue::Integer(n) if n >= 0 => {
+                        let span = n as u64;
+                        for i in 0..span {
+                            atoms.push(StrAtom {
+                                slot: Id {
+                                    sid: id.sid,
+                                    time: id.time + i,
+                                },
+                                ch: None,
+                            });
+                        }
+                    }
+                    PackValue::UInteger(span) => {
                         for i in 0..span {
                             atoms.push(StrAtom {
                                 slot: Id {

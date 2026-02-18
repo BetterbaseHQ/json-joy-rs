@@ -1,8 +1,8 @@
 use crate::crdt_binary::BinaryCursor;
 type Reader<'a> = BinaryCursor<'a>;
 
-fn cbor_to_json(v: Value) -> Result<serde_json::Value, PatchError> {
-    json_joy_json_pack::cbor_to_json_owned(v).map_err(|_| PatchError::InvalidCbor)
+fn cbor_to_json(v: PackValue) -> Result<serde_json::Value, PatchError> {
+    Ok(json_joy_json_pack::cbor_to_json_owned(v))
 }
 
 fn decode_id(reader: &mut BinaryCursor<'_>, patch_sid: u64) -> Result<Timestamp, PatchError> {
@@ -117,7 +117,7 @@ fn decode_op(
             let mut data = Vec::with_capacity(len as usize);
             for _ in 0..len {
                 let key = match reader.read_one_cbor().ok_or(PatchError::InvalidCbor)? {
-                    Value::Text(s) => s,
+                    PackValue::Str(s) => s,
                     _ => return Err(PatchError::InvalidCbor),
                 };
                 let value = decode_id(reader, patch_sid)?;
