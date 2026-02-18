@@ -1,730 +1,1021 @@
-use json_joy_core::diff_runtime::diff_runtime_to_patch_bytes;
-use json_joy_core::model_runtime::RuntimeModel;
-use json_joy_core::patch::Patch;
-use json_joy_core::{generate_session_id, is_valid_session_id};
-use std::cell::RefCell;
-use std::collections::HashMap;
+//! WASM bindings for json-joy-rs.
+//!
+//! Exposes a `Model` class that mirrors the upstream TypeScript `json-joy`
+//! library API.  The TypeScript layer in `js/` wraps this to reconstruct the
+//! exact chainable API feel (`model.api.str(['key']).ins(0, 'hello')`).
+//!
+//! # Boundary discipline
+//!
+//! Every public `#[wasm_bindgen]` method performs exactly **one** meaningful
+//! unit of work, so JS can drive batch operations without extra round-trips.
+//! Navigation and internal helpers are pure Rust.
+
 use wasm_bindgen::prelude::*;
 
-const U32_SIZE: usize = 4;
-const PATCH_LOG_VERSION: u8 = 1;
-const EXPORT_MODEL: u32 = 1;
-const EXPORT_VIEW_JSON: u32 = 2;
+use json_joy::json_crdt::model::api::find_path;
+use json_joy::json_crdt::model::Model as CrdtModel;
+use json_joy::json_crdt::model::util::random_session_id;
+use json_joy::json_crdt::nodes::{BinNode, CrdtNode, IndexExt};
+use json_joy::json_crdt::ORIGIN;
+use json_joy::json_crdt::codec::structural::binary as structural_binary;
+use json_joy::json_crdt_diff::JsonCrdtDiff;
+use json_joy::json_crdt_patch::clock::{Ts, Tss};
+use json_joy::json_crdt_patch::operations::Op;
+use json_joy::json_crdt_patch::patch::Patch;
+use json_joy::json_crdt_patch::patch_builder::PatchBuilder;
+use json_joy_json_pack::PackValue;
+use serde_json::Value;
 
-#[derive(Clone)]
-struct EngineState {
-    runtime: RuntimeModel,
-    sid: u64,
-}
+// ── Internal helpers ─────────────────────────────────────────────────────────
 
-#[derive(Default)]
-struct EngineStore {
-    next_id: u32,
-    models: HashMap<u32, EngineState>,
-}
-
-thread_local! {
-    static ENGINE_STORE: RefCell<EngineStore> = RefCell::new(EngineStore {
-        next_id: 1,
-        models: HashMap::new(),
-    });
-}
-
-fn ensure_valid_sid(sid: u64) -> Result<(), String> {
-    if is_valid_session_id(sid) {
-        Ok(())
-    } else {
-        Err(format!("invalid session id: {sid}"))
-    }
-}
-
-fn read_u32_le(input: &[u8], cursor: &mut usize) -> Result<u32, String> {
-    let end = cursor
-        .checked_add(U32_SIZE)
-        .ok_or_else(|| "cursor overflow".to_string())?;
-    let bytes = input
-        .get(*cursor..end)
-        .ok_or_else(|| "input truncated while reading u32".to_string())?;
-    *cursor = end;
-    Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-}
-
-fn read_u32_be(input: &[u8], cursor: &mut usize) -> Result<u32, String> {
-    let end = cursor
-        .checked_add(U32_SIZE)
-        .ok_or_else(|| "cursor overflow".to_string())?;
-    let bytes = input
-        .get(*cursor..end)
-        .ok_or_else(|| "input truncated while reading u32".to_string())?;
-    *cursor = end;
-    Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-}
-
-fn decode_patch_batch(batch: &[u8]) -> Result<Vec<&[u8]>, String> {
-    let mut cursor = 0usize;
-    let count = read_u32_le(batch, &mut cursor)? as usize;
-    let mut out = Vec::with_capacity(count);
-
-    for _ in 0..count {
-        let len = read_u32_le(batch, &mut cursor)? as usize;
-        let end = cursor
-            .checked_add(len)
-            .ok_or_else(|| "cursor overflow".to_string())?;
-        let bytes = batch
-            .get(cursor..end)
-            .ok_or_else(|| "batch truncated while reading patch bytes".to_string())?;
-        out.push(bytes);
-        cursor = end;
-    }
-
-    if cursor != batch.len() {
-        return Err("batch has trailing bytes".to_string());
-    }
-
-    Ok(out)
-}
-
-fn decode_patch_log_v1(log: &[u8]) -> Result<Vec<&[u8]>, String> {
-    if log.is_empty() {
-        return Ok(Vec::new());
-    }
-    if log[0] != PATCH_LOG_VERSION {
-        return Err(format!(
-            "unsupported patch log version: {} (expected {})",
-            log[0], PATCH_LOG_VERSION
-        ));
-    }
-
-    let mut cursor = 1usize;
-    let mut out = Vec::new();
-    while cursor < log.len() {
-        let len = read_u32_be(log, &mut cursor)? as usize;
-        let end = cursor
-            .checked_add(len)
-            .ok_or_else(|| "cursor overflow".to_string())?;
-        let bytes = log
-            .get(cursor..end)
-            .ok_or_else(|| "patch log truncated while reading patch bytes".to_string())?;
-        out.push(bytes);
-        cursor = end;
-    }
-
-    Ok(out)
-}
-
-fn encode_patch_batch_from_slices(slices: &[&[u8]]) -> Result<Vec<u8>, String> {
-    let mut total = U32_SIZE;
-    for s in slices {
-        total = total
-            .checked_add(U32_SIZE)
-            .and_then(|v| v.checked_add(s.len()))
-            .ok_or_else(|| "batch size overflow".to_string())?;
-    }
-
-    let mut out = Vec::with_capacity(total);
-    out.extend_from_slice(&(slices.len() as u32).to_le_bytes());
-    for s in slices {
-        let len_u32 = u32::try_from(s.len()).map_err(|_| "patch too large".to_string())?;
-        out.extend_from_slice(&len_u32.to_le_bytes());
-        out.extend_from_slice(s);
-    }
-    Ok(out)
-}
-
-fn append_patch_log_bytes(existing: &[u8], patch_binary: &[u8]) -> Result<Vec<u8>, String> {
-    let patch_len = u32::try_from(patch_binary.len()).map_err(|_| "patch too large".to_string())?;
-    if existing.is_empty() {
-        let mut out = Vec::with_capacity(1 + U32_SIZE + patch_binary.len());
-        out.push(PATCH_LOG_VERSION);
-        out.extend_from_slice(&patch_len.to_be_bytes());
-        out.extend_from_slice(patch_binary);
-        return Ok(out);
-    }
-    if existing[0] != PATCH_LOG_VERSION {
-        return Err(format!(
-            "unsupported patch log version: {} (expected {})",
-            existing[0], PATCH_LOG_VERSION
-        ));
-    }
-
-    let mut out = Vec::with_capacity(existing.len() + U32_SIZE + patch_binary.len());
-    out.extend_from_slice(existing);
-    out.extend_from_slice(&patch_len.to_be_bytes());
-    out.extend_from_slice(patch_binary);
-    Ok(out)
-}
-
-fn parse_json_bytes(json_utf8: &[u8]) -> Result<serde_json::Value, String> {
-    serde_json::from_slice(json_utf8).map_err(|e| format!("invalid json: {e}"))
-}
-
-fn to_json_bytes(value: &serde_json::Value) -> Result<Vec<u8>, String> {
-    serde_json::to_vec(value).map_err(|e| format!("json encode failed: {e}"))
-}
-
-fn runtime_from_binary_with_sid(model_binary: &[u8], sid: u64) -> Result<RuntimeModel, String> {
-    let mut runtime = RuntimeModel::from_model_binary(model_binary)
-        .map_err(|e| format!("model decode failed: {e}"))?;
-    if model_binary.first().is_some_and(|b| (b & 0x80) == 0) {
-        runtime = runtime.fork_with_sid(sid);
-    }
-    Ok(runtime)
-}
-
-fn apply_patch_to_runtime(runtime: &mut RuntimeModel, patch_binary: &[u8]) -> Result<(), String> {
-    if patch_binary.is_empty() {
-        return Ok(());
-    }
-    let patch =
-        Patch::from_binary(patch_binary).map_err(|e| format!("patch decode failed: {e}"))?;
-    runtime
-        .apply_patch(&patch)
-        .map_err(|e| format!("patch apply failed: {e}"))
-}
-
-fn engine_create_with_runtime(runtime: RuntimeModel, sid: u64) -> Result<u32, String> {
-    ENGINE_STORE.with(|store| {
-        let mut store = store.borrow_mut();
-        let mut id = store.next_id;
-        while id == 0 || store.models.contains_key(&id) {
-            id = id.wrapping_add(1);
-            if id == store.next_id {
-                return Err("engine id space exhausted".to_string());
+/// Convert a plain JSON value to its `PackValue` equivalent for `con` nodes.
+/// Complex types (array/object) return `Null` — the caller must use `build_json`.
+fn json_to_pack(v: &Value) -> PackValue {
+    match v {
+        Value::Null => PackValue::Null,
+        Value::Bool(b) => PackValue::Bool(*b),
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                PackValue::Integer(i)
+            } else if let Some(f) = n.as_f64() {
+                PackValue::Float(f)
+            } else {
+                PackValue::Null
             }
         }
-        store.next_id = id.wrapping_add(1);
-        store.models.insert(id, EngineState { runtime, sid });
-        Ok(id)
-    })
+        Value::String(s) => PackValue::Str(s.clone()),
+        _ => PackValue::Null,
+    }
 }
 
-fn with_engine_mut<T>(
-    engine_id: u32,
-    f: impl FnOnce(&mut EngineState) -> Result<T, String>,
-) -> Result<T, String> {
-    ENGINE_STORE.with(|store| {
-        let mut store = store.borrow_mut();
-        let engine = store
-            .models
-            .get_mut(&engine_id)
-            .ok_or_else(|| format!("engine not found: {engine_id}"))?;
-        f(engine)
-    })
+/// Recursively allocate CRDT nodes for a JSON value using the given builder.
+/// Returns the timestamp ID of the root node created.
+///
+/// Mirrors upstream `PatchBuilder.json()`:
+/// - Scalars (null/bool/number) → ConNode
+/// - Strings → StrNode (CRDT-editable, so `api.str([key]).ins()` works after `api.set(...)`)
+/// - Arrays → ArrNode (elements via `build_json` recursively)
+/// - Objects → ObjNode (values via `build_json` recursively)
+fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
+    match v {
+        Value::Null | Value::Bool(_) | Value::Number(_) => {
+            builder.con_val(json_to_pack(v))
+        }
+        Value::String(s) => {
+            // Strings become CRDT-editable StrNodes, matching upstream behaviour.
+            let str_id = builder.str_node();
+            if !s.is_empty() {
+                builder.ins_str(str_id, str_id, s.clone());
+            }
+            str_id
+        }
+        Value::Array(items) => {
+            let arr_id = builder.arr();
+            if !items.is_empty() {
+                let ids: Vec<Ts> = items.iter().map(|item| build_json(builder, item)).collect();
+                builder.ins_arr(arr_id, arr_id, ids);
+            }
+            arr_id
+        }
+        Value::Object(map) => {
+            let obj_id = builder.obj();
+            if !map.is_empty() {
+                let pairs: Vec<(String, Ts)> = map
+                    .iter()
+                    .map(|(k, v)| (k.clone(), build_json(builder, v)))
+                    .collect();
+                builder.ins_obj(obj_id, pairs);
+            }
+            obj_id
+        }
+    }
 }
 
-fn with_engine<T>(
-    engine_id: u32,
-    f: impl FnOnce(&EngineState) -> Result<T, String>,
-) -> Result<T, String> {
-    ENGINE_STORE.with(|store| {
-        let store = store.borrow();
-        let engine = store
-            .models
-            .get(&engine_id)
-            .ok_or_else(|| format!("engine not found: {engine_id}"))?;
-        f(engine)
-    })
+/// Like `build_json` but treats scalars as `con` constants and compound types
+/// as structural CRDT nodes.  Mirrors `PatchBuilder.constOrJson()`.
+fn const_or_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
+    match v {
+        Value::Array(_) | Value::Object(_) => build_json(builder, v),
+        _ => builder.con_val(json_to_pack(v)),
+    }
 }
 
-fn engine_create_empty_internal(sid: u64) -> Result<u32, String> {
-    ensure_valid_sid(sid)?;
-    engine_create_with_runtime(RuntimeModel::new_logical_empty(sid), sid)
+/// Parse a path argument from JS (JSON-encoded array, string, or number).
+/// `null` / absent → empty path (document root).
+fn parse_path(path_json: &str) -> Result<Vec<Value>, String> {
+    if path_json.is_empty() || path_json == "null" || path_json == "undefined" {
+        return Ok(vec![]);
+    }
+    let v: Value =
+        serde_json::from_str(path_json).map_err(|e| format!("invalid path JSON: {e}"))?;
+    match v {
+        Value::Array(arr) => Ok(arr),
+        Value::String(s) => Ok(vec![Value::String(s)]),
+        Value::Number(n) => Ok(vec![Value::Number(n)]),
+        _ => Err(format!("path must be an array, string, or number; got {v}")),
+    }
 }
 
-fn engine_create_from_model_internal(model_binary: &[u8], sid: u64) -> Result<u32, String> {
-    ensure_valid_sid(sid)?;
-    let runtime = runtime_from_binary_with_sid(model_binary, sid)?;
-    engine_create_with_runtime(runtime, sid)
+/// Merge a collection of patches into a single `Patch` by concatenating ops.
+fn merge_patches(patches: &[Patch]) -> Patch {
+    let ops: Vec<Op> = patches.iter().flat_map(|p| p.ops.clone()).collect();
+    Patch { ops, meta: None }
 }
 
-fn engine_fork_internal(engine_id: u32, sid: u64) -> Result<u32, String> {
-    ensure_valid_sid(sid)?;
-    let runtime = with_engine(engine_id, |engine| Ok(engine.runtime.fork_with_sid(sid)))?;
-    engine_create_with_runtime(runtime, sid)
+// ── Model ────────────────────────────────────────────────────────────────────
+
+/// A JSON CRDT document.
+///
+/// Mirrors `Model` from `json-joy`.  The TypeScript wrapper in `js/Model.ts`
+/// wraps this to expose the chainable `.api` property.
+///
+/// ## Editing lifecycle
+///
+/// 1. Call editing methods (`apiSet`, `apiObjSet`, `apiStrIns`, …).  Each op
+///    is immediately applied to the in-memory document so `view()` stays
+///    up-to-date, and is also appended to the local-changes log.
+/// 2. Call `apiFlush()` to get the accumulated patch as a `Uint8Array` to
+///    send to peers.  The log is then cleared.
+/// 3. Call `applyPatch(bytes)` to integrate a remote peer's patch.
+#[wasm_bindgen]
+pub struct Model {
+    inner: CrdtModel,
+    /// Tracks ops applied since the last `apiFlush()` so we can return a
+    /// single binary patch representing all local changes.
+    local_changes: Vec<Patch>,
 }
 
-fn engine_set_sid_internal(engine_id: u32, sid: u64) -> Result<(), String> {
-    ensure_valid_sid(sid)?;
-    with_engine_mut(engine_id, |engine| {
-        engine.sid = sid;
+impl Model {
+    fn from_inner(inner: CrdtModel) -> Self {
+        Self { inner, local_changes: Vec::new() }
+    }
+
+    /// Execute `f` with a fresh `PatchBuilder` seeded from the model clock,
+    /// then immediately apply the resulting patch and record it in
+    /// `local_changes`.
+    fn with_builder<F>(&mut self, f: F) -> Result<(), String>
+    where
+        F: FnOnce(&CrdtModel, &mut PatchBuilder) -> Result<(), String>,
+    {
+        let sid  = self.inner.clock.sid;
+        let time = self.inner.clock.time;
+        let mut builder = PatchBuilder::new(sid, time);
+        f(&self.inner, &mut builder)?;
+        let patch = builder.flush();
+        if !patch.ops.is_empty() {
+            self.inner.apply_patch(&patch);
+            self.local_changes.push(patch);
+        }
         Ok(())
-    })
-}
-
-fn engine_export_model_internal(engine_id: u32) -> Result<Vec<u8>, String> {
-    with_engine(engine_id, |engine| {
-        engine
-            .runtime
-            .to_model_binary_like()
-            .map_err(|e| format!("model encode failed: {e}"))
-    })
-}
-
-fn engine_export_view_json_internal(engine_id: u32) -> Result<Vec<u8>, String> {
-    with_engine(engine_id, |engine| {
-        to_json_bytes(&engine.runtime.view_json())
-    })
-}
-
-fn engine_apply_patch_internal(engine_id: u32, patch_binary: &[u8]) -> Result<(), String> {
-    with_engine_mut(engine_id, |engine| {
-        apply_patch_to_runtime(&mut engine.runtime, patch_binary)
-    })
-}
-
-fn engine_apply_patch_batch_internal(
-    engine_id: u32,
-    patch_batch_binary: &[u8],
-) -> Result<u32, String> {
-    with_engine_mut(engine_id, |engine| {
-        let slices = decode_patch_batch(patch_batch_binary)?;
-        for s in &slices {
-            apply_patch_to_runtime(&mut engine.runtime, s)?;
-        }
-        Ok(slices.len() as u32)
-    })
-}
-
-fn engine_apply_patch_log_internal(engine_id: u32, patch_log_binary: &[u8]) -> Result<u32, String> {
-    with_engine_mut(engine_id, |engine| {
-        let slices = decode_patch_log_v1(patch_log_binary)?;
-        for s in &slices {
-            apply_patch_to_runtime(&mut engine.runtime, s)?;
-        }
-        Ok(slices.len() as u32)
-    })
-}
-
-fn engine_diff_json_internal(engine_id: u32, next_json_utf8: &[u8]) -> Result<Vec<u8>, String> {
-    with_engine_mut(engine_id, |engine| {
-        let next = parse_json_bytes(next_json_utf8)?;
-        let patch = diff_runtime_to_patch_bytes(&engine.runtime, &next, engine.sid)
-            .map_err(|e| format!("diff failed: {e}"))?;
-        Ok(patch.unwrap_or_default())
-    })
-}
-
-fn engine_diff_apply_json_internal(
-    engine_id: u32,
-    next_json_utf8: &[u8],
-) -> Result<Vec<u8>, String> {
-    with_engine_mut(engine_id, |engine| {
-        let next = parse_json_bytes(next_json_utf8)?;
-        let patch = diff_runtime_to_patch_bytes(&engine.runtime, &next, engine.sid)
-            .map_err(|e| format!("diff failed: {e}"))?;
-        if let Some(patch_binary) = patch {
-            apply_patch_to_runtime(&mut engine.runtime, &patch_binary)?;
-            Ok(patch_binary)
-        } else {
-            Ok(Vec::new())
-        }
-    })
-}
-
-fn encode_diff_apply_export_result(
-    patch: &[u8],
-    model: Option<&[u8]>,
-    view_json: Option<&[u8]>,
-) -> Result<Vec<u8>, String> {
-    let model_len = model.map_or(0usize, |m| m.len());
-    let view_len = view_json.map_or(0usize, |v| v.len());
-
-    let total = U32_SIZE
-        .checked_add(patch.len())
-        .and_then(|v| v.checked_add(U32_SIZE))
-        .and_then(|v| v.checked_add(model_len))
-        .and_then(|v| v.checked_add(U32_SIZE))
-        .and_then(|v| v.checked_add(view_len))
-        .ok_or_else(|| "result envelope overflow".to_string())?;
-
-    let mut out = Vec::with_capacity(total);
-    out.extend_from_slice(&(patch.len() as u32).to_le_bytes());
-    out.extend_from_slice(patch);
-    out.extend_from_slice(&(model_len as u32).to_le_bytes());
-    if let Some(m) = model {
-        out.extend_from_slice(m);
     }
-    out.extend_from_slice(&(view_len as u32).to_le_bytes());
-    if let Some(v) = view_json {
-        out.extend_from_slice(v);
+
+    /// Navigate `path` within the model, returning the target node's
+    /// timestamp ID.  An empty path returns the root register's value node.
+    fn resolve(&self, path: &[Value]) -> Result<Ts, String> {
+        let root_val = self.inner.root.val;
+        if path.is_empty() {
+            return Ok(root_val);
+        }
+        find_path(&self.inner, root_val, path)
+            .map_err(|e| format!("path not found: {e:?}"))
     }
-    Ok(out)
 }
 
-fn engine_diff_apply_export_json_internal(
-    engine_id: u32,
-    next_json_utf8: &[u8],
-    flags: u32,
-) -> Result<Vec<u8>, String> {
-    with_engine_mut(engine_id, |engine| {
-        let next = parse_json_bytes(next_json_utf8)?;
-        let patch = diff_runtime_to_patch_bytes(&engine.runtime, &next, engine.sid)
-            .map_err(|e| format!("diff failed: {e}"))?;
+#[wasm_bindgen]
+impl Model {
+    // ── Lifecycle ─────────────────────────────────────────────────────────
 
-        let patch_binary = if let Some(patch_binary) = patch {
-            apply_patch_to_runtime(&mut engine.runtime, &patch_binary)?;
-            patch_binary
-        } else {
-            Vec::new()
+    /// Create a new empty document.
+    ///
+    /// `sid` is optional; if omitted a random session ID is generated.
+    ///
+    /// Mirrors `Model.create(schema?, sid?)`.
+    #[wasm_bindgen(js_name = "create", constructor)]
+    pub fn create(sid: Option<u64>) -> Model {
+        let inner = match sid {
+            Some(s) => CrdtModel::new(s),
+            None    => CrdtModel::create(),
         };
+        Self::from_inner(inner)
+    }
 
-        let model = if (flags & EXPORT_MODEL) != 0 {
-            Some(
-                engine
-                    .runtime
-                    .to_model_binary_like()
-                    .map_err(|e| format!("model encode failed: {e}"))?,
-            )
-        } else {
-            None
-        };
-        let view_json = if (flags & EXPORT_VIEW_JSON) != 0 {
-            Some(to_json_bytes(&engine.runtime.view_json())?)
-        } else {
-            None
-        };
+    /// Decode a model from its binary representation.
+    ///
+    /// Mirrors `Model.fromBinary(bytes)`.
+    #[wasm_bindgen(js_name = "fromBinary")]
+    pub fn from_binary(data: &[u8]) -> Result<Model, JsValue> {
+        structural_binary::decode(data)
+            .map(Self::from_inner)
+            .map_err(|e| JsValue::from_str(&format!("decode error: {e:?}")))
+    }
 
-        encode_diff_apply_export_result(&patch_binary, model.as_deref(), view_json.as_deref())
-    })
-}
+    /// Encode this model to its binary representation.
+    ///
+    /// Mirrors `model.toBinary()`.
+    #[wasm_bindgen(js_name = "toBinary")]
+    pub fn to_binary(&self) -> Vec<u8> {
+        structural_binary::encode(&self.inner)
+    }
 
-#[wasm_bindgen]
-pub fn session_generate() -> u64 {
-    generate_session_id()
-}
+    /// Return the current JSON view of this document as a JS value.
+    ///
+    /// Uses `serde-wasm-bindgen` to convert directly to a JS object without
+    /// going through a JSON string.
+    ///
+    /// Mirrors `model.view()`.
+    pub fn view(&self) -> JsValue {
+        let v = self.inner.view();
+        serde_wasm_bindgen::to_value(&v).unwrap_or(JsValue::NULL)
+    }
 
-#[wasm_bindgen]
-pub fn session_is_valid(sid: u64) -> bool {
-    is_valid_session_id(sid)
-}
+    /// Fork this document with a new session ID.
+    ///
+    /// Mirrors `model.fork(sid?)`.
+    pub fn fork(&self, sid: Option<u64>) -> Model {
+        let new_sid = sid.unwrap_or_else(random_session_id);
+        let mut cloned = self.inner.clone();
+        cloned.clock.sid = new_sid;
+        Self::from_inner(cloned)
+    }
 
-#[wasm_bindgen]
-pub fn engine_create_empty(sid: u64) -> Result<u32, JsValue> {
-    engine_create_empty_internal(sid).map_err(|e| JsValue::from_str(&e))
-}
+    /// Return this document's session ID.
+    pub fn sid(&self) -> u64 {
+        self.inner.clock.sid
+    }
 
-#[wasm_bindgen]
-pub fn engine_create_from_model(model_binary: &[u8], sid: u64) -> Result<u32, JsValue> {
-    engine_create_from_model_internal(model_binary, sid).map_err(|e| JsValue::from_str(&e))
-}
+    /// Generate a fresh random session ID.
+    ///
+    /// Mirrors `Model.sid()` / `model.rndSid()`.
+    #[wasm_bindgen(js_name = "rndSid")]
+    pub fn rnd_sid() -> u64 {
+        random_session_id()
+    }
 
-#[wasm_bindgen]
-pub fn engine_fork(engine_id: u32, sid: u64) -> Result<u32, JsValue> {
-    engine_fork_internal(engine_id, sid).map_err(|e| JsValue::from_str(&e))
-}
+    // ── Patch application ─────────────────────────────────────────────────
 
-#[wasm_bindgen]
-pub fn engine_set_sid(engine_id: u32, sid: u64) -> Result<(), JsValue> {
-    engine_set_sid_internal(engine_id, sid).map_err(|e| JsValue::from_str(&e))
-}
+    /// Apply a remote patch (received from a peer).
+    ///
+    /// Mirrors `model.applyPatch(patch)` where `patch` is passed as binary.
+    #[wasm_bindgen(js_name = "applyPatch")]
+    pub fn apply_patch(&mut self, patch_bytes: &[u8]) -> Result<(), JsValue> {
+        let patch = Patch::from_binary(patch_bytes)
+            .map_err(|e| JsValue::from_str(&format!("patch decode error: {e:?}")))?;
+        self.inner.apply_patch(&patch);
+        Ok(())
+    }
 
-#[wasm_bindgen]
-pub fn engine_free(engine_id: u32) -> bool {
-    ENGINE_STORE.with(|store| {
-        let mut store = store.borrow_mut();
-        store.models.remove(&engine_id).is_some()
-    })
-}
+    // ── Local editing API ─────────────────────────────────────────────────
+    //
+    // These methods are called by the TypeScript `ModelApi` / node-API
+    // wrappers.  Each call corresponds to one logical CRDT operation and is
+    // applied immediately so `view()` reflects it; the patch is also
+    // accumulated in `local_changes` for the next `apiFlush()`.
 
-#[wasm_bindgen]
-pub fn engine_export_model(engine_id: u32) -> Result<Vec<u8>, JsValue> {
-    engine_export_model_internal(engine_id).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_export_view_json(engine_id: u32) -> Result<Vec<u8>, JsValue> {
-    engine_export_view_json_internal(engine_id).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_apply_patch(engine_id: u32, patch_binary: &[u8]) -> Result<(), JsValue> {
-    engine_apply_patch_internal(engine_id, patch_binary).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_apply_patch_batch(engine_id: u32, patch_batch_binary: &[u8]) -> Result<u32, JsValue> {
-    engine_apply_patch_batch_internal(engine_id, patch_batch_binary)
+    /// Replace the entire document with a JSON value.
+    ///
+    /// Called by `model.api.set(json)`.
+    #[wasm_bindgen(js_name = "apiSet")]
+    pub fn api_set(&mut self, json_str: &str) -> Result<(), JsValue> {
+        let v: Value = serde_json::from_str(json_str)
+            .map_err(|e| JsValue::from_str(&format!("invalid JSON: {e}")))?;
+        self.with_builder(|_, builder| {
+            let id = build_json(builder, &v);
+            builder.root(id);
+            Ok(())
+        })
         .map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_apply_patch_log(engine_id: u32, patch_log_binary: &[u8]) -> Result<u32, JsValue> {
-    engine_apply_patch_log_internal(engine_id, patch_log_binary).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_diff_json(engine_id: u32, next_json_utf8: &[u8]) -> Result<Vec<u8>, JsValue> {
-    engine_diff_json_internal(engine_id, next_json_utf8).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_diff_apply_json(engine_id: u32, next_json_utf8: &[u8]) -> Result<Vec<u8>, JsValue> {
-    engine_diff_apply_json_internal(engine_id, next_json_utf8).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn engine_diff_apply_export_json(
-    engine_id: u32,
-    next_json_utf8: &[u8],
-    flags: u32,
-) -> Result<Vec<u8>, JsValue> {
-    engine_diff_apply_export_json_internal(engine_id, next_json_utf8, flags)
-        .map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn patch_log_append(
-    existing_patch_log: &[u8],
-    patch_binary: &[u8],
-) -> Result<Vec<u8>, JsValue> {
-    append_patch_log_bytes(existing_patch_log, patch_binary).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn patch_log_to_batch(patch_log_binary: &[u8]) -> Result<Vec<u8>, JsValue> {
-    let slices = decode_patch_log_v1(patch_log_binary).map_err(|e| JsValue::from_str(&e))?;
-    encode_patch_batch_from_slices(&slices).map_err(|e| JsValue::from_str(&e))
-}
-
-#[wasm_bindgen]
-pub fn patch_batch_apply_to_model(
-    base_model_binary: &[u8],
-    patch_batch_binary: &[u8],
-    sid_for_empty_model: u64,
-) -> Result<Vec<u8>, JsValue> {
-    ensure_valid_sid(sid_for_empty_model).map_err(|e| JsValue::from_str(&e))?;
-    let mut runtime = if base_model_binary.is_empty() {
-        RuntimeModel::new_logical_empty(sid_for_empty_model)
-    } else {
-        runtime_from_binary_with_sid(base_model_binary, sid_for_empty_model)
-            .map_err(|e| JsValue::from_str(&e))?
-    };
-
-    let slices = decode_patch_batch(patch_batch_binary).map_err(|e| JsValue::from_str(&e))?;
-    for s in slices {
-        apply_patch_to_runtime(&mut runtime, s).map_err(|e| JsValue::from_str(&e))?;
     }
 
-    runtime
-        .to_model_binary_like()
-        .map_err(|e| JsValue::from_str(&format!("model encode failed: {e}")))
+    /// Set one or more key→value pairs on the object at `path`.
+    ///
+    /// `path_json`: JSON-encoded path (e.g. `'["key","nested"]'`) or `"null"`.
+    /// `entries_json`: JSON-encoded `{key: value, …}` object.
+    ///
+    /// Called by `model.api.obj(path).set(entries)`.
+    #[wasm_bindgen(js_name = "apiObjSet")]
+    pub fn api_obj_set(&mut self, path_json: &str, entries_json: &str) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let entries: Value = serde_json::from_str(entries_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid entries JSON: {e}")))?;
+        let obj_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let map = match &entries {
+            Value::Object(m) => m.clone(),
+            _ => return Err(JsValue::from_str("entries must be a JSON object")),
+        };
+        if map.is_empty() {
+            return Ok(());
+        }
+        self.with_builder(|_, builder| {
+            let pairs: Vec<(String, Ts)> = map
+                .iter()
+                .map(|(k, v)| (k.clone(), const_or_json(builder, v)))
+                .collect();
+            builder.ins_obj(obj_id, pairs);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Delete keys from the object at `path`.
+    ///
+    /// `keys_json`: JSON-encoded array of key strings.
+    ///
+    /// Called by `model.api.obj(path).del(keys)`.
+    #[wasm_bindgen(js_name = "apiObjDel")]
+    pub fn api_obj_del(&mut self, path_json: &str, keys_json: &str) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let obj_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let keys: Vec<String> = serde_json::from_str(keys_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid keys JSON: {e}")))?;
+        if keys.is_empty() {
+            return Ok(());
+        }
+        self.with_builder(|_, builder| {
+            let pairs: Vec<(String, Ts)> = keys
+                .iter()
+                .map(|k| (k.clone(), builder.con_val(PackValue::Null)))
+                .collect();
+            builder.ins_obj(obj_id, pairs);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Set indexed entries on the `vec` node at `path`.
+    ///
+    /// `entries_json`: JSON-encoded array of `[index, value]` pairs.
+    ///
+    /// Called by `model.api.vec(path).set(entries)`.
+    #[wasm_bindgen(js_name = "apiVecSet")]
+    pub fn api_vec_set(&mut self, path_json: &str, entries_json: &str) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let vec_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let raw: Vec<(usize, Value)> = serde_json::from_str(entries_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid vec entries JSON: {e}")))?;
+        if raw.is_empty() {
+            return Ok(());
+        }
+        self.with_builder(|_, builder| {
+            let pairs: Vec<(u8, Ts)> = raw
+                .iter()
+                .map(|(idx, v)| (*idx as u8, const_or_json(builder, v)))
+                .collect();
+            builder.ins_vec(vec_id, pairs);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Set the value of a `val` (LWW register) node at `path`.
+    ///
+    /// Called by `model.api.val(path).set(value)`.
+    #[wasm_bindgen(js_name = "apiValSet")]
+    pub fn api_val_set(&mut self, path_json: &str, value_json: &str) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let val_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let v: Value = serde_json::from_str(value_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid value JSON: {e}")))?;
+        self.with_builder(|_, builder| {
+            let child = const_or_json(builder, &v);
+            builder.set_val(val_id, child);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Create a new empty `StrNode` (CRDT-editable string) at `key` within the
+    /// object at `obj_path`, and optionally seed it with `initial_text`.
+    ///
+    /// This is the WASM equivalent of using `s.str(initial)` in a schema.
+    /// Strings created via `apiSet` are `ConNode` constants — they cannot be
+    /// edited with `apiStrIns`.  Use this method first when you need a
+    /// collaboratively-editable string.
+    ///
+    /// Called by the TypeScript schema builder for `s.str(...)`.
+    #[wasm_bindgen(js_name = "apiNewStr")]
+    pub fn api_new_str(
+        &mut self,
+        obj_path_json: &str,
+        key: &str,
+        initial_text: &str,
+    ) -> Result<(), JsValue> {
+        let path = parse_path(obj_path_json).map_err(|e| JsValue::from_str(&e))?;
+        let obj_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        self.with_builder(|_, builder| {
+            let str_id = builder.str_node();
+            if !initial_text.is_empty() {
+                builder.ins_str(str_id, str_id, initial_text.to_string());
+            }
+            builder.ins_obj(obj_id, vec![(key.to_string(), str_id)]);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Insert text into the `str` node at `path`.
+    ///
+    /// Called by `model.api.str(path).ins(index, text)`.
+    #[wasm_bindgen(js_name = "apiStrIns")]
+    pub fn api_str_ins(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        text: &str,
+    ) -> Result<(), JsValue> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let str_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let index = index as usize;
+        let after = if index == 0 {
+            str_id
+        } else {
+            let node = match IndexExt::get(&self.inner.index, &str_id) {
+                Some(CrdtNode::Str(n)) => n,
+                _ => return Err(JsValue::from_str("str node not found at path")),
+            };
+            node.find(index - 1)
+                .ok_or_else(|| JsValue::from_str("str index out of bounds"))?
+        };
+        self.with_builder(|_, builder| {
+            builder.ins_str(str_id, after, text.to_string());
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Delete characters from the `str` node at `path`.
+    ///
+    /// Called by `model.api.str(path).del(index, count)`.
+    #[wasm_bindgen(js_name = "apiStrDel")]
+    pub fn api_str_del(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        length: u32,
+    ) -> Result<(), JsValue> {
+        if length == 0 {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let str_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let spans = {
+            let node = match IndexExt::get(&self.inner.index, &str_id) {
+                Some(CrdtNode::Str(n)) => n,
+                _ => return Err(JsValue::from_str("str node not found at path")),
+            };
+            node.find_interval(index as usize, length as usize)
+        };
+        if spans.is_empty() {
+            return Err(JsValue::from_str("str deletion out of bounds"));
+        }
+        self.with_builder(|_, builder| {
+            builder.del(str_id, spans);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Insert bytes into the `bin` node at `path`.
+    ///
+    /// Called by `model.api.bin(path).ins(index, bytes)`.
+    #[wasm_bindgen(js_name = "apiBinIns")]
+    pub fn api_bin_ins(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        data: &[u8],
+    ) -> Result<(), JsValue> {
+        if data.is_empty() {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let bin_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let index = index as usize;
+        let after = if index == 0 {
+            bin_id
+        } else {
+            let node = match IndexExt::get(&self.inner.index, &bin_id) {
+                Some(CrdtNode::Bin(n)) => n,
+                _ => return Err(JsValue::from_str("bin node not found at path")),
+            };
+            bin_find(node, index - 1)
+                .ok_or_else(|| JsValue::from_str("bin index out of bounds"))?
+        };
+        self.with_builder(|_, builder| {
+            builder.ins_bin(bin_id, after, data.to_vec());
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Delete bytes from the `bin` node at `path`.
+    ///
+    /// Called by `model.api.bin(path).del(index, count)`.
+    #[wasm_bindgen(js_name = "apiBinDel")]
+    pub fn api_bin_del(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        length: u32,
+    ) -> Result<(), JsValue> {
+        if length == 0 {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let bin_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let spans = {
+            let node = match IndexExt::get(&self.inner.index, &bin_id) {
+                Some(CrdtNode::Bin(n)) => n,
+                _ => return Err(JsValue::from_str("bin node not found at path")),
+            };
+            bin_find_interval(node, index as usize, length as usize)
+        };
+        if spans.is_empty() {
+            return Err(JsValue::from_str("bin deletion out of bounds"));
+        }
+        self.with_builder(|_, builder| {
+            builder.del(bin_id, spans);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Insert items into the `arr` node at `path`.
+    ///
+    /// `values_json`: JSON-encoded array of values to insert.
+    ///
+    /// Called by `model.api.arr(path).ins(index, values)`.
+    #[wasm_bindgen(js_name = "apiArrIns")]
+    pub fn api_arr_ins(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        values_json: &str,
+    ) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let arr_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let values: Vec<Value> = serde_json::from_str(values_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid values JSON: {e}")))?;
+        if values.is_empty() {
+            return Ok(());
+        }
+        let index = index as usize;
+        let after = if index == 0 {
+            ORIGIN
+        } else {
+            let node = match IndexExt::get(&self.inner.index, &arr_id) {
+                Some(CrdtNode::Arr(n)) => n,
+                _ => return Err(JsValue::from_str("arr node not found at path")),
+            };
+            node.find(index - 1)
+                .ok_or_else(|| JsValue::from_str("arr index out of bounds"))?
+        };
+        self.with_builder(|_, builder| {
+            // Use build_json (not const_or_json) to match upstream ArrApi.ins which
+            // calls builder.json() — strings in arrays become StrNodes.
+            let ids: Vec<Ts> = values.iter().map(|v| build_json(builder, v)).collect();
+            builder.ins_arr(arr_id, after, ids);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Overwrite the element at `index` in the `arr` node at `path`.
+    ///
+    /// Mirrors upstream `ArrApi.upd(index, value)`.
+    ///
+    /// Called by `model.api.arr(path).upd(index, value)`.
+    #[wasm_bindgen(js_name = "apiArrUpd")]
+    pub fn api_arr_upd(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        value_json: &str,
+    ) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let arr_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let v: Value = serde_json::from_str(value_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid value JSON: {e}")))?;
+        let ref_id = {
+            let node = match IndexExt::get(&self.inner.index, &arr_id) {
+                Some(CrdtNode::Arr(n)) => n,
+                _ => return Err(JsValue::from_str("arr node not found at path")),
+            };
+            node.get_data_ts(index as usize)
+                .ok_or_else(|| JsValue::from_str("arr index out of bounds"))?
+        };
+        self.with_builder(|_, builder| {
+            let val_id = const_or_json(builder, &v);
+            builder.upd_arr(arr_id, ref_id, val_id);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Delete items from the `arr` node at `path`.
+    ///
+    /// Called by `model.api.arr(path).del(index, count)`.
+    #[wasm_bindgen(js_name = "apiArrDel")]
+    pub fn api_arr_del(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        length: u32,
+    ) -> Result<(), JsValue> {
+        if length == 0 {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let arr_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let spans = {
+            let node = match IndexExt::get(&self.inner.index, &arr_id) {
+                Some(CrdtNode::Arr(n)) => n,
+                _ => return Err(JsValue::from_str("arr node not found at path")),
+            };
+            node.find_interval(index as usize, length as usize)
+        };
+        if spans.is_empty() {
+            return Err(JsValue::from_str("arr deletion out of bounds"));
+        }
+        self.with_builder(|_, builder| {
+            builder.del(arr_id, spans);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    // ── Flush / apply ─────────────────────────────────────────────────────
+
+    /// Return all local changes since the last `apiFlush()` as a single binary
+    /// patch, then clear the log.
+    ///
+    /// Returns an empty `Uint8Array` when there are no pending changes.
+    ///
+    /// Mirrors `model.api.flush()` which returns a `Patch`.
+    #[wasm_bindgen(js_name = "apiFlush")]
+    pub fn api_flush(&mut self) -> Vec<u8> {
+        if self.local_changes.is_empty() {
+            return Vec::new();
+        }
+        let merged = merge_patches(&self.local_changes);
+        self.local_changes.clear();
+        merged.to_binary()
+    }
+
+    /// Apply all pending local changes to the model and discard them.
+    ///
+    /// Mirrors `model.api.apply()`.  Equivalent to `apiFlush()` but without
+    /// returning the patch.
+    #[wasm_bindgen(js_name = "apiApply")]
+    pub fn api_apply(&mut self) {
+        self.local_changes.clear();
+    }
+
+    // ── Diff ─────────────────────────────────────────────────────────────
+
+    /// Compute the patch that transforms this document into `next_json`,
+    /// apply it locally, and return the patch bytes.
+    ///
+    /// Returns an empty `Uint8Array` when the document is already equal to
+    /// `next_json`.
+    ///
+    /// Mirrors the `engine_diff_apply_json` pattern from the previous WASM
+    /// layer, and the `JsonCrdtDiff` workflow.
+    #[wasm_bindgen(js_name = "diffApply")]
+    pub fn diff_apply(&mut self, next_json_str: &str) -> Result<Vec<u8>, JsValue> {
+        let next: Value = serde_json::from_str(next_json_str)
+            .map_err(|e| JsValue::from_str(&format!("invalid JSON: {e}")))?;
+
+        // Compute diff from current root node to `next`.
+        let patch = {
+            let sid  = self.inner.clock.sid;
+            let time = self.inner.clock.time;
+            let mut differ = JsonCrdtDiff::new(sid, time, &self.inner.index);
+
+            let root_node = IndexExt::get(&self.inner.index, &self.inner.root.val);
+            match root_node {
+                Some(node) => differ.diff(node, &next),
+                None => {
+                    // Document is empty — treat as setting the root.
+                    let mut builder = PatchBuilder::new(sid, time);
+                    let id = build_json(&mut builder, &next);
+                    builder.root(id);
+                    builder.flush()
+                }
+            }
+        };
+
+        if patch.ops.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let bytes = patch.to_binary();
+        self.inner.apply_patch(&patch);
+        Ok(bytes)
+    }
+
+    // ── View helpers ─────────────────────────────────────────────────────
+
+    /// Return the current length of the `str` node at `path`.
+    ///
+    /// Called by `model.api.str(path).length()`.
+    #[wasm_bindgen(js_name = "apiStrLen")]
+    pub fn api_str_len(&self, path_json: &str) -> Result<u32, JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let str_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        match IndexExt::get(&self.inner.index, &str_id) {
+            Some(CrdtNode::Str(n)) => Ok(n.size() as u32),
+            _ => Err(JsValue::from_str("str node not found at path")),
+        }
+    }
+
+    /// Return the current length of the `arr` node at `path`.
+    ///
+    /// Called by `model.api.arr(path).length()`.
+    #[wasm_bindgen(js_name = "apiArrLen")]
+    pub fn api_arr_len(&self, path_json: &str) -> Result<u32, JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let arr_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        match IndexExt::get(&self.inner.index, &arr_id) {
+            Some(CrdtNode::Arr(n)) => Ok(n.size() as u32),
+            _ => Err(JsValue::from_str("arr node not found at path")),
+        }
+    }
+
+    /// Return the number of live bytes in the `bin` node at `path`.
+    ///
+    /// Called by `model.api.bin(path).length()`.
+    #[wasm_bindgen(js_name = "apiBinLen")]
+    pub fn api_bin_len(&self, path_json: &str) -> Result<u32, JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let bin_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        match IndexExt::get(&self.inner.index, &bin_id) {
+            Some(CrdtNode::Bin(n)) => {
+                let size: usize = n.rga.iter_live()
+                    .filter_map(|c| c.data.as_deref())
+                    .map(|b| b.len())
+                    .sum();
+                Ok(size as u32)
+            }
+            _ => Err(JsValue::from_str("bin node not found at path")),
+        }
+    }
+
+    /// Return the number of elements in the `vec` node at `path`.
+    ///
+    /// Called by `model.api.vec(path).length()`.
+    #[wasm_bindgen(js_name = "apiVecLen")]
+    pub fn api_vec_len(&self, path_json: &str) -> Result<u32, JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let vec_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        match IndexExt::get(&self.inner.index, &vec_id) {
+            Some(CrdtNode::Vec(n)) => Ok(n.elements.len() as u32),
+            _ => Err(JsValue::from_str("vec node not found at path")),
+        }
+    }
+
+    /// Return the JSON view of the node at `path` as a JS value.
+    ///
+    /// Useful for reading a sub-document without deserializing the whole model.
+    #[wasm_bindgen(js_name = "viewAt")]
+    pub fn view_at(&self, path_json: &str) -> Result<JsValue, JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let view = match IndexExt::get(&self.inner.index, &id) {
+            Some(node) => node.view(&self.inner.index),
+            None => Value::Null,
+        };
+        serde_wasm_bindgen::to_value(&view).map_err(|e| JsValue::from_str(&format!("{e}")))
+    }
 }
+
+// ── BinNode navigation helpers ────────────────────────────────────────────────
+//
+// Mirrors the private helpers in json_crdt/model/api.rs.
+
+fn bin_find(node: &BinNode, pos: usize) -> Option<Ts> {
+    let mut count = 0usize;
+    for chunk in node.rga.iter_live() {
+        if let Some(data) = &chunk.data {
+            let chunk_len = data.len();
+            if pos < count + chunk_len {
+                let offset = pos - count;
+                return Some(Ts::new(chunk.id.sid, chunk.id.time + offset as u64));
+            }
+            count += chunk_len;
+        }
+    }
+    None
+}
+
+fn bin_find_interval(node: &BinNode, pos: usize, len: usize) -> Vec<Tss> {
+    let mut result = Vec::new();
+    let mut count = 0usize;
+    let end = pos + len;
+    for chunk in node.rga.iter_live() {
+        if let Some(data) = &chunk.data {
+            let chunk_len = data.len();
+            let chunk_start = count;
+            let chunk_end = count + chunk_len;
+            if chunk_end > pos && chunk_start < end {
+                let local_start = if chunk_start >= pos { 0 } else { pos - chunk_start };
+                let local_end = (end - chunk_start).min(chunk_len);
+                result.push(Tss::new(
+                    chunk.id.sid,
+                    chunk.id.time + local_start as u64,
+                    (local_end - local_start) as u64,
+                ));
+            }
+            count = chunk_end;
+        }
+    }
+    result
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        decode_patch_log_v1, engine_apply_patch_batch_internal, engine_apply_patch_log_internal,
-        engine_create_empty_internal, engine_create_from_model_internal,
-        engine_diff_apply_export_json_internal, engine_diff_apply_json_internal,
-        engine_export_model_internal, engine_export_view_json_internal, engine_free,
-        patch_batch_apply_to_model, patch_log_append, patch_log_to_batch, EXPORT_MODEL,
-        EXPORT_VIEW_JSON,
-    };
-    use json_joy_core::model_runtime::RuntimeModel;
-    use serde_json::Value;
-    use std::fs;
-    use std::path::{Path, PathBuf};
+    use super::*;
+    use serde_json::json;
 
-    const SID: u64 = 65_536;
-
-    fn fixtures_dir() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("..")
-            .join("tests")
-            .join("compat")
-            .join("fixtures")
-    }
-
-    fn decode_hex(s: &str) -> Vec<u8> {
-        assert!(
-            s.len().is_multiple_of(2),
-            "hex string must have even length"
-        );
-        let mut out = Vec::with_capacity(s.len() / 2);
-        let bytes = s.as_bytes();
-        for i in (0..bytes.len()).step_by(2) {
-            let hi = (bytes[i] as char).to_digit(16).expect("invalid hex") as u8;
-            let lo = (bytes[i + 1] as char).to_digit(16).expect("invalid hex") as u8;
-            out.push((hi << 4) | lo);
-        }
-        out
-    }
-
-    fn encode_batch(chunks: &[Vec<u8>]) -> Vec<u8> {
-        let mut out = Vec::with_capacity(4 + chunks.iter().map(|c| 4 + c.len()).sum::<usize>());
-        out.extend_from_slice(&(chunks.len() as u32).to_le_bytes());
-        for c in chunks {
-            out.extend_from_slice(&(c.len() as u32).to_le_bytes());
-            out.extend_from_slice(c);
-        }
-        out
+    fn model() -> Model {
+        Model::create(Some(65_536))
     }
 
     #[test]
-    fn patch_log_roundtrip_decode_and_batch_conversion() {
-        let a = vec![1, 2, 3];
-        let b = vec![9, 8];
-        let log1 = patch_log_append(&[], &a).expect("append 1");
-        let log2 = patch_log_append(&log1, &b).expect("append 2");
-        let slices = decode_patch_log_v1(&log2).expect("decode log");
-        assert_eq!(slices.len(), 2);
-        assert_eq!(slices[0], a.as_slice());
-        assert_eq!(slices[1], b.as_slice());
-
-        let batch = patch_log_to_batch(&log2).expect("to batch");
-        let expected_batch = encode_batch(&[a, b]);
-        assert_eq!(batch, expected_batch);
+    fn create_and_view_empty() {
+        let m = model();
+        assert_eq!(m.inner.view(), json!(null));
     }
 
     #[test]
-    fn engine_diff_apply_and_export_view() {
-        let eid = engine_create_empty_internal(SID).expect("create");
-        let patch =
-            engine_diff_apply_json_internal(eid, br#"{"k":1,"s":"ab"}"#).expect("diff+apply");
+    fn api_set_root_scalar() {
+        let mut m = model();
+        m.api_set("42").unwrap();
+        assert_eq!(m.inner.view(), json!(42));
+    }
+
+    #[test]
+    fn api_set_root_object() {
+        let mut m = model();
+        m.api_set(r#"{"x":1,"y":2}"#).unwrap();
+        assert_eq!(m.inner.view(), json!({"x": 1, "y": 2}));
+    }
+
+    #[test]
+    fn api_set_root_array() {
+        let mut m = model();
+        m.api_set("[1,2,3]").unwrap();
+        assert_eq!(m.inner.view(), json!([1, 2, 3]));
+    }
+
+    #[test]
+    fn api_flush_returns_non_empty_after_edit() {
+        let mut m = model();
+        m.api_set(r#"{"hello":"world"}"#).unwrap();
+        let bytes = m.api_flush();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn api_flush_clears_pending() {
+        let mut m = model();
+        m.api_set("1").unwrap();
+        m.api_flush();
+        let bytes = m.api_flush();
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn apply_patch_roundtrip() {
+        let mut sender = model();
+        sender.api_set(r#"{"key":"value"}"#).unwrap();
+        let patch_bytes = sender.api_flush();
+
+        let mut receiver = Model::create(Some(99_999));
+        receiver.apply_patch(&patch_bytes).unwrap();
+        assert_eq!(receiver.inner.view(), json!({"key": "value"}));
+    }
+
+    #[test]
+    fn to_binary_from_binary_roundtrip() {
+        let mut m = model();
+        m.api_set(r#"{"a":1,"b":[1,2,3]}"#).unwrap();
+        let binary = m.to_binary();
+        let m2 = Model::from_binary(&binary).unwrap();
+        assert_eq!(m2.inner.view(), m.inner.view());
+    }
+
+    #[test]
+    fn fork_produces_independent_copy() {
+        let mut m = model();
+        m.api_set(r#"{"x":0}"#).unwrap();
+        let mut forked = m.fork(Some(77_777));
+        forked.api_obj_set("null", r#"{"x":99}"#).unwrap();
+        // Original unchanged
+        assert_eq!(m.inner.view(), json!({"x": 0}));
+        assert_eq!(forked.inner.view(), json!({"x": 99}));
+    }
+
+    #[test]
+    fn api_obj_set_nested_key() {
+        let mut m = model();
+        m.api_set(r#"{}"#).unwrap();
+        m.api_obj_set("null", r#"{"name":"alice","age":30}"#).unwrap();
+        let v = m.inner.view();
+        assert_eq!(v["name"], json!("alice"));
+        assert_eq!(v["age"], json!(30));
+    }
+
+    #[test]
+    fn api_obj_del_key() {
+        let mut m = model();
+        m.api_set(r#"{"a":1,"b":2}"#).unwrap();
+        m.api_obj_del("null", r#"["a"]"#).unwrap();
+        let v = m.inner.view();
+        assert!(v.get("a").is_none() || v["a"].is_null());
+    }
+
+    #[test]
+    fn api_set_string_becomes_str_node() {
+        // api_set mirrors upstream PatchBuilder.json() where strings → StrNodes
+        let mut m = model();
+        m.api_set(r#"{"name":"","count":0}"#).unwrap();
+        // "name" is now a StrNode — we can insert text directly
+        m.api_str_ins(r#"["name"]"#, 0, "Alice").unwrap();
+        assert_eq!(m.inner.view()["name"], json!("Alice"));
+        // "count" is a ConNode (number) — view is unchanged
+        assert_eq!(m.inner.view()["count"], json!(0));
+    }
+
+    #[test]
+    fn api_set_root_string_editable() {
+        // Strings at root also become StrNodes
+        let mut m = model();
+        m.api_set(r#""""#).unwrap();
+        m.api_str_ins("null", 0, "hello").unwrap();
+        assert_eq!(m.inner.view(), json!("hello"));
+    }
+
+    #[test]
+    fn api_str_ins_del() {
+        let mut m = model();
+        m.api_set(r#"{}"#).unwrap();
+        // api_new_str explicitly creates a StrNode in an existing object
+        // (api_obj_set uses const_or_json so strings there remain ConNodes)
+        m.api_new_str("null", "msg", "").unwrap();
+        m.api_str_ins(r#"["msg"]"#, 0, "hello").unwrap();
+        assert_eq!(m.inner.view()["msg"], json!("hello"));
+        m.api_str_ins(r#"["msg"]"#, 5, " world").unwrap();
+        assert_eq!(m.inner.view()["msg"], json!("hello world"));
+        m.api_str_del(r#"["msg"]"#, 5, 6).unwrap();
+        assert_eq!(m.inner.view()["msg"], json!("hello"));
+    }
+
+    #[test]
+    fn api_arr_ins_del() {
+        let mut m = model();
+        m.api_set(r#"{"list":[]}"#).unwrap();
+        m.api_arr_ins(r#"["list"]"#, 0, r#"[1,2,3]"#).unwrap();
+        assert_eq!(m.inner.view()["list"], json!([1, 2, 3]));
+        m.api_arr_del(r#"["list"]"#, 1, 1).unwrap();
+        assert_eq!(m.inner.view()["list"], json!([1, 3]));
+    }
+
+    #[test]
+    fn diff_apply_sets_document() {
+        let mut m = model();
+        let patch = m.diff_apply(r#"{"x":42}"#).unwrap();
         assert!(!patch.is_empty());
-        let view = engine_export_view_json_internal(eid).expect("view");
-        let parsed: Value = serde_json::from_slice(&view).expect("json");
-        assert_eq!(parsed, serde_json::json!({"k":1,"s":"ab"}));
-        assert!(engine_free(eid));
+        assert_eq!(m.inner.view(), json!({"x": 42}));
     }
 
     #[test]
-    fn diff_apply_export_envelope_contains_requested_sections() {
-        let eid = engine_create_empty_internal(SID).expect("create");
-        let out = engine_diff_apply_export_json_internal(
-            eid,
-            br#"{"a":1}"#,
-            EXPORT_MODEL | EXPORT_VIEW_JSON,
-        )
-        .expect("diff apply export");
-
-        let mut cursor = 0usize;
-        let patch_len = u32::from_le_bytes([out[0], out[1], out[2], out[3]]) as usize;
-        cursor += 4;
-        assert!(patch_len > 0, "patch should be present");
-        cursor += patch_len;
-
-        let model_len = u32::from_le_bytes([
-            out[cursor],
-            out[cursor + 1],
-            out[cursor + 2],
-            out[cursor + 3],
-        ]) as usize;
-        cursor += 4;
-        assert!(model_len > 0, "model should be present");
-        cursor += model_len;
-
-        let view_len = u32::from_le_bytes([
-            out[cursor],
-            out[cursor + 1],
-            out[cursor + 2],
-            out[cursor + 3],
-        ]) as usize;
-        cursor += 4;
-        assert!(view_len > 0, "view should be present");
-        let view_json = &out[cursor..cursor + view_len];
-        let parsed: Value = serde_json::from_slice(view_json).expect("view json");
-        assert_eq!(parsed, serde_json::json!({"a": 1}));
-        assert!(engine_free(eid));
+    fn diff_apply_noop_when_equal() {
+        let mut m = model();
+        m.api_set(r#"{"x":1}"#).unwrap();
+        m.diff_apply(r#"{"x":1}"#).unwrap(); // same state — may or may not produce patch
+        // The important invariant: view is still correct
+        let v = m.inner.view();
+        assert_eq!(v["x"], json!(1));
     }
 
     #[test]
-    fn engine_apply_patch_log_matches_batch_apply() {
-        let fixture = fixtures_dir().join("model_apply_replay_116_vec_in_order_v1.json");
-        let raw = fs::read_to_string(&fixture).expect("fixture read");
-        let parsed: Value = serde_json::from_str(&raw).expect("fixture parse");
+    fn multiple_edits_merge_into_one_patch() {
+        let mut m = model();
+        m.api_set(r#"{"b":[]}"#).unwrap();
+        m.api_new_str("null", "a", "").unwrap();
+        // Flush initial setup so nodes are in the index
+        m.api_flush();
 
-        let base = decode_hex(
-            parsed["input"]["base_model_binary_hex"]
-                .as_str()
-                .expect("base hex"),
-        );
-        let patch_hexes = parsed["input"]["patches_binary_hex"]
-            .as_array()
-            .expect("patches");
-        let replay = parsed["input"]["replay_pattern"]
-            .as_array()
-            .expect("replay");
-        let patches: Vec<Vec<u8>> = patch_hexes
-            .iter()
-            .map(|v| decode_hex(v.as_str().expect("patch hex")))
-            .collect();
-        let replay_chunks: Vec<Vec<u8>> = replay
-            .iter()
-            .map(|idx| {
-                let i = idx.as_u64().expect("idx") as usize;
-                patches[i].clone()
-            })
-            .collect();
-
-        let mut log = Vec::new();
-        for p in &replay_chunks {
-            log = patch_log_append(&log, p).expect("append log");
-        }
-
-        let eid = engine_create_from_model_internal(&base, SID).expect("engine create");
-        let n = engine_apply_patch_log_internal(eid, &log).expect("apply log");
-        assert_eq!(n as usize, replay_chunks.len());
-        let model_from_log = engine_export_model_internal(eid).expect("export model");
-        assert!(engine_free(eid));
-
-        let batch = encode_batch(&replay_chunks);
-        let model_from_batch = patch_batch_apply_to_model(&base, &batch, SID).expect("batch apply");
-
-        let view_log = RuntimeModel::from_model_binary(&model_from_log)
-            .expect("decode log model")
-            .view_json();
-        let view_batch = RuntimeModel::from_model_binary(&model_from_batch)
-            .expect("decode batch model")
-            .view_json();
-        assert_eq!(view_log, view_batch);
-    }
-
-    #[test]
-    fn engine_apply_patch_batch_matches_stateless_batch_apply() {
-        let fixture = fixtures_dir().join("model_apply_replay_01_obj_dup_single_v1.json");
-        let raw = fs::read_to_string(&fixture).expect("fixture read");
-        let parsed: Value = serde_json::from_str(&raw).expect("fixture parse");
-
-        let base = decode_hex(
-            parsed["input"]["base_model_binary_hex"]
-                .as_str()
-                .expect("base hex"),
-        );
-        let patch_hexes = parsed["input"]["patches_binary_hex"]
-            .as_array()
-            .expect("patches");
-        let replay = parsed["input"]["replay_pattern"]
-            .as_array()
-            .expect("replay");
-        let patches: Vec<Vec<u8>> = patch_hexes
-            .iter()
-            .map(|v| decode_hex(v.as_str().expect("patch hex")))
-            .collect();
-        let replay_chunks: Vec<Vec<u8>> = replay
-            .iter()
-            .map(|idx| {
-                let i = idx.as_u64().expect("idx") as usize;
-                patches[i].clone()
-            })
-            .collect();
-
-        let batch = encode_batch(&replay_chunks);
-        let eid = engine_create_from_model_internal(&base, SID).expect("engine create");
-        let n = engine_apply_patch_batch_internal(eid, &batch).expect("engine apply batch");
-        assert_eq!(n as usize, replay_chunks.len());
-        let model_engine = engine_export_model_internal(eid).expect("engine export");
-        assert!(engine_free(eid));
-
-        let model_stateless = patch_batch_apply_to_model(&base, &batch, SID).expect("stateless");
-
-        let engine_view = RuntimeModel::from_model_binary(&model_engine)
-            .expect("decode engine")
-            .view_json();
-        let stateless_view = RuntimeModel::from_model_binary(&model_stateless)
-            .expect("decode stateless")
-            .view_json();
-        assert_eq!(engine_view, stateless_view);
+        m.api_str_ins(r#"["a"]"#, 0, "hello").unwrap();
+        m.api_arr_ins(r#"["b"]"#, 0, "[1,2]").unwrap();
+        let bytes = m.api_flush();
+        // Both edits merged into a single patch
+        assert!(!bytes.is_empty());
+        assert_eq!(m.inner.view(), json!({"a": "hello", "b": [1, 2]}));
     }
 }

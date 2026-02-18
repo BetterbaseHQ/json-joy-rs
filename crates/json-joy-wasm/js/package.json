@@ -1,0 +1,26 @@
+{
+  "name": "json-joy-wasm",
+  "version": "0.1.0",
+  "description": "WASM-powered JSON CRDT library — Rust port of json-joy",
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "license": "MIT",
+  "keywords": ["json", "crdt", "wasm", "collaborative", "json-joy"],
+  "scripts": {
+    "build:wasm": "wasm-pack build --target bundler ..",
+    "build:ts": "tsc --project tsconfig.json",
+    "build": "npm run build:wasm && npm run build:ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

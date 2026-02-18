@@ -3,15 +3,17 @@ name = "json-joy-wasm"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "WASM coarse-grained entrypoints for json-joy-rs"
+description = "WASM bindings for json-joy-rs — the Rust port of the json-joy library"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-json-joy-core = { path = "../json-joy-core" }
-serde_json = { version = "1.0", features = ["preserve_order"] }
-wasm-bindgen = "0.2"
+getrandom       = { version = "0.2", features = ["js"] }
+json-joy        = { path = "../json-joy" }
+json-joy-json-pack = { path = "../json-joy-json-pack" }
+serde_json      = { version = "1.0", features = ["preserve_order"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen    = "0.2"
 
 [dev-dependencies]
