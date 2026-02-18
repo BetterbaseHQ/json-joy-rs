@@ -69,9 +69,28 @@ All 17 upstream sub-modules (`packages/json-joy/src/`) map to a single
 | 4 | json-patch, json-patch-ot, json-ot, json-patch-diff | DONE |
 | 5 | json-hash (12 files) + json-crdt (263 files — largest!) | DONE |
 | 6 | json-crdt-diff (4 files) | DONE |
-| 7 | json-crdt-extensions (225 files) | PARTIAL — mval, cnt, peritext core (rga, slice); overlay/block/editor deferred |
-| 8 | json-crdt-peritext-ui (model/controller only, no React) | TODO |
-| 9 | json-cli (35 files) | TODO |
+| 7 | json-crdt-extensions (225 files) | PARTIAL — mval, cnt, peritext core (rga, slice) DONE; editor adapters DEFERRED to WASM crate (see note) |
+| 8 | json-crdt-peritext-ui (UndoManager trait only; React/RxJS skipped) | DONE |
+| 9 | json-cli (35 files) | DONE |
+
+### Note: Editor adapter deferral (Slice 7)
+
+The upstream `json-crdt-extensions` includes adapters for three JS editors:
+- `quill-delta/` — Quill editor interop
+- `prosemirror/` — ProseMirror interop
+- `slate/` — Slate.js interop
+
+**Decision**: these adapters are deferred to `crates/json-joy-wasm/` (the WASM binding crate), not ported into `crates/json-joy`.
+
+Rationale:
+- These formats (Quill Delta, ProseMirror doc, Slate tree) only exist in JavaScript editor contexts.
+- Their sole consumer will always be JavaScript, calling through the WASM boundary.
+- No standalone Rust application would receive or produce these JS-editor-specific document formats.
+- Keeping them in the WASM crate places the adapter glue right next to the boundary it serves,
+  and keeps `crates/json-joy` focused on portable CRDT primitives.
+
+The adapter *logic* is pure data transformation and could be ported to Rust if a non-WASM use
+case ever arises, but that should be driven by need, not speculative parity.
 
 Internal dependency order:
 ```
