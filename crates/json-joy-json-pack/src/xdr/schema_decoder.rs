@@ -60,7 +60,7 @@ impl XdrSchemaDecoder {
                 let data = self.decoder.read_varlen_opaque()?;
                 if let Some(max) = max_size {
                     if data.len() > *max as usize {
-                        return Err(XdrDecodeError::EndOfInput);
+                        return Err(XdrDecodeError::MaxSizeExceeded);
                     }
                 }
                 Ok(XdrValue::Bytes(data))
@@ -69,7 +69,7 @@ impl XdrSchemaDecoder {
                 let s = self.decoder.read_string()?;
                 if let Some(max) = max_size {
                     if s.len() > *max as usize {
-                        return Err(XdrDecodeError::EndOfInput);
+                        return Err(XdrDecodeError::MaxSizeExceeded);
                     }
                 }
                 Ok(XdrValue::Str(s))
@@ -85,7 +85,7 @@ impl XdrSchemaDecoder {
                 let len = self.decoder.read_unsigned_int()? as usize;
                 if let Some(max) = max_size {
                     if len > *max as usize {
-                        return Err(XdrDecodeError::EndOfInput);
+                        return Err(XdrDecodeError::MaxSizeExceeded);
                     }
                 }
                 let mut arr = Vec::with_capacity(len);
@@ -114,7 +114,7 @@ impl XdrSchemaDecoder {
                 } else if let Some(def) = default {
                     def.as_ref()
                 } else {
-                    return Err(XdrDecodeError::EndOfInput);
+                    return Err(XdrDecodeError::UnknownDiscriminant);
                 };
                 let value = self.read_value(arm_schema)?;
                 Ok(XdrValue::Union(Box::new(XdrUnionValue {

@@ -10,6 +10,10 @@ pub enum XdrDecodeError {
     EndOfInput,
     #[error("invalid UTF-8")]
     InvalidUtf8,
+    #[error("value exceeds maximum allowed size")]
+    MaxSizeExceeded,
+    #[error("unknown union discriminant")]
+    UnknownDiscriminant,
 }
 
 /// XDR primitive decoder.
