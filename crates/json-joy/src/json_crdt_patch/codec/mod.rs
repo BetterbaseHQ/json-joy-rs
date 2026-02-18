@@ -7,6 +7,7 @@
 //! - `compact_binary` — CBOR-encoded compact format
 
 pub mod binary;
+pub mod clock;
 pub mod compact;
 pub mod compact_binary;
 pub mod verbose;

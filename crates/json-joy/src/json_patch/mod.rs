@@ -20,7 +20,11 @@
 pub mod types;
 pub mod apply;
 pub mod codec;
+pub mod util;
+pub mod validate;
 
 pub use types::{ApplyPatchOptions, JsonPatchType, Op, OpResult, PatchError, PatchResult};
 pub use apply::{apply_op, apply_ops, apply_patch};
 pub use codec::json::{from_json, from_json_patch, to_json, to_json_patch};
+pub use util::{matcher, path_starts_with};
+pub use validate::{validate_operation, validate_operations, validate_predicate_operation, ValidationError};

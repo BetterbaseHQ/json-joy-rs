@@ -12,6 +12,11 @@
 //! [`Model::apply_operation`].  The resulting JSON view can be obtained with
 //! [`Model::view`].
 
+pub mod util;
+pub mod api;
+
+pub use api::ModelApi;
+
 use serde_json::Value;
 
 use crate::json_crdt_patch::clock::{ClockVector, Ts};
@@ -207,6 +212,29 @@ impl Model {
     /// this session.  Used when building patches locally.
     pub fn next_ts(&mut self) -> Ts {
         self.clock.tick(1)
+    }
+
+    /// Create a model with a server clock at the given time.
+    ///
+    /// Used by codec decoders to reconstruct a document from a server-clock snapshot.
+    pub fn new_server(server_time: u64) -> Self {
+        use crate::json_crdt_patch::enums::SESSION;
+        Self {
+            root: super::nodes::RootNode::new(),
+            index: super::nodes::NodeIndex::default(),
+            clock: ClockVector::new(SESSION::SERVER, server_time),
+        }
+    }
+
+    /// Create a model from an existing clock vector.
+    ///
+    /// Used by codec decoders to reconstruct a document from a logical-clock snapshot.
+    pub fn new_from_clock(clock: ClockVector) -> Self {
+        Self {
+            root: super::nodes::RootNode::new(),
+            index: super::nodes::NodeIndex::default(),
+            clock,
+        }
     }
 }
 
