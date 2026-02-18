@@ -14,6 +14,7 @@ pub mod json_size;
 pub mod json_ml;
 
 pub mod json_crdt_patch;       // Slice 2
+pub mod util_inner;            // Slice 3
 
 // Remaining slices — declared as stubs, to be filled in subsequent slices
 // pub mod util_inner;        // Slice 3
