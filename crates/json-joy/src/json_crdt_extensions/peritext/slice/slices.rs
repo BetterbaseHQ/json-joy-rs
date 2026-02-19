@@ -172,7 +172,7 @@ impl Slices {
                 return;
             };
             let mut found = None;
-            'outer: for chunk in &arr.rga.chunks {
+            'outer: for chunk in arr.rga.iter() {
                 if chunk.deleted {
                     continue;
                 }

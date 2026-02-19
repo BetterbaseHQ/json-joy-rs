@@ -195,7 +195,7 @@ fn encode_vec(model: &Model, node: &VecNode, state: &mut EncodeState) -> Value {
 
 fn encode_str(node: &StrNode, state: &mut EncodeState) -> Value {
     let id = state.encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = state.encode_ts(chunk.id);
         if chunk.deleted {
             json!([chunk_id, chunk.span])
@@ -209,7 +209,7 @@ fn encode_str(node: &StrNode, state: &mut EncodeState) -> Value {
 
 fn encode_bin(node: &BinNode, state: &mut EncodeState) -> Value {
     let id = state.encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = state.encode_ts(chunk.id);
         if chunk.deleted {
             json!([chunk_id, chunk.span])
@@ -225,7 +225,7 @@ fn encode_bin(node: &BinNode, state: &mut EncodeState) -> Value {
 
 fn encode_arr(model: &Model, node: &ArrNode, state: &mut EncodeState) -> Value {
     let id = state.encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = state.encode_ts(chunk.id);
         if chunk.deleted {
             json!([chunk_id, chunk.span])
@@ -510,20 +510,10 @@ fn decode_str(
         let content = &chunk_arr[1];
         if let Some(span) = content.as_u64() {
             // Tombstone
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: true,
-                data: None,
-            });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(s) = content.as_str() {
             let span = s.chars().count() as u64;
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: false,
-                data: Some(s.to_string()),
-            });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, s.to_string()));
         } else {
             return Err(DecodeError::Format("str chunk content must be string or number".into()));
         }
@@ -559,23 +549,13 @@ fn decode_bin(
         let content = &chunk_arr[1];
         if let Some(span) = content.as_u64() {
             // Tombstone
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: true,
-                data: None,
-            });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(bytes_arr) = content.as_array() {
             let data: Vec<u8> = bytes_arr.iter()
                 .map(|b| b.as_u64().unwrap_or(0) as u8)
                 .collect();
             let span = data.len() as u64;
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: false,
-                data: Some(data),
-            });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         } else {
             return Err(DecodeError::Format("bin chunk content must be array or number".into()));
         }
@@ -611,12 +591,7 @@ fn decode_arr(
         let content = &chunk_arr[1];
         if let Some(span) = content.as_u64() {
             // Tombstone
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: true,
-                data: None,
-            });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(node_vals) = content.as_array() {
             let node_vals = node_vals.clone();
             let mut ids = Vec::new();
@@ -625,12 +600,7 @@ fn decode_arr(
                 ids.push(child_id);
             }
             let span = ids.len() as u64;
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: false,
-                data: Some(ids),
-            });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         } else {
             return Err(DecodeError::Format("arr chunk content must be array or number".into()));
         }

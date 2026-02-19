@@ -183,8 +183,8 @@ fn encode_vec(w: &mut CrdtWriter, node: &VecNode, table: &ClockTable) {
 }
 
 fn encode_str(w: &mut CrdtWriter, node: &StrNode, table: &ClockTable) {
-    write_tl(w, MAJOR_STR, node.rga.chunks.len());
-    for chunk in &node.rga.chunks {
+    write_tl(w, MAJOR_STR, node.rga.chunk_count());
+    for chunk in node.rga.iter() {
         write_ts_indexed(w, chunk.id, table);
         if chunk.deleted {
             write_cbor_uint(w, chunk.span);
@@ -195,8 +195,8 @@ fn encode_str(w: &mut CrdtWriter, node: &StrNode, table: &ClockTable) {
 }
 
 fn encode_bin(w: &mut CrdtWriter, node: &BinNode, table: &ClockTable) {
-    write_tl(w, MAJOR_BIN, node.rga.chunks.len());
-    for chunk in &node.rga.chunks {
+    write_tl(w, MAJOR_BIN, node.rga.chunk_count());
+    for chunk in node.rga.iter() {
         write_ts_indexed(w, chunk.id, table);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -208,8 +208,8 @@ fn encode_bin(w: &mut CrdtWriter, node: &BinNode, table: &ClockTable) {
 }
 
 fn encode_arr(w: &mut CrdtWriter, node: &ArrNode, table: &ClockTable) {
-    write_tl(w, MAJOR_ARR, node.rga.chunks.len());
-    for chunk in &node.rga.chunks {
+    write_tl(w, MAJOR_ARR, node.rga.chunk_count());
+    for chunk in node.rga.iter() {
         write_ts_indexed(w, chunk.id, table);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -473,11 +473,11 @@ fn decode_str(r: &mut CrdtReader, id: Ts, count: usize, table: &ClockTable) -> R
             .map_err(|e| DecodeError::Format(e.to_string()))?;
         match val {
             PackValue::Integer(n) if n >= 0 => {
-                node.rga.chunks.push(Chunk { id: chunk_id, span: n as u64, deleted: true, data: None });
+                node.rga.push_chunk(Chunk::new_deleted(chunk_id, n as u64));
             }
             PackValue::Str(s) => {
                 let span = s.chars().count() as u64;
-                node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(s) });
+                node.rga.push_chunk(Chunk::new(chunk_id, span, s));
             }
             _ => {}
         }
@@ -493,10 +493,10 @@ fn decode_bin(r: &mut CrdtReader, id: Ts, count: usize, table: &ClockTable) -> R
         let chunk_id = read_ts_indexed(r, table)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(data) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
     Ok(CrdtNode::Bin(node))
@@ -510,14 +510,14 @@ fn decode_arr(r: &mut CrdtReader, id: Ts, count: usize, table: &ClockTable) -> R
         let chunk_id = read_ts_indexed(r, table)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
                 let child_ts = read_ts_indexed(r, table)?;
                 ids.push(child_ts);
             }
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(ids) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         }
     }
     Ok(CrdtNode::Arr(node))

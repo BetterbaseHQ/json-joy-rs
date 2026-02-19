@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 getrandom       = { version = "0.2", features = ["js"] }
 json-joy        = { path = "../json-joy" }
 json-joy-json-pack = { path = "../json-joy-json-pack" }
+serde           = { version = "1.0" }
 serde_json      = { version = "1.0", features = ["preserve_order"] }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen    = "0.2"

@@ -191,7 +191,7 @@ fn encode_vec(model: &Model, node: &VecNode, view_w: &mut CrdtWriter, meta_w: &m
 
 fn encode_str(node: &StrNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(meta_w, node.id, enc);
-    let n = node.rga.chunks.len();
+    let n = node.rga.chunk_count();
     write_tl(meta_w, MAJOR_STR, n);
 
     // View: the concatenated string
@@ -201,7 +201,7 @@ fn encode_str(node: &StrNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, 
     write_cbor_str(view_w, &s);
 
     // Meta: for each chunk: id + b1vu56(deleted, span)
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(meta_w, chunk.id, enc);
         meta_w.b1vu56(chunk.deleted as u8, chunk.span);
     }
@@ -209,7 +209,7 @@ fn encode_str(node: &StrNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, 
 
 fn encode_bin(node: &BinNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(meta_w, node.id, enc);
-    let n = node.rga.chunks.len();
+    let n = node.rga.chunk_count();
     write_tl(meta_w, MAJOR_BIN, n);
 
     // View: the concatenated binary
@@ -219,7 +219,7 @@ fn encode_bin(node: &BinNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, 
         .collect();
     write_cbor_bin(view_w, &bytes);
 
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(meta_w, chunk.id, enc);
         meta_w.b1vu56(chunk.deleted as u8, chunk.span);
     }
@@ -227,7 +227,7 @@ fn encode_bin(node: &BinNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, 
 
 fn encode_arr(model: &Model, node: &ArrNode, view_w: &mut CrdtWriter, meta_w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(meta_w, node.id, enc);
-    let n = node.rga.chunks.len();
+    let n = node.rga.chunk_count();
     write_tl(meta_w, MAJOR_ARR, n);
 
     // View: array header of live elements
@@ -237,7 +237,7 @@ fn encode_arr(model: &Model, node: &ArrNode, view_w: &mut CrdtWriter, meta_w: &m
         .sum::<usize>();
     write_cbor_arr_hdr(view_w, live_count);
 
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(meta_w, chunk.id, enc);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -522,18 +522,13 @@ fn decode_str(view_r: &mut CrdtReader, meta_r: &mut CrdtReader, model: &mut Mode
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
         if deleted {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let char_count = span as usize;
             // Extract `char_count` chars from offset
             let text: String = full_str.chars().skip(offset).take(char_count).collect();
             offset += char_count;
-            node.rga.chunks.push(Chunk {
-                id: chunk_id,
-                span,
-                deleted: false,
-                data: Some(text),
-            });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, text));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Str(node));
@@ -555,12 +550,12 @@ fn decode_bin(view_r: &mut CrdtReader, meta_r: &mut CrdtReader, model: &mut Mode
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
         if deleted {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let len = span as usize;
             let data = full_bin[offset..offset + len].to_vec();
             offset += len;
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(data) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Bin(node));
@@ -580,14 +575,14 @@ fn decode_arr(view_r: &mut CrdtReader, meta_r: &mut CrdtReader, model: &mut Mode
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
         if deleted {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
                 let child_id = decode_node(view_r, meta_r, model, cd)?;
                 ids.push(child_id);
             }
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(ids) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Arr(node));

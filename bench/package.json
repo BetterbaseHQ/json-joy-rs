@@ -1,0 +1,8 @@
+{
+  "name": "json-joy-wasm-bench",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "json-joy": "17.67.0"
+  }
+}

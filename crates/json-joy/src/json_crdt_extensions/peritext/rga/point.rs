@@ -54,7 +54,7 @@ impl Point {
         }
 
         let mut live = 0usize;
-        for chunk in &str_node.rga.chunks {
+        for chunk in str_node.rga.iter() {
             // Is this the chunk containing our character ID?
             if chunk.id.sid == self.id.sid
                 && chunk.id.time <= self.id.time

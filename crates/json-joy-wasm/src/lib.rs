@@ -10,6 +10,7 @@
 //! unit of work, so JS can drive batch operations without extra round-trips.
 //! Navigation and internal helpers are pure Rust.
 
+use serde::Serialize as _;
 use wasm_bindgen::prelude::*;
 
 use json_joy::json_crdt::model::api::find_path;
@@ -219,13 +220,29 @@ impl Model {
 
     /// Return the current JSON view of this document as a JS value.
     ///
-    /// Uses `serde-wasm-bindgen` to convert directly to a JS object without
-    /// going through a JSON string.
+    /// Uses `serde-wasm-bindgen` with the JSON-compatible serializer so that
+    /// objects come back as plain JS objects (not Maps), compatible with
+    /// `JSON.stringify` and standard property access.
     ///
     /// Mirrors `model.view()`.
     pub fn view(&self) -> JsValue {
         let v = self.inner.view();
-        serde_wasm_bindgen::to_value(&v).unwrap_or(JsValue::NULL)
+        let ser = serde_wasm_bindgen::Serializer::json_compatible();
+        v.serialize(&ser).unwrap_or(JsValue::NULL)
+    }
+
+    /// Return the current JSON view of this document as a JSON string.
+    ///
+    /// Alternative to `view()` — serialisation happens entirely in Rust so
+    /// there is only one WASM boundary crossing (the string copy).  Callers
+    /// should `JSON.parse()` the result on the JS side.
+    ///
+    /// This is significantly faster than `view()` for non-trivial documents
+    /// because `serde_wasm_bindgen::json_compatible()` crosses the WASM
+    /// boundary for every field, key, and value.
+    #[wasm_bindgen(js_name = "viewJson")]
+    pub fn view_json(&self) -> String {
+        serde_json::to_string(&self.inner.view()).unwrap_or_else(|_| "null".to_string())
     }
 
     /// Fork this document with a new session ID.
@@ -582,6 +599,83 @@ impl Model {
         .map_err(|e| JsValue::from_str(&e))
     }
 
+    /// Insert characters one at a time, all batched into a **single** patch.
+    ///
+    /// `ops_json`: JSON-encoded `[[index, char], ...]` sorted by ascending index.
+    ///
+    /// This is the batch equivalent of calling `apiStrIns` 100× — it builds all
+    /// character insertions into one `PatchBuilder` and applies them in a single
+    /// `apply_patch`, eliminating N−1 patch-apply round-trips.  The `after`
+    /// timestamp for each char is chained from the previously allocated `Ts`
+    /// so the resulting CRDT structure is identical to sequential inserts.
+    ///
+    /// Useful for benchmarking: separates WASM-boundary overhead from CRDT cost.
+    #[wasm_bindgen(js_name = "apiStrInsBatch")]
+    pub fn api_str_ins_batch(&mut self, path_json: &str, ops_json: &str) -> Result<(), JsValue> {
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let str_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let ops: Vec<(u32, String)> = serde_json::from_str(ops_json)
+            .map_err(|e| JsValue::from_str(&format!("invalid ops: {e}")))?;
+        if ops.is_empty() {
+            return Ok(());
+        }
+        self.with_builder(move |_, builder| {
+            let mut last_ts = str_id;
+            for (idx, text) in &ops {
+                if text.is_empty() {
+                    continue;
+                }
+                let after = if *idx == 0 { str_id } else { last_ts };
+                last_ts = builder.ins_str(str_id, after, text.clone());
+            }
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// Insert integers into the `arr` node at `path` from a typed `Int32Array`.
+    ///
+    /// Equivalent to `apiArrIns` but accepts native `Int32Array` instead of a
+    /// JSON-encoded string, eliminating the `serde_json` parse cost for integer
+    /// arrays.  The integers are stored as CRDT `con` constants (same as the
+    /// JSON path).
+    ///
+    /// Useful for benchmarking: isolates JSON-parse overhead vs CRDT cost.
+    #[wasm_bindgen(js_name = "apiArrInsInts")]
+    pub fn api_arr_ins_ints(
+        &mut self,
+        path_json: &str,
+        index: u32,
+        values: &[i32],
+    ) -> Result<(), JsValue> {
+        if values.is_empty() {
+            return Ok(());
+        }
+        let path = parse_path(path_json).map_err(|e| JsValue::from_str(&e))?;
+        let arr_id = self.resolve(&path).map_err(|e| JsValue::from_str(&e))?;
+        let index = index as usize;
+        let after = if index == 0 {
+            ORIGIN
+        } else {
+            let node = match IndexExt::get(&self.inner.index, &arr_id) {
+                Some(CrdtNode::Arr(n)) => n,
+                _ => return Err(JsValue::from_str("arr node not found at path")),
+            };
+            node.find(index - 1)
+                .ok_or_else(|| JsValue::from_str("arr index out of bounds"))?
+        };
+        let values = values.to_vec();
+        self.with_builder(move |_, builder| {
+            let ids: Vec<Ts> = values
+                .iter()
+                .map(|&v| builder.con_val(PackValue::Integer(v as i64)))
+                .collect();
+            builder.ins_arr(arr_id, after, ids);
+            Ok(())
+        })
+        .map_err(|e| JsValue::from_str(&e))
+    }
+
     /// Overwrite the element at `index` in the `arr` node at `path`.
     ///
     /// Mirrors upstream `ArrApi.upd(index, value)`.
@@ -778,6 +872,9 @@ impl Model {
 
     /// Return the JSON view of the node at `path` as a JS value.
     ///
+    /// Uses the JSON-compatible serializer — objects are plain JS objects,
+    /// not Maps.
+    ///
     /// Useful for reading a sub-document without deserializing the whole model.
     #[wasm_bindgen(js_name = "viewAt")]
     pub fn view_at(&self, path_json: &str) -> Result<JsValue, JsValue> {
@@ -787,7 +884,8 @@ impl Model {
             Some(node) => node.view(&self.inner.index),
             None => Value::Null,
         };
-        serde_wasm_bindgen::to_value(&view).map_err(|e| JsValue::from_str(&format!("{e}")))
+        let ser = serde_wasm_bindgen::Serializer::json_compatible();
+        view.serialize(&ser).map_err(|e| JsValue::from_str(&format!("{e}")))
     }
 }
 

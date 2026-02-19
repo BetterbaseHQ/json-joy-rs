@@ -205,8 +205,8 @@ pub fn cmp_node(a: &CrdtNode, b: &CrdtNode) -> bool {
 /// - If both have a last chunk, their IDs must match.
 /// - `size()` (live char count) and chunk count must match.
 fn cmp_rga_str(a: &StrNode, b: &StrNode) -> bool {
-    let max_a = a.rga.chunks.last();
-    let max_b = b.rga.chunks.last();
+    let max_a = a.rga.last_chunk();
+    let max_b = b.rga.last_chunk();
     match (max_a, max_b) {
         (Some(ca), Some(cb)) => {
             if !ts_equal(ca.id, cb.id) { return false; }
@@ -214,13 +214,13 @@ fn cmp_rga_str(a: &StrNode, b: &StrNode) -> bool {
         (None, None) => {}
         _ => return false,
     }
-    a.size() == b.size() && a.rga.chunks.len() == b.rga.chunks.len()
+    a.size() == b.size() && a.rga.chunk_count() == b.rga.chunk_count()
 }
 
 /// Compare two BinNode RGAs by max-chunk-ID and live length.
 fn cmp_rga_bin(a: &BinNode, b: &BinNode) -> bool {
-    let max_a = a.rga.chunks.last();
-    let max_b = b.rga.chunks.last();
+    let max_a = a.rga.last_chunk();
+    let max_b = b.rga.last_chunk();
     match (max_a, max_b) {
         (Some(ca), Some(cb)) => {
             if !ts_equal(ca.id, cb.id) { return false; }
@@ -236,13 +236,13 @@ fn cmp_rga_bin(a: &BinNode, b: &BinNode) -> bool {
         .filter_map(|c| c.data.as_ref())
         .map(|v| v.len())
         .sum();
-    len_a == len_b && a.rga.chunks.len() == b.rga.chunks.len()
+    len_a == len_b && a.rga.chunk_count() == b.rga.chunk_count()
 }
 
 /// Compare two ArrNode RGAs by max-chunk-ID and live length.
 fn cmp_rga_arr(a: &ArrNode, b: &ArrNode) -> bool {
-    let max_a = a.rga.chunks.last();
-    let max_b = b.rga.chunks.last();
+    let max_a = a.rga.last_chunk();
+    let max_b = b.rga.last_chunk();
     match (max_a, max_b) {
         (Some(ca), Some(cb)) => {
             if !ts_equal(ca.id, cb.id) { return false; }
@@ -250,7 +250,7 @@ fn cmp_rga_arr(a: &ArrNode, b: &ArrNode) -> bool {
         (None, None) => {}
         _ => return false,
     }
-    a.size() == b.size() && a.rga.chunks.len() == b.rga.chunks.len()
+    a.size() == b.size() && a.rga.chunk_count() == b.rga.chunk_count()
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

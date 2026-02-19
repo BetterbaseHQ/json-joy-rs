@@ -207,9 +207,9 @@ fn encode_vec_server(model: &Model, node: &VecNode, w: &mut CrdtWriter, server_t
 
 fn encode_str_server(node: &StrNode, w: &mut CrdtWriter) {
     ts_server(w, node.id);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_STR, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_server(w, chunk.id);
         if chunk.deleted {
             write_cbor_uint(w, chunk.span);
@@ -221,9 +221,9 @@ fn encode_str_server(node: &StrNode, w: &mut CrdtWriter) {
 
 fn encode_bin_server(node: &BinNode, w: &mut CrdtWriter) {
     ts_server(w, node.id);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_BIN, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_server(w, chunk.id);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -236,9 +236,9 @@ fn encode_bin_server(node: &BinNode, w: &mut CrdtWriter) {
 
 fn encode_arr_server(model: &Model, node: &ArrNode, w: &mut CrdtWriter, server_time: u64) {
     ts_server(w, node.id);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_ARR, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_server(w, chunk.id);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -330,9 +330,9 @@ fn encode_vec_logical(model: &Model, node: &VecNode, w: &mut CrdtWriter, enc: &m
 
 fn encode_str_logical(node: &StrNode, w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(w, node.id, enc);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_STR, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(w, chunk.id, enc);
         if chunk.deleted {
             write_cbor_uint(w, chunk.span);
@@ -344,9 +344,9 @@ fn encode_str_logical(node: &StrNode, w: &mut CrdtWriter, enc: &mut ClockEncoder
 
 fn encode_bin_logical(node: &BinNode, w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(w, node.id, enc);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_BIN, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(w, chunk.id, enc);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -359,9 +359,9 @@ fn encode_bin_logical(node: &BinNode, w: &mut CrdtWriter, enc: &mut ClockEncoder
 
 fn encode_arr_logical(model: &Model, node: &ArrNode, w: &mut CrdtWriter, enc: &mut ClockEncoder) {
     ts_logical(w, node.id, enc);
-    let count = node.rga.chunks.len();
+    let count = node.rga.chunk_count();
     write_tl(w, MAJOR_ARR, count);
-    for chunk in &node.rga.chunks {
+    for chunk in node.rga.iter() {
         ts_logical(w, chunk.id, enc);
         let deleted = chunk.deleted;
         let span = chunk.span;
@@ -713,11 +713,11 @@ fn decode_str_server(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usize
         let val = read_cbor_value(r)?;
         match val {
             PackValue::Integer(n) if n >= 0 => {
-                node.rga.chunks.push(Chunk { id: chunk_id, span: n as u64, deleted: true, data: None });
+                node.rga.push_chunk(Chunk::new_deleted(chunk_id, n as u64));
             }
             PackValue::Str(s) => {
                 let span = s.chars().count() as u64;
-                node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(s) });
+                node.rga.push_chunk(Chunk::new(chunk_id, span, s));
             }
             _ => {}
         }
@@ -734,10 +734,10 @@ fn decode_bin_server(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usize
         let chunk_id = read_ts_server(r);
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(data) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Bin(node));
@@ -752,14 +752,14 @@ fn decode_arr_server(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usize
         let chunk_id = read_ts_server(r);
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
                 let child_id = decode_node_server(r, model, server_time)?;
                 ids.push(child_id);
             }
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(ids) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Arr(node));
@@ -847,11 +847,11 @@ fn decode_str_logical(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usiz
         let val = read_cbor_value(r)?;
         match val {
             PackValue::Integer(n) if n >= 0 => {
-                node.rga.chunks.push(Chunk { id: chunk_id, span: n as u64, deleted: true, data: None });
+                node.rga.push_chunk(Chunk::new_deleted(chunk_id, n as u64));
             }
             PackValue::Str(s) => {
                 let span = s.chars().count() as u64;
-                node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(s) });
+                node.rga.push_chunk(Chunk::new(chunk_id, span, s));
             }
             _ => {}
         }
@@ -868,10 +868,10 @@ fn decode_bin_logical(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usiz
         let chunk_id = read_ts_logical(r, cd)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(data) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Bin(node));
@@ -886,14 +886,14 @@ fn decode_arr_logical(r: &mut CrdtReader, model: &mut Model, id: Ts, count: usiz
         let chunk_id = read_ts_logical(r, cd)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
                 let child_id = decode_node_logical(r, model, cd)?;
                 ids.push(child_id);
             }
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(ids) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         }
     }
     model.index.insert(TsKey::from(id), CrdtNode::Arr(node));

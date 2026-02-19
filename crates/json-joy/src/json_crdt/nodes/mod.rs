@@ -320,16 +320,11 @@ impl ArrNode {
 
     /// Get the node ID at the given absolute position.
     pub fn get_by_id(&self, target: Ts) -> Option<Ts> {
-        for chunk in &self.rga.chunks {
-            if chunk.id.sid == target.sid
-                && chunk.id.time <= target.time
-                && target.time < chunk.id.time + chunk.span
-            {
-                if let Some(data) = &chunk.data {
-                    let offset = (target.time - chunk.id.time) as usize;
-                    return data.get(offset).copied();
-                }
-            }
+        let idx = self.rga.find_by_id(target)?;
+        let chunk = self.rga.slot(idx);
+        if let Some(data) = &chunk.data {
+            let offset = (target.time - chunk.id.time) as usize;
+            return data.get(offset).copied();
         }
         None
     }
@@ -339,23 +334,18 @@ impl ArrNode {
     /// Mirrors `ArrNode.upd` in the upstream TypeScript.
     /// Only replaces the current value if `val` has a higher timestamp.
     pub fn upd(&mut self, ref_id: Ts, val: Ts) -> Option<Ts> {
-        for chunk in &mut self.rga.chunks {
-            if chunk.id.sid == ref_id.sid
-                && chunk.id.time <= ref_id.time
-                && ref_id.time < chunk.id.time + chunk.span
-            {
-                if let Some(data) = &mut chunk.data {
-                    let offset = (ref_id.time - chunk.id.time) as usize;
-                    if let Some(current) = data.get(offset).copied() {
-                        use crate::json_crdt_patch::clock::compare;
-                        if compare(current, val) >= 0 {
-                            return None; // existing is same or newer
-                        }
-                        let old = data[offset];
-                        data[offset] = val;
-                        return Some(old);
-                    }
+        let idx = self.rga.find_by_id(ref_id)?;
+        let chunk = self.rga.slot_mut(idx);
+        if let Some(data) = &mut chunk.data {
+            let offset = (ref_id.time - chunk.id.time) as usize;
+            if let Some(current) = data.get(offset).copied() {
+                use crate::json_crdt_patch::clock::compare;
+                if compare(current, val) >= 0 {
+                    return None; // existing is same or newer
                 }
+                let old = data[offset];
+                data[offset] = val;
+                return Some(old);
             }
         }
         None

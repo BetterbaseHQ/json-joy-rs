@@ -170,7 +170,7 @@ fn encode_vec(model: &Model, node: &VecNode) -> Value {
 
 fn encode_str(node: &StrNode) -> Value {
     let id = encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = encode_ts(chunk.id);
         if chunk.deleted {
             json!({ "id": chunk_id, "span": chunk.span })
@@ -184,7 +184,7 @@ fn encode_str(node: &StrNode) -> Value {
 
 fn encode_bin(node: &BinNode) -> Value {
     let id = encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = encode_ts(chunk.id);
         if chunk.deleted {
             json!({ "id": chunk_id, "span": chunk.span })
@@ -199,7 +199,7 @@ fn encode_bin(node: &BinNode) -> Value {
 
 fn encode_arr(model: &Model, node: &ArrNode) -> Value {
     let id = encode_ts(node.id);
-    let chunks: Vec<Value> = node.rga.chunks.iter().map(|chunk| {
+    let chunks: Vec<Value> = node.rga.iter().map(|chunk| {
         let chunk_id = encode_ts(chunk.id);
         if chunk.deleted {
             json!({ "id": chunk_id, "span": chunk.span })
@@ -438,10 +438,10 @@ fn decode_str(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
         let chunk_id = decode_ts(chunk_obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("chunk.id".into()))?)?;
         if let Some(span) = chunk_obj.get("span").and_then(|v| v.as_u64()) {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(s) = chunk_obj.get("value").and_then(|v| v.as_str()) {
             let span = s.chars().count() as u64;
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(s.to_string()) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, s.to_string()));
         } else {
             return Err(DecodeError::Format("str chunk must have span or value".into()));
         }
@@ -470,12 +470,12 @@ fn decode_bin(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
         let chunk_id = decode_ts(chunk_obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("chunk.id".into()))?)?;
         if let Some(span) = chunk_obj.get("span").and_then(|v| v.as_u64()) {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(b64) = chunk_obj.get("value").and_then(|v| v.as_str()) {
             let data = B64.decode(b64)
                 .map_err(|e| DecodeError::Format(format!("base64 decode error: {}", e)))?;
             let span = data.len() as u64;
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(data) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         } else {
             return Err(DecodeError::Format("bin chunk must have span or value".into()));
         }
@@ -504,7 +504,7 @@ fn decode_arr(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
         let chunk_id = decode_ts(chunk_obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("chunk.id".into()))?)?;
         if let Some(span) = chunk_obj.get("span").and_then(|v| v.as_u64()) {
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: true, data: None });
+            node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(values) = chunk_obj.get("value").and_then(|v| v.as_array()) {
             let values = values.clone();
             let mut ids = Vec::new();
@@ -513,7 +513,7 @@ fn decode_arr(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
                 ids.push(child_id);
             }
             let span = ids.len() as u64;
-            node.rga.chunks.push(Chunk { id: chunk_id, span, deleted: false, data: Some(ids) });
+            node.rga.push_chunk(Chunk::new(chunk_id, span, ids));
         } else {
             return Err(DecodeError::Format("arr chunk must have span or value".into()));
         }
