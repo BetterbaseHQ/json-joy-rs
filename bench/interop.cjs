@@ -53,7 +53,7 @@ for (const entry of selected) {
 
     const wasmModelA = WASMModel.fromBinary(baseBytes);
     if (tsPatchBytes.length > 0) wasmModelA.applyPatch(tsPatchBytes);
-    const viewA = wasmModelA.viewJson();
+    const viewA = JSON.stringify(wasmModelA.view());
 
     const okA = viewA === expected;
     if (okA) passA++;
