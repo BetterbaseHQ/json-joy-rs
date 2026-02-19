@@ -211,7 +211,6 @@ pub fn transform(op: &BinaryOp, against: &BinaryOp, left_wins: bool) -> BinaryOp
                     }
                 }
                 (BinaryComponent::Retain(n), BinaryComponent::Delete(m)) => {
-                    let min = (*n).min(*m);
                     if n > m {
                         rem_op = Some(BinaryComponent::Retain(n - m));
                     } else if m > n {
@@ -228,7 +227,6 @@ pub fn transform(op: &BinaryOp, against: &BinaryOp, left_wins: bool) -> BinaryOp
                     }
                 }
                 (BinaryComponent::Delete(n), BinaryComponent::Delete(m)) => {
-                    let min = (*n).min(*m);
                     if n > m {
                         rem_op = Some(BinaryComponent::Delete(n - m));
                     } else if m > n {

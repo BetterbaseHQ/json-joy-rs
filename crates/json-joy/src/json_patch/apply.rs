@@ -5,7 +5,9 @@
 use regex::RegexBuilder;
 use serde_json::{Map, Value};
 
-use super::types::{JsonPatchType, Op, OpResult, PatchError, PatchResult};
+#[cfg(test)]
+use super::types::JsonPatchType;
+use super::types::{Op, OpResult, PatchError, PatchResult};
 
 // ── Path navigation ───────────────────────────────────────────────────────
 
@@ -298,7 +300,7 @@ fn apply_split(
 fn apply_merge(
     doc: &mut Value,
     path: &[String],
-    pos: usize,
+    _pos: usize,
     _props: Option<&Value>,
 ) -> Result<(), PatchError> {
     if path.is_empty() {

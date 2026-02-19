@@ -434,8 +434,7 @@ impl Model {
 mod tests {
     use super::*;
     use crate::json_crdt_patch::clock::ts;
-    use crate::json_crdt_patch::operations::{ConValue, Op};
-    use json_joy_json_pack::PackValue;
+    use crate::json_crdt_patch::operations::Op;
     use serde_json::json;
 
     fn sid() -> u64 {
@@ -539,7 +538,7 @@ mod tests {
     #[test]
     fn replay_to_end_reproduces_end_state() {
         let s = sid();
-        let mut model = Model::new(s);
+        let model = Model::new(s);
         let mut log = Log::from_new_model(model.clone());
 
         // Build a simple patch: create str + set root.

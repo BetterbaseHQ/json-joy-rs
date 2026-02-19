@@ -9,7 +9,6 @@
 //! - a sequence of steps for nested block structure (e.g. `["ul", "li"]`)
 
 use json_joy_json_pack::PackValue;
-use serde_json::Value;
 
 // ── TypeTag ───────────────────────────────────────────────────────────────
 

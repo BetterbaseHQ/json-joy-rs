@@ -2,7 +2,7 @@
 //!
 //! Mirrors `packages/json-joy/src/json-crdt-extensions/peritext/rga/Range.ts`.
 
-use super::{Anchor, Point};
+use super::Point;
 use crate::json_crdt::nodes::StrNode;
 
 // ── Range ─────────────────────────────────────────────────────────────────

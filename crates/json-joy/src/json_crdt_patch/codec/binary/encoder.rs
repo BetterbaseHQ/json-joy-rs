@@ -142,7 +142,6 @@ impl Encoder {
             Op::InsStr {
                 obj, after, data, ..
             } => {
-                let byte_len = data.len(); // UTF-8 byte count
                 let char_len = data.chars().count();
                 let obj = *obj;
                 let after = *after;

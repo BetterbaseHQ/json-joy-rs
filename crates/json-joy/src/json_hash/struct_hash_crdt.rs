@@ -145,7 +145,7 @@ fn radix_36(mut n: u64) -> String {
 mod tests {
     use super::*;
     use crate::json_crdt::nodes::{
-        ArrNode, BinNode, ConNode, NodeIndex, ObjNode, StrNode, TsKey, ValNode, VecNode,
+        ArrNode, BinNode, ConNode, NodeIndex, ObjNode, StrNode, TsKey, ValNode,
     };
     use crate::json_crdt_patch::clock::Ts;
     use crate::json_crdt_patch::operations::ConValue;

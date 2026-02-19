@@ -20,12 +20,11 @@
 use crate::json_crdt::constants::UNDEFINED_TS;
 use crate::json_crdt::model::Model;
 use crate::json_crdt::nodes::{
-    ArrNode, BinNode, ConNode, CrdtNode, IndexExt, NodeIndex, ObjNode, StrNode, TsKey, ValNode,
-    VecNode,
+    ArrNode, BinNode, ConNode, CrdtNode, ObjNode, StrNode, TsKey, ValNode, VecNode,
 };
-use crate::json_crdt_patch::clock::{ts as mk_ts, ClockVector, Ts};
+use crate::json_crdt_patch::clock::Ts;
 use crate::json_crdt_patch::codec::clock::{ClockDecoder, ClockEncoder};
-use crate::json_crdt_patch::enums::{JsonCrdtDataType, SESSION};
+use crate::json_crdt_patch::enums::JsonCrdtDataType;
 use crate::json_crdt_patch::operations::ConValue;
 use crate::json_crdt_patch::util::binary::{CrdtReader, CrdtWriter};
 use json_joy_json_pack::PackValue;

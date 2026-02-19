@@ -2,7 +2,9 @@
 //!
 //! Mirrors `packages/json-joy/src/util/diff/bin.ts`.
 
-use super::str::{self, Patch, PatchOpType};
+#[cfg(test)]
+use super::str::PatchOpType;
+use super::str::{self, Patch};
 
 /// Encode a byte slice as a string with one char per byte (code points 0–255).
 pub fn to_str(buf: &[u8]) -> String {

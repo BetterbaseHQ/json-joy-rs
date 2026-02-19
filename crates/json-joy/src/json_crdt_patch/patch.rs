@@ -226,7 +226,6 @@ where
 mod tests {
     use super::*;
     use crate::json_crdt_patch::clock::ts;
-    use crate::json_crdt_patch::operations::ConValue;
 
     #[test]
     fn empty_patch() {

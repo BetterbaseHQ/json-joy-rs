@@ -392,7 +392,7 @@ pub fn decode(data: &Value) -> Result<Vec<Op>, PatchError> {
     arr.iter().map(|v| decode_op(v, None)).collect()
 }
 
-fn get_u8_or_str_opcode(v: &Value) -> Result<OpCodeKey, PatchError> {
+fn get_u8_or_str_opcode(v: &Value) -> Result<OpCodeKey<'_>, PatchError> {
     match v {
         Value::Number(n) => {
             let code = n
@@ -790,7 +790,7 @@ fn decode_relative_path(v: &Value, parent_path: Option<&[String]>) -> Result<Pat
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::json_patch::codec::json::{from_json, to_json};
+    use crate::json_patch::codec::json::to_json;
     use serde_json::json;
 
     fn opts() -> EncodeOptions {
@@ -802,21 +802,6 @@ mod tests {
         EncodeOptions {
             string_opcode: true,
         }
-    }
-
-    fn roundtrip(op: Op) -> Op {
-        let ops = vec![op];
-        let compact = encode(&ops, &opts());
-        let decoded = decode(&compact).expect("decode failed");
-        assert_eq!(decoded.len(), 1);
-        decoded.into_iter().next().unwrap()
-    }
-
-    fn roundtrip_str(op: Op) -> Op {
-        let ops = vec![op];
-        let compact = encode(&ops, &opts_str());
-        let decoded = decode(&compact).expect("decode str failed");
-        decoded.into_iter().next().unwrap()
     }
 
     /// Helper: encode via JSON codec then roundtrip through compact codec, compare JSON output.

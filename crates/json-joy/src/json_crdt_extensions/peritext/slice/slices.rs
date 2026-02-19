@@ -11,7 +11,7 @@ use super::{
 };
 use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::model::Model;
-use crate::json_crdt::nodes::{CrdtNode, IndexExt, TsKey};
+use crate::json_crdt::nodes::{CrdtNode, TsKey};
 use crate::json_crdt_extensions::peritext::rga::{Anchor, Point, Range};
 use crate::json_crdt_patch::clock::{Ts, Tss};
 use crate::json_crdt_patch::operations::{ConValue, Op};

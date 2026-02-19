@@ -9,7 +9,7 @@
 
 use serde_json::Value;
 
-use super::hash::{hash, hash_str};
+use super::hash::hash_str;
 
 /// Produce a structural hash string for a JSON value.
 ///

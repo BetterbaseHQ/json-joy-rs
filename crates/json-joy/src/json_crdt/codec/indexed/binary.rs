@@ -26,12 +26,11 @@ use std::collections::HashMap;
 use crate::json_crdt::constants::UNDEFINED_TS;
 use crate::json_crdt::model::Model;
 use crate::json_crdt::nodes::{
-    ArrNode, BinNode, ConNode, CrdtNode, IndexExt, NodeIndex, ObjNode, StrNode, TsKey, ValNode,
-    VecNode,
+    ArrNode, BinNode, ConNode, CrdtNode, NodeIndex, ObjNode, StrNode, TsKey, ValNode, VecNode,
 };
 use crate::json_crdt_patch::clock::{ts as mk_ts, ClockVector, Ts};
 use crate::json_crdt_patch::codec::clock::ClockTable;
-use crate::json_crdt_patch::enums::{JsonCrdtDataType, SESSION};
+use crate::json_crdt_patch::enums::JsonCrdtDataType;
 use crate::json_crdt_patch::operations::ConValue;
 use crate::json_crdt_patch::util::binary::{CrdtReader, CrdtWriter};
 use json_joy_json_pack::PackValue;
@@ -111,7 +110,7 @@ fn write_ts_indexed(w: &mut CrdtWriter, stamp: Ts, table: &ClockTable) {
     w.id(idx as u64, time_diff);
 }
 
-fn encode_node(node: &CrdtNode, table: &ClockTable, model: &Model) -> Vec<u8> {
+fn encode_node(node: &CrdtNode, table: &ClockTable, _model: &Model) -> Vec<u8> {
     let mut w = CrdtWriter::new();
     match node {
         CrdtNode::Con(n) => encode_con(&mut w, n, table),

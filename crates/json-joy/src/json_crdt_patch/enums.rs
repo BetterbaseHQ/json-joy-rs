@@ -3,6 +3,7 @@
 //! Mirrors `packages/json-joy/src/json-crdt-patch/enums.ts`.
 
 /// Reserved session IDs.
+#[allow(non_snake_case)]
 pub mod SESSION {
     /// Reserved by the protocol — cannot be used by users.
     pub const SYSTEM: u64 = 0;
@@ -17,6 +18,7 @@ pub mod SESSION {
 }
 
 /// Reserved system-session time values.
+#[allow(non_snake_case)]
 pub mod SYSTEM_SESSION_TIME {
     pub const ORIGIN: u64 = 0;
     pub const UNDEFINED: u64 = 1;
@@ -83,6 +85,7 @@ impl JsonCrdtPatchOpcode {
 
 /// Opcode shifted left 3 bits (used as the high byte of the opcode octet,
 /// leaving 3 low bits for inline length hints).
+#[allow(non_snake_case)]
 pub mod OpcodeOverlay {
     use super::JsonCrdtPatchOpcode as O;
 

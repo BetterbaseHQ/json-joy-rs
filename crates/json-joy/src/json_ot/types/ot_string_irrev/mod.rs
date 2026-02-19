@@ -30,10 +30,6 @@ impl StringIrrevComponent {
             Self::Insert(s) => s.chars().count(),
         }
     }
-
-    fn is_delete(&self) -> bool {
-        matches!(self, Self::Delete(_))
-    }
 }
 
 /// Append a component, merging with the last if same type.
@@ -227,7 +223,6 @@ pub fn transform(op: &StringIrrevOp, against: &StringIrrevOp, left_wins: bool) -
                     }
                     // Retain vs delete: the chars we wanted to retain are gone
                     (StringIrrevComponent::Retain(n), StringIrrevComponent::Delete(m)) => {
-                        let min = (*n).min(*m);
                         if n > m {
                             rem_op = Some(StringIrrevComponent::Retain(n - m));
                         } else if m > n {
@@ -246,7 +241,6 @@ pub fn transform(op: &StringIrrevOp, against: &StringIrrevOp, left_wins: bool) -
                     }
                     // Delete vs delete: both deleting same region — op delete is redundant
                     (StringIrrevComponent::Delete(n), StringIrrevComponent::Delete(m)) => {
-                        let min = (*n).min(*m);
                         if n > m {
                             rem_op = Some(StringIrrevComponent::Delete(n - m));
                         } else if m > n {

@@ -20,7 +20,7 @@ pub mod rga;
 use indexmap::IndexMap;
 use json_joy_json_pack::PackValue;
 use serde_json::Value;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use super::constants::{ORIGIN, UNDEFINED_TS};
 use crate::json_crdt_patch::clock::{compare, Ts, Tss};

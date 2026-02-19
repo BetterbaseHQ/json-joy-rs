@@ -4,7 +4,7 @@
 //!
 //! Mirrors `packages/json-joy/src/json-patch/codec/json/`.
 
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 use crate::json_patch::types::{JsonPatchType, Op, PatchError};
 
@@ -305,14 +305,6 @@ pub fn from_json(v: &Value) -> Result<Op, PatchError> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| PatchError::InvalidOp("missing 'op' field".into()))?;
 
-    let get_path = |key: &str| -> Result<Vec<String>, PatchError> {
-        obj.get(key)
-            .map(decode_path)
-            .transpose()?
-            .unwrap_or_default()
-            .pipe_ok()
-    };
-
     let path = decode_path(obj.get("path").unwrap_or(&Value::String(String::new())))?;
 
     match op_str {
@@ -590,17 +582,6 @@ pub fn from_json(v: &Value) -> Result<Op, PatchError> {
             Ok(Op::Or { path, ops })
         }
         other => Err(PatchError::InvalidOp(format!("unknown op: {other}"))),
-    }
-}
-
-trait PipeOk {
-    fn pipe_ok(self) -> Result<Self, PatchError>
-    where
-        Self: Sized;
-}
-impl PipeOk for Vec<String> {
-    fn pipe_ok(self) -> Result<Self, PatchError> {
-        Ok(self)
     }
 }
 

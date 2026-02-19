@@ -11,7 +11,6 @@
 
 use serde_json::Value;
 
-use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::nodes::{
     ArrNode, BinNode, CrdtNode, NodeIndex, ObjNode, StrNode, TsKey, ValNode, VecNode,
 };

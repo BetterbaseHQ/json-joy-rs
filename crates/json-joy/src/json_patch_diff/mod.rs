@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::json_patch::types::Op;
 use crate::util_inner::diff::line::{diff as line_diff, LinePatchOpType};
-use crate::util_inner::diff::str::{apply as str_apply, diff as str_diff, PatchOpType};
+use crate::util_inner::diff::str::{diff as str_diff, PatchOpType};
 
 // ── Public API ────────────────────────────────────────────────────────────
 
@@ -60,7 +60,6 @@ fn diff_str(ops: &mut Vec<Op>, path: &[String], src: &str, dst: &str) {
                 pos += text.chars().count();
             }
             PatchOpType::Del => {
-                let len = text.chars().count();
                 ops.push(Op::StrDel {
                     path: path.to_vec(),
                     pos,
@@ -75,7 +74,7 @@ fn diff_str(ops: &mut Vec<Op>, path: &[String], src: &str, dst: &str) {
                 // We re-generate ops from scratch: each op's pos is relative
                 // to the already-mutated string. Since insertions advance pos
                 // and deletions don't (they remove chars at pos), this is:
-                let _ = len; // pos stays same after deletion
+                // pos stays same after deletion.
             }
         }
     }

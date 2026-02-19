@@ -7,7 +7,7 @@
 //! `ArrNode`.
 
 use super::{SliceStacking, SliceType};
-use crate::json_crdt_extensions::peritext::rga::{Anchor, Point, Range};
+use crate::json_crdt_extensions::peritext::rga::{Point, Range};
 use crate::json_crdt_patch::clock::Ts;
 use serde_json::Value;
 

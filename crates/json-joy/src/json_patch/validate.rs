@@ -161,7 +161,7 @@ fn validate_op_add(map: &serde_json::Map<String, Value>) -> Result<(), Validatio
     validate_has_value(map)
 }
 
-fn validate_op_remove(map: &serde_json::Map<String, Value>) -> Result<(), ValidationError> {
+fn validate_op_remove(_map: &serde_json::Map<String, Value>) -> Result<(), ValidationError> {
     // oldValue, if present, must not be undefined (JSON doesn't have undefined,
     // so we just verify that if the key exists the value is not "undefined" —
     // in Rust/JSON this can't happen, but we replicate the check for parity).
@@ -170,7 +170,7 @@ fn validate_op_remove(map: &serde_json::Map<String, Value>) -> Result<(), Valida
     Ok(())
 }
 
-fn validate_op_replace(map: &serde_json::Map<String, Value>) -> Result<(), ValidationError> {
+fn validate_op_replace(_map: &serde_json::Map<String, Value>) -> Result<(), ValidationError> {
     // Same reasoning as remove — oldValue can't be JS undefined in JSON.
     Ok(())
 }

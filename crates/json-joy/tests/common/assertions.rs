@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use json_joy::json_crdt_patch::enums::JsonCrdtPatchOpcode;
 use json_joy::json_crdt_patch::operations::Op;
 use serde_json::Value;

@@ -24,10 +24,9 @@ use serde_json::{json, Value};
 use crate::json_crdt::constants::UNDEFINED_TS;
 use crate::json_crdt::model::Model;
 use crate::json_crdt::nodes::{
-    ArrNode, BinNode, ConNode, CrdtNode, IndexExt, NodeIndex, ObjNode, RootNode, StrNode, TsKey,
-    ValNode, VecNode,
+    ArrNode, BinNode, ConNode, CrdtNode, ObjNode, StrNode, TsKey, ValNode, VecNode,
 };
-use crate::json_crdt_patch::clock::{ts as mk_ts, ClockVector, Ts};
+use crate::json_crdt_patch::clock::{ts as mk_ts, Ts};
 use crate::json_crdt_patch::codec::clock::{ClockDecoder, ClockEncoder};
 use crate::json_crdt_patch::enums::{JsonCrdtDataType, SESSION};
 use crate::json_crdt_patch::operations::ConValue;
@@ -269,8 +268,6 @@ pub enum DecodeError {
     UnknownNodeType(u64),
     #[error("missing field")]
     MissingField,
-    #[error("clock decoder not initialised")]
-    NoClockDecoder,
     #[error("invalid session index")]
     InvalidSessionIndex,
 }
@@ -288,14 +285,14 @@ pub fn decode(data: &Value) -> Result<Model, DecodeError> {
     let root_val = &arr[1];
 
     let is_server = clock_val.is_number();
-    let mut dec = DecodeState::new_empty();
-
-    let model = if is_server {
+    let (mut model, mut dec) = if is_server {
         let server_time = clock_val
             .as_u64()
             .ok_or_else(|| DecodeError::Format("server time must be u64".into()))?;
-        dec = DecodeState::Server(server_time);
-        Model::new_server(server_time)
+        (
+            Model::new_server(server_time),
+            DecodeState::Server(server_time),
+        )
     } else {
         let flat_arr = clock_val
             .as_array()
@@ -304,11 +301,8 @@ pub fn decode(data: &Value) -> Result<Model, DecodeError> {
         let cd = ClockDecoder::from_arr(&flat)
             .ok_or_else(|| DecodeError::Format("clock table too short".into()))?;
         let clock = cd.clock.clone();
-        dec = DecodeState::Logical(cd);
-        Model::new_from_clock(clock)
+        (Model::new_from_clock(clock), DecodeState::Logical(cd))
     };
-
-    let mut model = model;
 
     // Decode root
     if root_val.as_u64() != Some(0) && !root_val.is_null() {
@@ -320,16 +314,11 @@ pub fn decode(data: &Value) -> Result<Model, DecodeError> {
 }
 
 enum DecodeState {
-    Empty,
     Server(u64),
     Logical(ClockDecoder),
 }
 
 impl DecodeState {
-    fn new_empty() -> Self {
-        Self::Empty
-    }
-
     fn decode_ts(&self, val: &Value) -> Result<Ts, DecodeError> {
         match self {
             DecodeState::Server(server_time) => {
@@ -379,7 +368,6 @@ impl DecodeState {
                     ))
                 }
             }
-            DecodeState::Empty => Err(DecodeError::NoClockDecoder),
         }
     }
 }

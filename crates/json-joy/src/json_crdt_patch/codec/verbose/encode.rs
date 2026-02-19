@@ -45,7 +45,7 @@ fn pack_to_json(v: &json_joy_json_pack::PackValue) -> Value {
                 .collect();
             Value::Object(map)
         }
-        PackValue::Extension(ext) => json!(null), // not representable in plain JSON
+        PackValue::Extension(_ext) => json!(null), // not representable in plain JSON
     }
 }
 

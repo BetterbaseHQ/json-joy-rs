@@ -7,7 +7,9 @@
 //! `cmp` checks structural + optional value equality, ignoring CRDT metadata.
 //! `cmp_node` checks CRDT metadata (timestamps), ignoring deep values.
 
-use super::nodes::{ArrNode, BinNode, ConNode, CrdtNode, ObjNode, StrNode, ValNode, VecNode};
+use super::nodes::{ArrNode, BinNode, CrdtNode, StrNode};
+#[cfg(test)]
+use super::nodes::{ConNode, ObjNode};
 use super::nodes::{NodeIndex, TsKey};
 use crate::json_crdt_patch::clock::{equal as ts_equal, Ts};
 

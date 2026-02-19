@@ -26,7 +26,7 @@ use super::nodes::{
 };
 use crate::json_crdt_patch::clock::{ClockVector, Ts};
 use crate::json_crdt_patch::enums::SESSION;
-use crate::json_crdt_patch::operations::{ConValue, Op};
+use crate::json_crdt_patch::operations::Op;
 use crate::json_crdt_patch::patch::Patch;
 
 /// In-memory JSON CRDT document model.
@@ -146,7 +146,7 @@ impl Model {
             }
 
             // ── Mutation operations ────────────────────────────────────────
-            /// Set the value of a `val` register (or the document root).
+            // Set the value of a `val` register (or the document root).
             Op::InsVal { obj, val, .. } => {
                 // The root register is addressed by ORIGIN (SESSION::SYSTEM, time 0).
                 if obj.sid == SESSION::SYSTEM && obj.time == ORIGIN.time {
@@ -157,7 +157,7 @@ impl Model {
                 }
             }
 
-            /// Set key→value pairs in an `obj` map.
+            // Set key→value pairs in an `obj` map.
             Op::InsObj { obj, data, .. } => {
                 if let Some(CrdtNode::Obj(node)) = self.index.get_mut_ts(obj) {
                     for (key, val_id) in data {
@@ -170,7 +170,7 @@ impl Model {
                 }
             }
 
-            /// Set index→value pairs in a `vec` vector.
+            // Set index→value pairs in a `vec` vector.
             Op::InsVec { obj, data, .. } => {
                 if let Some(CrdtNode::Vec(node)) = self.index.get_mut_ts(obj) {
                     for (idx, val_id) in data {
@@ -182,7 +182,7 @@ impl Model {
                 }
             }
 
-            /// Insert text into a `str` RGA.
+            // Insert text into a `str` RGA.
             Op::InsStr {
                 id,
                 obj,
@@ -194,7 +194,7 @@ impl Model {
                 }
             }
 
-            /// Insert bytes into a `bin` RGA.
+            // Insert bytes into a `bin` RGA.
             Op::InsBin {
                 id,
                 obj,
@@ -206,7 +206,7 @@ impl Model {
                 }
             }
 
-            /// Insert node-ID references into an `arr` RGA.
+            // Insert node-ID references into an `arr` RGA.
             Op::InsArr {
                 id,
                 obj,
@@ -226,7 +226,7 @@ impl Model {
                 }
             }
 
-            /// Update (replace) an existing element in an `arr` RGA.
+            // Update (replace) an existing element in an `arr` RGA.
             Op::UpdArr {
                 obj, after, val, ..
             } => {
@@ -235,7 +235,7 @@ impl Model {
                 }
             }
 
-            /// Delete ranges in a `str`, `bin`, or `arr`.
+            // Delete ranges in a `str`, `bin`, or `arr`.
             Op::Del { obj, what, .. } => match self.index.get_mut_ts(obj) {
                 Some(CrdtNode::Str(node)) => node.delete(what),
                 Some(CrdtNode::Bin(node)) => node.delete(what),

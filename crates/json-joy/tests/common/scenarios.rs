@@ -1,14 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
+#![allow(dead_code)]
 
 use json_joy::json_crdt::codec::indexed::binary as indexed_binary;
 use json_joy::json_crdt::codec::sidecar::binary as sidecar_binary;
 use json_joy::json_crdt::codec::structural::binary as structural_binary;
-use json_joy::json_crdt::constants::ORIGIN;
 use json_joy::json_crdt::model::Model;
-use json_joy::json_crdt::nodes::{CrdtNode, TsKey};
+use json_joy::json_crdt::nodes::TsKey;
 use json_joy::json_crdt_diff::diff_node;
 use json_joy::json_crdt_patch::clock::{ts, tss, Ts};
-use json_joy::json_crdt_patch::codec::clock::ClockEncoder;
 use json_joy::json_crdt_patch::codec::{compact, compact_binary, verbose};
 use json_joy::json_crdt_patch::compaction;
 use json_joy::json_crdt_patch::operations::{ConValue, Op};

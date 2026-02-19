@@ -4,7 +4,7 @@
 
 pub use crate::json_crdt_patch::enums::{SESSION, SYSTEM_SESSION_TIME};
 
-use crate::json_crdt_patch::clock::{ts, Ts};
+use crate::json_crdt_patch::clock::Ts;
 
 /// The origin timestamp: `(SESSION::SYSTEM, SYSTEM_SESSION_TIME::ORIGIN)`.
 ///

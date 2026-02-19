@@ -34,7 +34,7 @@ use serde_json::Value;
 
 use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::model::Model;
-use crate::json_crdt::nodes::{CrdtNode, IndexExt, TsKey};
+use crate::json_crdt::nodes::{CrdtNode, TsKey};
 use crate::json_crdt_patch::clock::Ts;
 use crate::json_crdt_patch::operations::Op;
 
@@ -193,7 +193,6 @@ impl Peritext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::json_crdt::constants::ORIGIN as ORIG;
     use crate::json_crdt::model::Model;
     use crate::json_crdt_extensions::peritext::slice::constants::*;
     use crate::json_crdt_patch::clock::ts;

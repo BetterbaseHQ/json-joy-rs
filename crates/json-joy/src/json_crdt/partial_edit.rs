@@ -29,7 +29,9 @@
 //! [`PartialEditFactory`] is a thin helper that parses the clock-table blob
 //! stored under the `"c"` key and creates a [`PartialEdit`] from it.
 
-use std::collections::{HashMap, HashSet};
+#[cfg(test)]
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::json_crdt::codec::indexed::binary::{self as indexed, DecodeError, IndexedFields};
 use crate::json_crdt::model::Model;

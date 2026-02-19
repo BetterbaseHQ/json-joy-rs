@@ -65,9 +65,6 @@ mod tests {
     use crate::json_patch::types::Op;
     use serde_json::json;
 
-    fn s(s: &str) -> String {
-        s.to_string()
-    }
     fn path(steps: &[&str]) -> Vec<String> {
         steps.iter().map(|s| s.to_string()).collect()
     }

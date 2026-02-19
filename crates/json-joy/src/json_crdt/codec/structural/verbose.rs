@@ -20,8 +20,7 @@ use serde_json::{json, Value};
 use crate::json_crdt::constants::UNDEFINED_TS;
 use crate::json_crdt::model::Model;
 use crate::json_crdt::nodes::{
-    ArrNode, BinNode, ConNode, CrdtNode, IndexExt, NodeIndex, ObjNode, RootNode, StrNode, TsKey,
-    ValNode, VecNode,
+    ArrNode, BinNode, ConNode, CrdtNode, ObjNode, StrNode, TsKey, ValNode, VecNode,
 };
 use crate::json_crdt_patch::clock::{ts as mk_ts, ClockVector, Ts};
 use crate::json_crdt_patch::enums::SESSION;

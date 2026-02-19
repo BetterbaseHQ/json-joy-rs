@@ -23,7 +23,6 @@
 
 use serde_json::Value;
 
-use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::model::api::find_path;
 use crate::json_crdt::model::{Model, ModelApi};
 use crate::json_crdt::nodes::{CrdtNode, IndexExt};
@@ -73,15 +72,6 @@ impl From<crate::json_crdt::model::api::ApiError> for JsonPatchError {
 }
 
 // ── Path conversion helpers ─────────────────────────────────────────────────
-
-/// Convert a JSON Pointer string (e.g. `"/foo/0/bar"`) to a `Vec<Value>` path
-/// that [`find_path`] / [`ModelApi::find`] accept.
-fn pointer_to_value_path(pointer: &str) -> Vec<Value> {
-    parse_json_pointer(pointer)
-        .into_iter()
-        .map(Value::String)
-        .collect()
-}
 
 // ── JsonPatch ───────────────────────────────────────────────────────────────
 

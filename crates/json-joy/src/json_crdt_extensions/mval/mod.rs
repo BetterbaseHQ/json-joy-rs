@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::model::Model;
-use crate::json_crdt::nodes::{CrdtNode, IndexExt, TsKey};
+use crate::json_crdt::nodes::{CrdtNode, TsKey};
 use crate::json_crdt_patch::clock::Ts;
 use crate::json_crdt_patch::operations::{ConValue, Op};
 

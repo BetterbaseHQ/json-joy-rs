@@ -4,7 +4,6 @@
 
 use crate::json_crdt_patch::clock::{interval, ts, ClockVector, ServerClockVector, Ts, Tss};
 use crate::json_crdt_patch::enums::{JsonCrdtPatchOpcode, SESSION};
-use crate::json_crdt_patch::operations::{ConValue, Op};
 use crate::json_crdt_patch::patch::Patch;
 use crate::json_crdt_patch::patch_builder::PatchBuilder;
 use crate::json_crdt_patch::util::binary::CrdtReader;
