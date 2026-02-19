@@ -1039,5 +1039,4 @@ mod tests {
         assert!(!bytes.is_empty());
         assert_eq!(m.inner.view(), json!({"a": "hello", "b": [1, 2]}));
     }
-
 }
