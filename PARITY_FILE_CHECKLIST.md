@@ -1949,6 +1949,16 @@ Rules:
 
 - [x] `packages/json-joy/src/json-crdt-extensions/` -> `crates/json-joy/src/json_crdt_extensions/` (COMPLETE — peritext core done; quill-delta/prosemirror/slate deferred to json-joy-wasm (JS-editor interop))
 
+### WASM Adapter Slices — json-crdt-extensions deferred editor interop
+
+- [x] `W0` Create mirrored adapter scaffold under `crates/json-joy-wasm/src/extensions/**` and wire export points in `crates/json-joy-wasm/src/lib.rs`.
+- [ ] `W1` Port converter family: `prosemirror/FromPm.ts` and `slate/FromSlate.ts` to Rust with fixture tests.
+- [ ] `W2` Port Peritext editor/block core (`peritext/editor/**`, `peritext/block/**`) to Rust (non-DOM).
+- [ ] `W3` Port Quill adapter core (`quill-delta/*.ts`) to Rust and expose WASM entry points.
+- [ ] `W4` Port ProseMirror adapter core (`prosemirror/*.ts`) to Rust and expose WASM entry points.
+- [ ] `W5` Port Slate adapter core (`slate/*.ts`) to Rust and expose WASM entry points.
+- [ ] `W6` Port Peritext event defaults: Rust for non-DOM logic; keep DOM clipboard/UI handlers in `crates/json-joy-wasm/js/**`.
+
 ### Slice 8 — json-crdt-peritext-ui (model/controller only)
 
 - [x] `packages/json-joy/src/json-crdt-peritext-ui/` -> `crates/json-joy/src/json_crdt_peritext_ui/` (COMPLETE — model/controller types ported; React/DOM bindings skipped)

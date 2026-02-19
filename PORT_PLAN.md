@@ -83,7 +83,7 @@ All 17 upstream sub-modules (`packages/json-joy/src/`) map to a single
 | 4 | json-patch, json-patch-ot, json-ot, json-patch-diff | DONE |
 | 5 | json-hash (12 files) + json-crdt (263 files — largest!) | DONE |
 | 6 | json-crdt-diff (4 files) | DONE |
-| 7 | json-crdt-extensions (225 files) | PARTIAL — mval, cnt, peritext core (rga, slice) DONE; editor adapters DEFERRED to WASM crate (see note) |
+| 7 | json-crdt-extensions (225 files) | PARTIAL — mval, cnt, peritext core (rga, slice) DONE; editor adapters IN PROGRESS in `json-joy-wasm` (see note) |
 | 8 | json-crdt-peritext-ui (UndoManager trait only; React/RxJS skipped) | DONE |
 | 9 | json-cli (35 files) | DONE |
 
@@ -105,6 +105,21 @@ Rationale:
 
 The adapter *logic* is pure data transformation and could be ported to Rust if a non-WASM use
 case ever arises, but that should be driven by need, not speculative parity.
+
+### WASM adapter slices (deferred work now active)
+
+This work is implemented under `crates/json-joy-wasm/src/extensions/**` with a
+thin export surface in `crates/json-joy-wasm/src/lib.rs`.
+
+| WASM Slice | Scope | Status |
+|---|---|---|
+| W0 | Adapter scaffold + converter entry points | IN PROGRESS |
+| W1 | `slate/FromSlate` + `prosemirror/FromPm` view-range conversion parity | STARTED |
+| W2 | Peritext `editor` and `block` core (Rust, non-DOM) | PENDING |
+| W3 | `quill-delta` node/api parity | PENDING |
+| W4 | `prosemirror` node/api parity | PENDING |
+| W5 | `slate` node/api parity | PENDING |
+| W6 | Peritext events defaults (non-DOM in Rust; DOM clipboard/UI in JS wrapper) | PENDING |
 
 Internal dependency order:
 ```
