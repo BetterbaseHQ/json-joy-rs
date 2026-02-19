@@ -49,8 +49,10 @@ pub fn struct_hash_crdt(node: Option<&CrdtNode>, index: &NodeIndex) -> String {
         }
         CrdtNode::Obj(obj_node) => {
             let mut res = String::from("{");
-            // ObjNode::keys is a BTreeMap — keys are already in sorted order.
-            for (key, &child_id) in &obj_node.keys {
+            let mut sorted_keys: Vec<&String> = obj_node.keys.keys().collect();
+            sorted_keys.sort();
+            for key in &sorted_keys {
+                let child_id = obj_node.keys[key.as_str()];
                 let child = index.get(&TsKey::from(child_id));
                 // hash(key).toString(36)
                 let key_hash = radix_36(hash_str(key) as u64);

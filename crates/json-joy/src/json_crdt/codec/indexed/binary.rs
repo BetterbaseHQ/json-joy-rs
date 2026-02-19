@@ -160,7 +160,10 @@ fn encode_val(w: &mut CrdtWriter, node: &ValNode, table: &ClockTable) {
 
 fn encode_obj(w: &mut CrdtWriter, node: &ObjNode, table: &ClockTable) {
     write_tl(w, MAJOR_OBJ, node.keys.len());
-    for (key, &child_ts) in &node.keys {
+    let mut sorted_keys: Vec<&String> = node.keys.keys().collect();
+    sorted_keys.sort();
+    for key in &sorted_keys {
+        let child_ts = node.keys[key.as_str()];
         write_cbor_str(w, key);
         write_ts_indexed(w, child_ts, table);
     }

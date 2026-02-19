@@ -149,13 +149,17 @@ fn encode_obj(model: &Model, node: &ObjNode, view_w: &mut CrdtWriter, meta_w: &m
     let n = node.keys.len();
     write_tl(meta_w, MAJOR_OBJ, n);
 
-    // View: CBOR map header + key strings (BTreeMap iterates in sorted order)
+    let mut sorted_keys: Vec<&String> = node.keys.keys().collect();
+    sorted_keys.sort();
+
+    // View: CBOR map header + key strings in sorted order
     write_cbor_map_hdr(view_w, n);
-    for key in node.keys.keys() {
+    for key in &sorted_keys {
         write_cbor_str(view_w, key);
     }
 
-    for (_, &child_ts) in &node.keys {
+    for key in &sorted_keys {
+        let child_ts = node.keys[key.as_str()];
         if let Some(child) = model.index.get(&TsKey::from(child_ts)) {
             encode_node(model, child, view_w, meta_w, enc);
         }

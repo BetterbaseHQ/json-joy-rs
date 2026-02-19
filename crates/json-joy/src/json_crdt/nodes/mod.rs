@@ -95,13 +95,13 @@ impl ValNode {
 #[derive(Debug, Clone)]
 pub struct ObjNode {
     pub id: Ts,
-    /// key → winning node ID (BTreeMap keeps keys sorted for deterministic view())
-    pub keys: BTreeMap<String, Ts>,
+    /// key → winning node ID
+    pub keys: HashMap<String, Ts>,
 }
 
 impl ObjNode {
     pub fn new(id: Ts) -> Self {
-        Self { id, keys: BTreeMap::new() }
+        Self { id, keys: HashMap::new() }
     }
 
     /// Insert a key, keeping it only if `new_id` is newer than existing.
@@ -118,10 +118,13 @@ impl ObjNode {
 
     /// View: build a JSON object by resolving each value from the index.
     ///
-    /// BTreeMap iterates in sorted key order, so no extra sort is needed.
+    /// Keys are sorted before iteration for deterministic output.
     pub fn view(&self, index: &NodeIndex) -> Value {
         let mut map = serde_json::Map::new();
-        for (key, &id) in &self.keys {
+        let mut keys: Vec<&String> = self.keys.keys().collect();
+        keys.sort();
+        for key in keys {
+            let id = self.keys[key];
             let val = match index.get(&TsKey::from(id)) {
                 Some(node) => node.view(index),
                 None => Value::Null,

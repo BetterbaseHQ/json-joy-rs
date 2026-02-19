@@ -1,23 +1,15 @@
 //! RGA (Replicated Growable Array) implementation.
 //!
-//! Stores chunks in a `Vec<Chunk<T>>` (document order) with an optional
-//! supplementary ID index that is built lazily once the chunk count exceeds
-//! `IDX_THRESHOLD`.
+//! Stores chunks in a `Vec<Chunk<T>>` (document order).
 //!
 //! Complexity (n = number of chunks):
-//! - `find_by_id`:   O(n) for n ≤ IDX_THRESHOLD; O(log n) once the index is built
-//! - `push_chunk`:   O(1) amortised — Vec::push only; no index update
-//! - `insert`:       builds the index on first call that exceeds threshold,
-//!                   then O(log n) per subsequent call
-//! - `delete`:       O(log n + k) per span once indexed, O(k·n) before
+//! - `find_by_id`:   O(n) linear scan
+//! - `push_chunk`:   O(1) amortised
+//! - `insert`:       O(n) for find + O(n) for Vec::insert
+//! - `delete`:       O(k·n) per span
 //! - `iter` / `iter_live`: O(n) — slice iteration
 
 use crate::json_crdt_patch::clock::{Ts, Tss, compare};
-
-/// Build (or rebuild) the index only when the chunk count exceeds this value.
-/// Below the threshold, linear scan is used—it is cache-friendly and cheap
-/// for small documents.
-const IDX_THRESHOLD: usize = 16;
 
 // ── ChunkData ─────────────────────────────────────────────────────────────
 
@@ -86,34 +78,17 @@ impl<T: Clone> Chunk<T> {
 
 // ── Rga ───────────────────────────────────────────────────────────────────
 
-/// RGA sequence backed by a `Vec<Chunk<T>>` with a lazily-built O(log n)
-/// ID index.
+/// RGA sequence backed by a `Vec<Chunk<T>>`.
 ///
-/// `chunks` stores chunks in document order.  `id_idx` is built on demand
-/// the first time `insert` is called on an RGA that has exceeded
-/// `IDX_THRESHOLD` chunks.  Until then, a linear scan is used, which is
-/// cache-friendly and free of heap allocation overhead.
-///
-/// The index is a two-level sorted structure:
-/// - outer: `Vec<(sid, inner)>` sorted by `sid`
-/// - inner: `Vec<(start_time, chunk_vec_index)>` sorted by `start_time`
-///
-/// `push_chunk` (the codec decode path) never touches the index, so
-/// decoding large documents is as fast as before—zero extra allocations.
+/// `chunks` stores chunks in document order.
 #[derive(Debug, Clone, Default)]
 pub struct Rga<T: Clone> {
-    /// Chunks in document order.
     chunks: Vec<Chunk<T>>,
-    /// Lazily-built two-level per-session ID index.
-    ///
-    /// `None` while chunks.len() ≤ IDX_THRESHOLD.
-    /// Built from scratch the first time insert() is called with more chunks.
-    id_idx: Option<Vec<(u64, Vec<(u64, usize)>)>>,
 }
 
 impl<T: Clone + ChunkData> Rga<T> {
     pub fn new() -> Self {
-        Self { chunks: Vec::new(), id_idx: None }
+        Self { chunks: Vec::new() }
     }
 
     // ── Public accessors ──────────────────────────────────────────────────
@@ -130,85 +105,12 @@ impl<T: Clone + ChunkData> Rga<T> {
     /// Last chunk in document order.
     pub fn last_chunk(&self) -> Option<&Chunk<T>> { self.chunks.last() }
 
-    // ── ID index helpers ──────────────────────────────────────────────────
-
-    /// Build the full ID index from the current `chunks` Vec.  O(n).
-    /// Called at most once per RGA (when the threshold is first exceeded).
-    fn build_index(&mut self) {
-        let mut idx: Vec<(u64, Vec<(u64, usize)>)> = Vec::new();
-        for (chunk_pos, chunk) in self.chunks.iter().enumerate() {
-            let sid   = chunk.id.sid;
-            let start = chunk.id.time;
-            match idx.binary_search_by_key(&sid, |(s, _)| *s) {
-                Ok(pos)  => idx[pos].1.push((start, chunk_pos)),
-                Err(ins) => idx.insert(ins, (sid, vec![(start, chunk_pos)])),
-            }
-        }
-        self.id_idx = Some(idx);
-    }
-
-    /// Build the index if it hasn't been built yet and the chunk count has
-    /// exceeded the threshold.
-    fn maybe_build_index(&mut self) {
-        if self.id_idx.is_none() && self.chunks.len() > IDX_THRESHOLD {
-            self.build_index();
-        }
-    }
-
-    /// Append to the index.  No-op if the index has not been built yet.
-    ///
-    /// Assumes the new `(sid, start_time)` pair sorts after all existing
-    /// entries for this session (true for both the PatchBuilder and codec
-    /// decode paths).
-    fn idx_append(&mut self, sid: u64, start_time: u64, chunk_idx: usize) {
-        let idx = match self.id_idx.as_mut() { Some(i) => i, None => return };
-        match idx.binary_search_by_key(&sid, |(s, _)| *s) {
-            Ok(pos)  => idx[pos].1.push((start_time, chunk_idx)),
-            Err(ins) => idx.insert(ins, (sid, vec![(start_time, chunk_idx)])),
-        }
-    }
-
-    /// Insert (in sorted order) into the index.  No-op if not yet built.
-    ///
-    /// Called after `Vec::insert` in `split_chunk_at` and rare mid-doc
-    /// insertions, so also increments all stored indices ≥ `chunk_idx`.
-    fn idx_insert_sorted(&mut self, sid: u64, start_time: u64, chunk_idx: usize) {
-        let idx = match self.id_idx.as_mut() { Some(i) => i, None => return };
-        // Increment chunk-vec indices that shifted due to the Vec::insert.
-        for (_, per_sid) in idx.iter_mut() {
-            for (_, ci) in per_sid.iter_mut() {
-                if *ci >= chunk_idx { *ci += 1; }
-            }
-        }
-        match idx.binary_search_by_key(&sid, |(s, _)| *s) {
-            Ok(pos) => {
-                let per_sid = &mut idx[pos].1;
-                let ins = per_sid.partition_point(|&(t, _)| t < start_time);
-                per_sid.insert(ins, (start_time, chunk_idx));
-            }
-            Err(ins) => {
-                idx.insert(ins, (sid, vec![(start_time, chunk_idx)]));
-            }
-        }
-    }
-
     // ── ID lookup ─────────────────────────────────────────────────────────
 
     /// Find the vec index of the chunk whose ID range contains `ts`.
     ///
-    /// Uses binary search when the index is available; falls back to a
-    /// linear scan for small RGAs (no heap allocation on either path).
+    /// Uses a simple linear scan.
     pub fn find_by_id(&self, ts: Ts) -> Option<usize> {
-        if let Some(ref idx) = self.id_idx {
-            let pos = idx.binary_search_by_key(&ts.sid, |(s, _)| *s).ok()?;
-            let per_sid = &idx[pos].1;
-            let p = per_sid.partition_point(|&(t, _)| t <= ts.time);
-            if p == 0 { return None; }
-            let (_, chunk_idx) = per_sid[p - 1];
-            let chunk = &self.chunks[chunk_idx];
-            return if chunk.id.time + chunk.span > ts.time { Some(chunk_idx) } else { None };
-        }
-        // Linear scan (cache-friendly for small n)
         for (i, chunk) in self.chunks.iter().enumerate() {
             if chunk.id.sid == ts.sid
                 && chunk.id.time <= ts.time
@@ -245,10 +147,7 @@ impl<T: Clone + ChunkData> Rga<T> {
             (false, Some(data))   => Chunk::new(Ts::new(id.sid, right_start), right_span, data),
         };
 
-        // Vec::insert shifts all elements at chunk_idx+1 upward.
-        // idx_insert_sorted updates the index accordingly (no-op if not built).
         self.chunks.insert(chunk_idx + 1, right_chunk);
-        self.idx_insert_sorted(id.sid, right_start, chunk_idx + 1);
     }
 
     // ── Insert ────────────────────────────────────────────────────────────
@@ -263,9 +162,6 @@ impl<T: Clone + ChunkData> Rga<T> {
     /// Concurrent inserts at the same position are ordered by
     /// `compare(id, existing)`.
     pub fn insert(&mut self, after: Ts, id: Ts, span: u64, data: T) {
-        // Build the ID index lazily on the first insert after the threshold.
-        self.maybe_build_index();
-
         // Step 1: find the insertion point (right after the `after` item).
         let insert_pos = if after.sid == 0 && after.time == 0 {
             0 // ORIGIN → prepend
@@ -297,13 +193,9 @@ impl<T: Clone + ChunkData> Rga<T> {
         // Step 3: insert the new chunk.
         let new_chunk = Chunk::new(id, span, data);
         if pos == self.chunks.len() {
-            // Common case: append at end — O(1) amortised.
             self.chunks.push(new_chunk);
-            self.idx_append(id.sid, id.time, pos);
         } else {
-            // Rare: mid-insertion — O(n) index update.
             self.chunks.insert(pos, new_chunk);
-            self.idx_insert_sorted(id.sid, id.time, pos);
         }
     }
 
@@ -312,8 +204,7 @@ impl<T: Clone + ChunkData> Rga<T> {
     /// Append a pre-built chunk at the document-order tail.
     ///
     /// Used by codec decoders that push chunks in their encoded (document)
-    /// order.  O(1) amortised — does **not** update the ID index, which is
-    /// built lazily on demand in `insert`.
+    /// order.  O(1) amortised.
     pub fn push_chunk(&mut self, chunk: Chunk<T>) {
         self.chunks.push(chunk);
     }
@@ -517,39 +408,5 @@ mod tests {
         rga.insert(origin(), ts(1, 1), 5, "hello".to_string());
         assert!(rga.find_by_id(ts(1, 3)).is_some());
         assert!(rga.find_by_id(ts(2, 1)).is_none());
-    }
-
-    /// Verify that `find_by_id` works correctly after the index is built
-    /// (exercising the binary-search path, not just the linear-scan path).
-    #[test]
-    fn find_by_id_works_with_built_index() {
-        let mut rga: Rga<String> = Rga::new();
-        // Insert more than IDX_THRESHOLD chunks to trigger index construction.
-        for i in 0u64..=(IDX_THRESHOLD as u64 + 2) {
-            let after = if i == 0 { ts(0, 0) } else { ts(1, i) };
-            rga.insert(after, ts(1, i + 1), 1, char::from_u32('a' as u32 + i as u32).unwrap_or('?').to_string());
-        }
-        assert!(rga.id_idx.is_some(), "index should be built after threshold");
-        // find_by_id should still work correctly.
-        assert!(rga.find_by_id(ts(1, 5)).is_some());
-        assert!(rga.find_by_id(ts(2, 1)).is_none());
-    }
-
-    /// Verify that `push_chunk` + later `insert` correctly builds the index
-    /// (push_chunk no longer registers chunks; index is built from scratch).
-    #[test]
-    fn push_chunk_then_insert_triggers_index_build() {
-        let mut rga: Rga<String> = Rga::new();
-        // Push IDX_THRESHOLD + 1 chunks via push_chunk (no index updates).
-        let n = IDX_THRESHOLD as u64 + 1;
-        for i in 0..n {
-            rga.push_chunk(Chunk::new(ts(1, i + 1), 1, "x".to_string()));
-        }
-        assert!(rga.id_idx.is_none(), "push_chunk must not build the index");
-        // One insert call should trigger build_index and then succeed.
-        rga.insert(ts(1, n), ts(1, n + 1), 1, "y".to_string());
-        assert!(rga.id_idx.is_some(), "index should be built after insert crosses threshold");
-        let s: String = rga.iter_live().filter_map(|c| c.data.as_deref()).collect();
-        assert!(s.ends_with('y'));
     }
 }

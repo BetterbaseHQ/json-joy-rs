@@ -54,13 +54,15 @@ pub fn to_schema(node: &CrdtNode, index: &NodeIndex) -> Box<dyn NodeBuilder> {
         }
         CrdtNode::Obj(n) => {
             let mut entries: Vec<(String, Box<dyn NodeBuilder>)> = Vec::new();
-            // ObjNode::keys is a BTreeMap — keys iterate in sorted order already.
-            for (key, &id) in &n.keys {
+            let mut sorted_keys: Vec<&String> = n.keys.keys().collect();
+            sorted_keys.sort();
+            for key in &sorted_keys {
+                let id = n.keys[key.as_str()];
                 let child_schema = match get_node(index, &id) {
                     Some(child) => to_schema(child, index),
                     None => Box::new(ConSchema { raw: json_joy_json_pack::PackValue::Null }),
                 };
-                entries.push((key.clone(), child_schema));
+                entries.push(((*key).clone(), child_schema));
             }
             Box::new(ObjSchema { entries })
         }
