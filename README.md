@@ -54,9 +54,6 @@ Run both:
 make parity
 ```
 
-Parity command aliases:
-- `make wasm-interop` -> `make parity-live`
-
 If you call Rust tooling directly, prefer `mise` to ensure the pinned toolchain:
 
 ```bash

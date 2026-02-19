@@ -56,8 +56,6 @@ make wasm-bench-realistic
 - upstream patch -> wasm apply
 - wasm patch -> upstream apply
 
-`make wasm-interop` is kept as an alias to `make parity-live`.
-
 `wasm-bench-realistic` runs a less-db-like end-to-end scenario benchmark:
 - local update flow (`load -> diff/apply -> export -> append patch log`)
 - remote merge flow (`from remote -> apply local patch log -> export/view`)

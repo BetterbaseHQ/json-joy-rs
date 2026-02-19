@@ -1,4 +1,4 @@
-.PHONY: check fmt test test-smoke test-suite test-suite-filter test-crate test-gates port-slice bindings-python compat-fixtures parity-fixtures parity-live parity wasm-build wasm-bench wasm-bench-one wasm-bench-engine-one wasm-interop wasm-bench-realistic
+.PHONY: check fmt test test-smoke test-suite test-suite-filter test-crate test-gates port-slice bindings-python compat-fixtures parity-fixtures parity-live parity wasm-build wasm-bench wasm-bench-one wasm-bench-engine-one wasm-bench-realistic
 
 check:
 	mise x -- cargo check
@@ -74,8 +74,6 @@ wasm-bench-one: wasm-build
 
 wasm-bench-engine-one: wasm-build
 	node bindings/wasm/bench/replay-engine-one.cjs
-
-wasm-interop: parity-live
 
 wasm-bench-realistic: wasm-build
 	node bindings/wasm/bench/lessdb-realistic.cjs
