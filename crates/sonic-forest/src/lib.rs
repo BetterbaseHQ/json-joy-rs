@@ -19,7 +19,7 @@
 //! [`types`] | `types.ts` / `types2.ts` | [`Node`] and [`Node2`] traits |
 //! [`splay`] | `splay/util.ts` | Position-tree splay rotations |
 //! [`splay::util2`] | `splay/util2.ts` | ID-tree splay (`splay2`) |
-//! [`util`] | `util/index.ts` | `first`, `next`, `remove` for position tree |
+//! [`util`] | `util/*` | Position-tree traversal, search, insert/remove/swap helpers |
 //! [`util2`] | `util2.ts` | `insert2`, `remove2`, `next2` … for ID tree |
 
 pub mod splay;
@@ -30,5 +30,8 @@ pub mod util2;
 pub use splay::util2::splay2;
 pub use splay::{l_splay, ll_splay, lr_splay, r_splay, rl_splay, rr_splay, splay};
 pub use types::{Node, Node2};
-pub use util::{first, next, remove};
+pub use util::{
+    find, find_or_next_lower, first, insert, insert_left, insert_right, last, next, prev, remove,
+    size, swap,
+};
 pub use util2::{first2, insert2, last2, next2, prev2, remove2};

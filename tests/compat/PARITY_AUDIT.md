@@ -81,6 +81,7 @@ Current xfail scenarios:
 - `crates/json-joy-json-random/src/examples.rs`: symbol family is mirrored, but many example templates are currently placeholder `Template::nil()` constructors until full data-template catalog is ported.
 - `crates/json-joy-json-pointer/src/findByPointer/v1.rs`..`v5.rs`: variants are mirrored for path/layout parity, but delegate to `v6` implementation.
 - `crates/json-joy-json-pointer/src/codegen/find.rs` and `crates/json-joy-json-pointer/src/codegen/findRef.rs`: upstream emits specialized JS code; Rust uses closure wrappers over runtime traversal.
+- `crates/sonic-forest/src/util/mod.rs`: key-based helpers (`find`, `insert`, `find_or_next_lower`) take a `key_of` closure instead of direct node-field access to fit arena-indexed Rust nodes.
 
 ## sonic-forest parity status
 
@@ -91,12 +92,12 @@ Upstream reference:
 Current local status:
 
 - upstream source files: 76
-- local source files: 5
+- local source files: 10
 
 Top-level families:
 
 - upstream: `SortedMap`, `Tree.ts`, `TreeNode.ts`, `avl`, `data-types`, `llrb-tree`, `print`, `radix`, `red-black`, `splay`, `trie`, `types.ts`, `types2.ts`, `util`, `util2.ts`
-- local: `lib.rs`, `splay`, `types.rs`, `util.rs`, `util2.rs`
+- local: `lib.rs`, `splay`, `types.rs`, `util` (split to `first/next/swap/print/mod`), `util2.rs`
 
 Implication:
 
