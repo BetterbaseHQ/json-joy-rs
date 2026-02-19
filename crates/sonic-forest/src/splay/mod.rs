@@ -6,6 +6,8 @@
 //! The naming mirrors the TypeScript originals exactly:
 //! `rSplay` → [`r_splay`], `lSplay` → [`l_splay`], etc.
 
+pub mod index;
+pub mod util;
 pub mod util2;
 
 use crate::types::Node;

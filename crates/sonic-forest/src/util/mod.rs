@@ -12,6 +12,7 @@
 //!   closure so callers can use arena-backed node layouts.
 
 pub mod first;
+pub mod index;
 pub mod next;
 pub mod print;
 pub mod swap;
