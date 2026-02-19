@@ -26,6 +26,8 @@
 pub mod avl;
 #[path = "data-types/mod.rs"]
 pub mod data_types;
+#[path = "llrb-tree/mod.rs"]
+pub mod llrb_tree;
 #[path = "red-black/mod.rs"]
 pub mod red_black;
 pub mod splay;
@@ -34,6 +36,7 @@ pub mod util;
 pub mod util2;
 
 pub use avl::{AvlBstNumNumMap, AvlMap, AvlMapOld, AvlSet};
+pub use llrb_tree::{LlrbNode, LlrbTree};
 pub use red_black::RbMap;
 pub use splay::util2::splay2;
 pub use splay::{l_splay, ll_splay, lr_splay, r_splay, rl_splay, rr_splay, splay};
