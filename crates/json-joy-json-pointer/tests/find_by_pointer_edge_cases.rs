@@ -1,4 +1,4 @@
-use json_joy_json_pointer::{find, find_by_pointer, parse_json_pointer};
+use json_joy_json_pointer::find_by_pointer;
 use serde_json::json;
 
 #[test]
@@ -21,9 +21,9 @@ fn test_find_by_pointer_empty_component() {
 #[test]
 fn test_find_by_pointer_unicode() {
     let doc = json!({"café": "coffee"});
-    let result = find_by_pointer("/caf%C3%A9", &doc);
-    // JSON Pointer doesn't URL encode, this is about ~ escaping
-    // Let's test with ~0/~1 instead
+    let result = find_by_pointer("/caf%C3%A9", &doc).expect("pointer parsing should succeed");
+    // JSON Pointer uses ~ escaping, not URL-encoding, so "%C3%A9" is treated literally.
+    assert_eq!(result.1, "caf%C3%A9");
 }
 
 #[test]
