@@ -58,6 +58,7 @@ impl RespDecoder {
 
     // ---------------------------------------------------------------- helpers
 
+    #[allow(dead_code)]
     fn remaining(&self) -> usize {
         self.data.len() - self.pos
     }
@@ -105,6 +106,7 @@ impl RespDecoder {
         String::from_utf8(bytes).map_err(|_| RespDecodeError::InvalidUtf8)
     }
 
+    #[allow(dead_code)]
     fn ascii_str(&mut self, n: usize) -> Result<String, RespDecodeError> {
         let bytes = self.buf(n)?;
         Ok(bytes.into_iter().map(|b| b as char).collect())

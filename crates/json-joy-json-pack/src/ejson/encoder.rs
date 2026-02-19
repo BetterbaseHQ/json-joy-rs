@@ -411,6 +411,7 @@ impl EjsonEncoder {
         self.writer.u8(b'}');
     }
 
+    #[allow(dead_code)]
     fn write_bson_code_wscope_as_ejson(
         &mut self,
         code: &str,

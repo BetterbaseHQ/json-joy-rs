@@ -146,7 +146,7 @@ impl UbjsonDecoder {
         self.read_any(&mut c)
     }
 
-    pub fn read_any(&self, c: &mut Cur) -> Result<PackValue, UbjsonError> {
+    fn read_any(&self, c: &mut Cur) -> Result<PackValue, UbjsonError> {
         let octet = c.u8()?;
         match octet {
             0x5a => Ok(PackValue::Null),                        // 'Z'

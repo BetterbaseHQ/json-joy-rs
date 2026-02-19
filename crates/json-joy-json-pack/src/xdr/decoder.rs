@@ -160,7 +160,7 @@ impl XdrDecoder {
         Ok(arr)
     }
 
-    pub fn read_varlen_array<T, F>(&mut self, mut reader: F) -> Result<Vec<T>, XdrDecodeError>
+    pub fn read_varlen_array<T, F>(&mut self, reader: F) -> Result<Vec<T>, XdrDecodeError>
     where
         F: FnMut(&mut Self) -> Result<T, XdrDecodeError>,
     {

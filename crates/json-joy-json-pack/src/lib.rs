@@ -2215,7 +2215,7 @@ mod tests {
     #[test]
     fn resp_decode_push_as_extension() {
         use super::resp::RespDecoder;
-        use super::{JsonPackExtension, PackValue};
+        use super::PackValue;
         let mut dec = RespDecoder::new();
         // >2\r\n+foo\r\n:1\r\n — push with 2 elements
         let v = dec.decode(b">2\r\n+foo\r\n:1\r\n").unwrap();

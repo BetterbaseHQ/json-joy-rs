@@ -1,6 +1,7 @@
 //! Ion binary format constants.
 //!
 //! Upstream reference: `json-pack/src/ion/constants.ts`
+#![allow(non_snake_case)]
 
 /// Ion binary type identifiers (high 4 bits of type descriptor byte).
 pub mod Type {

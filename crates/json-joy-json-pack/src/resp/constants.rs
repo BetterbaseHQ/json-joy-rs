@@ -1,6 +1,7 @@
 //! RESP3 protocol constants.
 //!
 //! Upstream reference: `json-pack/src/resp/constants.ts`
+#![allow(non_snake_case)]
 
 /// RESP3 type-prefix bytes and special values.
 pub mod Resp {
