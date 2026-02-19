@@ -65,8 +65,9 @@ impl<'a> JsonCrdtDiff<'a> {
             &patch,
             view.chars().count(),
             |pos, text| {
-                // Use ORIGIN (ts(0,0)) to insert at the very beginning of the RGA.
-                let after = if pos == 0 { ORIGIN } else { src.find(pos - 1).unwrap_or(ORIGIN) };
+                // For pos=0, use the StrNode's own ID as the head sentinel.
+                // Mirrors upstream TS: `!pos ? src.id : src.find(pos - 1)!`
+                let after = if pos == 0 { src_id } else { src.find(pos - 1).unwrap_or(src_id) };
                 inserts.push((after, text.to_string()));
             },
             |pos, len, _| {
@@ -103,7 +104,7 @@ impl<'a> JsonCrdtDiff<'a> {
             &patch,
             view.len(),
             |pos, bytes| {
-                let after = if pos == 0 { ORIGIN } else { find_bin_ts(src, pos - 1).unwrap_or(ORIGIN) };
+                let after = if pos == 0 { src_id } else { find_bin_ts(src, pos - 1).unwrap_or(src_id) };
                 inserts.push((after, bytes));
             },
             |pos, len| {
@@ -171,7 +172,9 @@ impl<'a> JsonCrdtDiff<'a> {
                     }
                 }
             }
-            let new_id = self.build_con_view(dst_val);
+            // Use build_view so arrays and objects get proper CRDT node types
+            // (NewArr/NewObj), not a ConNode(null) from build_con_view.
+            let new_id = self.build_view(dst_val);
             inserts.push((key.clone(), new_id));
         }
 
@@ -191,7 +194,8 @@ impl<'a> JsonCrdtDiff<'a> {
                 return Ok(());
             }
         }
-        let new_id = self.build_con_view(dst);
+        // Use build_view so arrays and objects get proper CRDT node types.
+        let new_id = self.build_view(dst);
         self.builder.set_val(src.id, new_id);
         Ok(())
     }
@@ -307,8 +311,9 @@ impl<'a> JsonCrdtDiff<'a> {
             Value::String(s) => {
                 let str_id = self.builder.str_node();
                 if !s.is_empty() {
-                    // ORIGIN (ts(0,0)) means "insert at the start of this string RGA"
-                    self.builder.ins_str(str_id, ORIGIN, s.clone());
+                    // Use str_id as ref (node head), matching upstream TS:
+                    // `if (str) this.insStr(id, id, str);`
+                    self.builder.ins_str(str_id, str_id, s.clone());
                 }
                 str_id
             }
@@ -326,7 +331,7 @@ impl<'a> JsonCrdtDiff<'a> {
                 let obj_id = self.builder.obj();
                 let inserts: Vec<(String, Ts)> = map
                     .iter()
-                    .map(|(k, v)| (k.clone(), self.build_con_view(v)))
+                    .map(|(k, v)| (k.clone(), self.build_view(v)))
                     .collect();
                 if !inserts.is_empty() {
                     self.builder.ins_obj(obj_id, inserts);

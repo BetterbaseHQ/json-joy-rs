@@ -18,6 +18,7 @@
 pub mod rga;
 
 use std::collections::{BTreeMap, HashMap};
+use indexmap::IndexMap;
 use serde_json::Value;
 use json_joy_json_pack::PackValue;
 
@@ -95,13 +96,13 @@ impl ValNode {
 #[derive(Debug, Clone)]
 pub struct ObjNode {
     pub id: Ts,
-    /// key → winning node ID
-    pub keys: HashMap<String, Ts>,
+    /// key → winning node ID, in insertion order (mirrors JS Map)
+    pub keys: IndexMap<String, Ts>,
 }
 
 impl ObjNode {
     pub fn new(id: Ts) -> Self {
-        Self { id, keys: HashMap::new() }
+        Self { id, keys: IndexMap::new() }
     }
 
     /// Insert a key, keeping it only if `new_id` is newer than existing.
@@ -118,13 +119,10 @@ impl ObjNode {
 
     /// View: build a JSON object by resolving each value from the index.
     ///
-    /// Keys are sorted before iteration for deterministic output.
+    /// Keys are iterated in insertion order, matching upstream TypeScript Map semantics.
     pub fn view(&self, index: &NodeIndex) -> Value {
         let mut map = serde_json::Map::new();
-        let mut keys: Vec<&String> = self.keys.keys().collect();
-        keys.sort();
-        for key in keys {
-            let id = self.keys[key];
+        for (key, &id) in &self.keys {
             let val = match index.get(&TsKey::from(id)) {
                 Some(node) => node.view(index),
                 None => Value::Null,

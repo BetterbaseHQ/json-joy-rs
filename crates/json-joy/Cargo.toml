@@ -14,6 +14,7 @@ json-joy-json-type = { path = "../json-joy-json-type" }
 json-joy-json-pointer = { path = "../json-joy-json-pointer" }
 sonic-forest = { path = "../../crates/sonic-forest" }
 serde_json = { version = "1.0", features = ["preserve_order"] }
+indexmap = "2"
 thiserror = "2.0"
 base64 = "0.22"
 regex = "1"

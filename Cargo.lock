@@ -372,6 +372,7 @@ name = "json-joy"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "indexmap",
  "json-joy-buffers",
  "json-joy-json-pack",
  "json-joy-json-pointer",
