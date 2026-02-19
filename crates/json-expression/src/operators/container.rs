@@ -7,6 +7,7 @@ use crate::util;
 use serde_json::Value;
 use std::sync::Arc;
 
+#[allow(dead_code)]
 fn len_eval(expr: &[Value], ctx: &mut EvalCtx<'_>) -> Result<JsValue, JsError> {
     let val = crate::evaluate(&expr[1], ctx)?;
     Ok(util::len(&val))
