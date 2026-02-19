@@ -109,19 +109,27 @@ fn patch_stats(patch: &Patch) -> Value {
 }
 
 fn parse_ts(v: &Value) -> Result<Ts, String> {
-    let arr = v.as_array().ok_or_else(|| "ts must be [sid,time]".to_string())?;
+    let arr = v
+        .as_array()
+        .ok_or_else(|| "ts must be [sid,time]".to_string())?;
     if arr.len() != 2 {
         return Err("ts must have 2 elements".to_string());
     }
-    let sid = arr[0].as_u64().ok_or_else(|| "sid must be u64".to_string())?;
-    let time = arr[1].as_u64().ok_or_else(|| "time must be u64".to_string())?;
+    let sid = arr[0]
+        .as_u64()
+        .ok_or_else(|| "sid must be u64".to_string())?;
+    let time = arr[1]
+        .as_u64()
+        .ok_or_else(|| "time must be u64".to_string())?;
     Ok(ts(sid, time))
 }
 
 fn parse_patch_ops(input_ops: &[Value]) -> Result<Vec<Op>, String> {
     let mut ops = Vec::<Op>::with_capacity(input_ops.len());
     for opv in input_ops {
-        let obj = opv.as_object().ok_or_else(|| "op must be object".to_string())?;
+        let obj = opv
+            .as_object()
+            .ok_or_else(|| "op must be object".to_string())?;
         let kind = obj
             .get("op")
             .and_then(Value::as_str)
@@ -250,7 +258,9 @@ fn parse_patch_ops(input_ops: &[Value]) -> Result<Vec<Op>, String> {
                     .ok_or_else(|| "what missing".to_string())?
                     .iter()
                     .map(|spanv| {
-                        let arr = spanv.as_array().ok_or_else(|| "span must be array".to_string())?;
+                        let arr = spanv
+                            .as_array()
+                            .ok_or_else(|| "span must be array".to_string())?;
                         if arr.len() != 3 {
                             return Err("span must have 3 values".to_string());
                         }
@@ -397,13 +407,24 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
                 .ok_or_else(|| "input.kind missing".to_string())?;
             match kind {
                 "str" => {
-                    let src = input.get("src").and_then(Value::as_str).ok_or_else(|| "src".to_string())?;
-                    let dst = input.get("dst").and_then(Value::as_str).ok_or_else(|| "dst".to_string())?;
+                    let src = input
+                        .get("src")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| "src".to_string())?;
+                    let dst = input
+                        .get("dst")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| "dst".to_string())?;
                     let patch = str_diff::diff(src, dst);
                     let patch_json = Value::Array(
                         patch
                             .iter()
-                            .map(|(op, txt)| Value::Array(vec![Value::from(*op as i64), Value::String(txt.clone())]))
+                            .map(|(op, txt)| {
+                                Value::Array(vec![
+                                    Value::from(*op as i64),
+                                    Value::String(txt.clone()),
+                                ])
+                            })
                             .collect(),
                     );
                     Ok(json!({
@@ -431,7 +452,12 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
                     let patch_json = Value::Array(
                         patch
                             .iter()
-                            .map(|(op, txt)| Value::Array(vec![Value::from(*op as i64), Value::String(txt.clone())]))
+                            .map(|(op, txt)| {
+                                Value::Array(vec![
+                                    Value::from(*op as i64),
+                                    Value::String(txt.clone()),
+                                ])
+                            })
                             .collect(),
                     );
                     Ok(json!({
@@ -474,8 +500,13 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
             }
         }
         "model_roundtrip" => {
-            let sid = input.get("sid").and_then(Value::as_u64).ok_or_else(|| "input.sid missing".to_string())?;
-            let data = input.get("data").ok_or_else(|| "input.data missing".to_string())?;
+            let sid = input
+                .get("sid")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "input.sid missing".to_string())?;
+            let data = input
+                .get("data")
+                .ok_or_else(|| "input.data missing".to_string())?;
             let model = model_from_json(data, sid);
             let bytes = structural_binary::encode(&model);
             let decoded = structural_binary::decode(&bytes).map_err(|e| format!("{e:?}"))?;
@@ -547,9 +578,16 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
             }))
         }
         "patch_diff_apply" => {
-            let sid = input.get("sid").and_then(Value::as_u64).ok_or_else(|| "input.sid missing".to_string())?;
-            let base = input.get("base").ok_or_else(|| "input.base missing".to_string())?;
-            let next = input.get("next").ok_or_else(|| "input.next missing".to_string())?;
+            let sid = input
+                .get("sid")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "input.sid missing".to_string())?;
+            let base = input
+                .get("base")
+                .ok_or_else(|| "input.base missing".to_string())?;
+            let next = input
+                .get("next")
+                .ok_or_else(|| "input.next missing".to_string())?;
             let mut model = model_from_json(base, sid);
             let root = model
                 .index
@@ -572,7 +610,10 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
             }
         }
         "model_diff_parity" => {
-            let sid = input.get("sid").and_then(Value::as_u64).ok_or_else(|| "input.sid missing".to_string())?;
+            let sid = input
+                .get("sid")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "input.sid missing".to_string())?;
             let base_bytes = decode_hex(
                 input
                     .get("base_model_binary_hex")
@@ -583,15 +624,20 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
                 .get("next_view_json")
                 .ok_or_else(|| "input.next_view_json missing".to_string())?;
             let mut model = structural_binary::decode(&base_bytes).map_err(|e| format!("{e:?}"))?;
-            let patch_opt = if let Some(root) = model.index.get(&TsKey::from(model.root.val)).cloned() {
-                diff_node(&root, &model.index, sid, model.clock.time, next)
-            } else {
-                let mut builder = PatchBuilder::new(sid, model.clock.time);
-                let id = build_json(&mut builder, next);
-                builder.root(id);
-                let patch = builder.flush();
-                if patch.ops.is_empty() { None } else { Some(patch) }
-            };
+            let patch_opt =
+                if let Some(root) = model.index.get(&TsKey::from(model.root.val)).cloned() {
+                    diff_node(&root, &model.index, sid, model.clock.time, next)
+                } else {
+                    let mut builder = PatchBuilder::new(sid, model.clock.time);
+                    let id = build_json(&mut builder, next);
+                    builder.root(id);
+                    let patch = builder.flush();
+                    if patch.ops.is_empty() {
+                        None
+                    } else {
+                        Some(patch)
+                    }
+                };
             if let Some(patch) = patch_opt {
                 let mut out = patch_stats(&patch);
                 if let Some(obj) = out.as_object_mut() {
@@ -607,7 +653,10 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
             }
         }
         "model_diff_dst_keys" => {
-            let sid = input.get("sid").and_then(Value::as_u64).ok_or_else(|| "input.sid missing".to_string())?;
+            let sid = input
+                .get("sid")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| "input.sid missing".to_string())?;
             let base_bytes = decode_hex(
                 input
                     .get("base_model_binary_hex")
@@ -692,7 +741,9 @@ pub fn evaluate_fixture(scenario: &str, fixture: &Value) -> Result<Value, String
         | "model_lifecycle_workflow"
         | "model_api_workflow"
         | "model_api_proxy_fanout_workflow"
-        | "lessdb_model_manager" => Err(format!("scenario {scenario} not implemented in Rust parity harness yet")),
+        | "lessdb_model_manager" => Err(format!(
+            "scenario {scenario} not implemented in Rust parity harness yet"
+        )),
         other => Err(format!("unknown scenario: {other}")),
     }
 }

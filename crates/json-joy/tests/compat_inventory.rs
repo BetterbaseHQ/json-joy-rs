@@ -25,11 +25,18 @@ fn manifest_entries_are_unique_and_exist() {
 
     let mut names = BTreeSet::<String>::new();
     for entry in &manifest.fixtures {
-        assert!(names.insert(entry.name.clone()), "duplicate fixture name: {}", entry.name);
+        assert!(
+            names.insert(entry.name.clone()),
+            "duplicate fixture name: {}",
+            entry.name
+        );
         let path = dir.join(&entry.file);
         assert!(path.exists(), "missing fixture file: {:?}", path);
         let fixture = read_json(&path);
-        assert_eq!(fixture["fixture_version"].as_u64(), Some(EXPECTED_FIXTURE_VERSION));
+        assert_eq!(
+            fixture["fixture_version"].as_u64(),
+            Some(EXPECTED_FIXTURE_VERSION)
+        );
         assert_eq!(fixture["name"].as_str(), Some(entry.name.as_str()));
         assert_eq!(fixture["scenario"].as_str(), Some(entry.scenario.as_str()));
         assert_eq!(

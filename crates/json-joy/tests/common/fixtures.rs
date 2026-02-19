@@ -74,13 +74,15 @@ pub fn xfail_path() -> PathBuf {
 }
 
 pub fn read_json(path: &Path) -> Value {
-    let data = fs::read_to_string(path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
+    let data =
+        fs::read_to_string(path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
     serde_json::from_str(&data).unwrap_or_else(|e| panic!("failed to parse {:?}: {e}", path))
 }
 
 pub fn load_manifest() -> Manifest {
     let path = fixtures_dir().join("manifest.json");
-    let data = fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
+    let data =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
     serde_json::from_str(&data).unwrap_or_else(|e| panic!("failed to parse {:?}: {e}", path))
 }
 

@@ -29,14 +29,18 @@ struct XfailEntry {
 
 fn load_xfails() -> XfailList {
     let path = xfail_path();
-    let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
+    let text =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {:?}: {e}", path));
     toml::from_str(&text).unwrap_or_else(|e| panic!("failed to parse {:?}: {e}", path))
 }
 
 fn matches_xfail<'a>(entry: &ManifestEntry, xfails: &'a [XfailEntry]) -> Option<&'a XfailEntry> {
     xfails.iter().find(|xf| {
         xf.scenario == entry.scenario
-            && (xf.name == entry.name || xf.name == "*" || (xf.name.ends_with('*') && entry.name.starts_with(&xf.name[..xf.name.len() - 1])))
+            && (xf.name == entry.name
+                || xf.name == "*"
+                || (xf.name.ends_with('*')
+                    && entry.name.starts_with(&xf.name[..xf.name.len() - 1])))
     })
 }
 
@@ -71,10 +75,7 @@ fn compat_fixtures_replay_with_xfail_policy() {
         assert!(
             matched,
             "stale xfail entry: scenario={}, name={}, source_file={}, issue={}",
-            xf.scenario,
-            xf.name,
-            xf.source_file,
-            xf.issue
+            xf.scenario, xf.name, xf.source_file, xf.issue
         );
     }
 
@@ -112,7 +113,7 @@ fn compat_fixtures_replay_with_xfail_policy() {
                 if let Some(xf) = xfail {
                     let wildcard = xf.name == "*" || xf.name.ends_with('*');
                     if !wildcard {
-                    unexpected_pass.push(format!("{} ({})", entry.name, entry.scenario));
+                        unexpected_pass.push(format!("{} ({})", entry.name, entry.scenario));
                     }
                 }
             }
