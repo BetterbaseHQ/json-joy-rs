@@ -47,7 +47,7 @@ For each file-family slice:
 
 Use this exact procedure for every slice:
 
-1. Pick next unchecked row(s) from `PARITY_FILE_CHECKLIST.md` for one package family.
+1. Pick the next package/file-family slice requiring parity work.
 2. Mirror missing file paths under `crates/<package>/src/**`.
 3. Add/update fixtures and tests for the same family before implementation.
 4. Run:
@@ -58,7 +58,7 @@ Use this exact procedure for every slice:
 7. Run completion gates:
    - `make test-gates`
    - `make test`
-8. Check completed rows in `PARITY_FILE_CHECKLIST.md`.
+8. Update repository docs/tests as needed to reflect completed parity work.
 9. Move to the next unchecked family.
 
 Required inputs per run:
@@ -75,8 +75,8 @@ Required inputs per run:
 
 ## Tracking documents
 
-Only these planning docs are authoritative:
-- `PORT_PLAN.md`
-- `PARITY_FILE_CHECKLIST.md`
+Authoritative project documentation:
+- `README.md`
+- `tests/compat/README.md`
 
-If workflow changes, update both files in the same change.
+If workflow changes, update the relevant docs in the same change.

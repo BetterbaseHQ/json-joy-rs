@@ -1,8 +1,16 @@
 # Python bindings
 
+Upstream Credit: These bindings target the Rust port of upstream
+`json-joy` by streamich.
+- Upstream repository: <https://github.com/streamich/json-joy>
+- Upstream docs: <https://jsonjoy.com/libs/json-joy-js>
+
+This directory contains Python packaging for `json-joy-rs` generated via
+UniFFI.
+
 ## Generate bindings
 
-From repo root:
+From repository root:
 
 ```bash
 bin/generate-bindings.sh python
@@ -14,10 +22,10 @@ Generated files are written to:
 
 ## Package layout
 
-- `src/json_joy_rs`: Python package namespace.
-- `src/json_joy_rs/generated`: UniFFI-generated Python API and loader glue.
+- `src/json_joy_rs`: Python package namespace
+- `src/json_joy_rs/generated`: UniFFI-generated API bindings and loader glue
 
-## Build wheel (placeholder)
+## Build
 
 ```bash
 cd bindings/python

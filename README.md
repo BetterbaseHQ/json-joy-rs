@@ -1,56 +1,64 @@
 # json-joy-rs
 
-Rust-first JSON CRDT implementation with Python bindings.
+Upstream Credit: This repository ports and adapts the upstream `json-joy`
+project by streamich.
+- Upstream repository: <https://github.com/streamich/json-joy>
+- Upstream docs: <https://jsonjoy.com/libs/json-joy-js>
+- Upstream package source mirrored here: `packages/*`
+
+`json-joy-rs` is a Rust-first implementation of core `json-joy` CRDT, patch,
+diff, and codec functionality, plus native bridges for WASM and Python.
+
+## Highlights
+
+- Core CRDT model and patch operations in Rust (`crates/json-joy`)
+- Fixture-driven parity harness against upstream `json-joy@17.67.0`
+- Native platform bridges:
+  - WASM (`crates/json-joy-wasm`)
+  - UniFFI/Python (`crates/json-joy-ffi`, `bindings/python`)
 
 ## Repository layout
 
-- `crates/json-joy`: core Rust library (CRDT engine and upstream package parity target).
-- `crates/json-joy-ffi`: UniFFI bridge crate exported as `cdylib` for other languages.
-- `crates/json-joy-wasm`: coarse-grained WASM bridge crate for core model/patch JS interop.
-- `tools/embedded-uniffi-bindgen`: pinned local bindgen CLI wrapper.
-- `bindings/python`: generated Python package artifacts.
-- `bindings/wasm`: wasm benchmark harness and scripts.
-- `bin/`: helper scripts for generating bindings.
+- `crates/json-joy`: primary core library and parity target
+- `crates/json-joy-wasm`: WASM bridge for core model/patch interop
+- `crates/json-joy-ffi`: UniFFI bridge crate (`cdylib`)
+- `bindings/python`: Python packaging and generated bindings
+- `bindings/wasm`: WASM benchmark and interop harness scripts
+- `tests/compat`: compatibility fixture corpus, manifest, and xfail policy
+- `bin/`: helper scripts (`compat` fixture generation, binding generation)
 
 ## Quick start
 
 ```bash
 make check
+make test
 ```
 
-Generate bindings:
+If running cargo directly, use `mise` for pinned toolchains:
 
 ```bash
-make bindings-python
+mise x -- cargo check
 ```
 
-Build and run the current WASM coarse-API benchmark:
+## Compatibility and parity
 
-```bash
-make wasm-bench
-```
-
-Generate compatibility fixtures from upstream `json-joy@17.67.0`:
+Generate upstream compatibility fixtures:
 
 ```bash
 make compat-fixtures
 ```
 
-Run fixture parity checks against the pinned compatibility corpus:
+Run fixture parity tests:
 
 ```bash
 make parity-fixtures
 ```
 
-Run the live TS<->WASM core differential check (manual only, not in `test-gates`):
+Run live manual TS<->WASM core differential check:
 
 ```bash
 make parity-live
 ```
-
-Note: JS editor ecosystem adapters (Slate/ProseMirror/Quill-specific helpers)
-are intentionally out of scope here. For those integrations, use upstream JS
-`json-joy` directly.
 
 Run both:
 
@@ -58,8 +66,8 @@ Run both:
 make parity
 ```
 
-If you call Rust tooling directly, prefer `mise` to ensure the pinned toolchain:
+## Scope note
 
-```bash
-mise x -- cargo check
-```
+JS editor ecosystem adapter APIs (Slate/ProseMirror/Quill-specific helpers)
+are intentionally out of scope in this Rust/WASM port. For those integrations,
+use upstream JS `json-joy`.
