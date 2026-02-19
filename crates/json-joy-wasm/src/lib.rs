@@ -834,6 +834,7 @@ impl Model {
 
         let bytes = patch.to_binary();
         self.inner.apply_patch(&patch);
+        self.view_cache = None;
         Ok(bytes)
     }
 

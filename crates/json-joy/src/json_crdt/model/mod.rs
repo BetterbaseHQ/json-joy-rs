@@ -92,6 +92,10 @@ impl Model {
     /// Apply a single operation.
     ///
     /// Mirrors `Model.applyOperation` in the upstream TypeScript.
+    ///
+    /// **Does not increment `tick`.**  Callers that need the tick-based cache
+    /// invalidation contract (e.g. the WASM layer) must go through
+    /// [`apply_patch`](Self::apply_patch) instead.
     pub fn apply_operation(&mut self, op: &Op) {
         // Advance the clock by observing this operation's ID + span.
         self.clock.observe(op.id(), op.span());
