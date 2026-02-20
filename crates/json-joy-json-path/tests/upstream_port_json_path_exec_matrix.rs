@@ -49,6 +49,59 @@ fn exec_edge_case_matrix() {
 }
 
 #[test]
+fn exec_index_and_slice_matrix_matches_upstream_examples() {
+    let array = json!(["a", "b", "c", "d", "e", "f", "g"]);
+
+    assert_eq!(eval_values("$[1]", &array), vec![json!("b")]);
+    assert_eq!(eval_values("$[-2]", &array), vec![json!("f")]);
+    assert!(eval_values("$[10]", &array).is_empty());
+    assert!(eval_values("$[-10]", &array).is_empty());
+
+    assert_eq!(eval_values("$[1:3]", &array), vec![json!("b"), json!("c")]);
+    assert_eq!(eval_values("$[5:]", &array), vec![json!("f"), json!("g")]);
+    assert_eq!(
+        eval_values("$[1:5:2]", &array),
+        vec![json!("b"), json!("d")]
+    );
+    assert_eq!(
+        eval_values("$[5:1:-2]", &array),
+        vec![json!("f"), json!("d")]
+    );
+    assert_eq!(
+        eval_values("$[::-1]", &array),
+        vec![
+            json!("g"),
+            json!("f"),
+            json!("e"),
+            json!("d"),
+            json!("c"),
+            json!("b"),
+            json!("a")
+        ]
+    );
+    assert!(eval_values("$[1:5:0]", &array).is_empty());
+    assert!(eval_values("$[1:3]", &json!({"not": "array"})).is_empty());
+}
+
+#[test]
+fn exec_recursive_descent_root_wildcard_matrix() {
+    let data = json!({
+        "type": "Program",
+        "body": [],
+        "sourceType": "module",
+        "range": [0, 1718]
+    });
+    let result = eval_values("$..*", &data);
+    assert_eq!(result.len(), 6);
+    assert!(result.contains(&json!("Program")));
+    assert!(result.contains(&json!([])));
+    assert!(result.contains(&json!("module")));
+    assert!(result.contains(&json!([0, 1718])));
+    assert!(result.contains(&json!(0)));
+    assert!(result.contains(&json!(1718)));
+}
+
+#[test]
 fn exec_real_world_examples_matrix() {
     let jsonpath_dot_com_example = json!({
         "firstName": "John",

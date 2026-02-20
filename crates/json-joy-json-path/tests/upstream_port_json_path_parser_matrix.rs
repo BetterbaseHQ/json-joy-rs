@@ -28,6 +28,38 @@ fn parser_union_selector_matrix() {
     ));
     assert!(matches!(path.segments[0].selectors[1], Selector::Index(5)));
     assert!(matches!(path.segments[0].selectors[2], Selector::Name(_)));
+
+    let path = JsonPathParser::parse("$[*, 0, 'key']").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert_eq!(path.segments[0].selectors.len(), 3);
+    assert!(matches!(path.segments[0].selectors[0], Selector::Wildcard));
+    assert!(matches!(path.segments[0].selectors[1], Selector::Index(0)));
+    assert!(matches!(path.segments[0].selectors[2], Selector::Name(_)));
+
+    let path = JsonPathParser::parse("$[ 0 , 'name' , 2 ]").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert_eq!(path.segments[0].selectors.len(), 3);
+    assert!(matches!(path.segments[0].selectors[0], Selector::Index(0)));
+    assert!(matches!(path.segments[0].selectors[1], Selector::Name(_)));
+    assert!(matches!(path.segments[0].selectors[2], Selector::Index(2)));
+
+    let path = JsonPathParser::parse("$[-1, -2, 0]").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert_eq!(path.segments[0].selectors.len(), 3);
+    assert!(matches!(path.segments[0].selectors[0], Selector::Index(-1)));
+    assert!(matches!(path.segments[0].selectors[1], Selector::Index(-2)));
+    assert!(matches!(path.segments[0].selectors[2], Selector::Index(0)));
+
+    let path = JsonPathParser::parse("$.store['book', 'bicycle'][0, -1, 'title']").unwrap();
+    assert_eq!(path.segments.len(), 3);
+    assert!(matches!(path.segments[0].selectors[0], Selector::Name(_)));
+    assert_eq!(path.segments[1].selectors.len(), 2);
+    assert!(matches!(path.segments[1].selectors[0], Selector::Name(_)));
+    assert!(matches!(path.segments[1].selectors[1], Selector::Name(_)));
+    assert_eq!(path.segments[2].selectors.len(), 3);
+    assert!(matches!(path.segments[2].selectors[0], Selector::Index(0)));
+    assert!(matches!(path.segments[2].selectors[1], Selector::Index(-1)));
+    assert!(matches!(path.segments[2].selectors[2], Selector::Name(_)));
 }
 
 #[test]
@@ -102,6 +134,73 @@ fn parser_logical_filter_matrix() {
         }
         other => panic!("expected logical filter, got {other:?}"),
     }
+}
+
+#[test]
+fn parser_function_and_nested_filter_matrix() {
+    let path = JsonPathParser::parse("$[?length(@.name)]").unwrap();
+    let selector = &path.segments[0].selectors[0];
+    match selector {
+        Selector::Filter(FilterExpression::Function { name, args }) => {
+            assert_eq!(name, "length");
+            assert_eq!(args.len(), 1);
+        }
+        other => panic!("expected function filter, got {other:?}"),
+    }
+
+    let path =
+        JsonPathParser::parse("$[?((@.price < 10 || @.price > 100) && @.category == \"book\")]")
+            .unwrap();
+    let selector = &path.segments[0].selectors[0];
+    match selector {
+        Selector::Filter(FilterExpression::Logical {
+            operator,
+            left,
+            right,
+        }) => {
+            assert_eq!(*operator, LogicalOperator::And);
+            assert!(matches!(left.as_ref(), FilterExpression::Paren(_)));
+            assert!(matches!(
+                right.as_ref(),
+                FilterExpression::Comparison {
+                    operator: ComparisonOperator::Equal,
+                    ..
+                }
+            ));
+        }
+        other => panic!("expected nested logical filter, got {other:?}"),
+    }
+}
+
+#[test]
+fn parser_edge_case_syntax_matrix() {
+    let path = JsonPathParser::parse("$['']").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert!(matches!(
+        &path.segments[0].selectors[0],
+        Selector::Name(name) if name.is_empty()
+    ));
+
+    let path = JsonPathParser::parse("$['key with spaces']").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert!(matches!(
+        &path.segments[0].selectors[0],
+        Selector::Name(name) if name == "key with spaces"
+    ));
+
+    let path = JsonPathParser::parse("$['key\\'with\\'quotes']").unwrap();
+    assert_eq!(path.segments.len(), 1);
+    assert!(matches!(
+        &path.segments[0].selectors[0],
+        Selector::Name(name) if name == "key'with'quotes"
+    ));
+
+    let path = JsonPathParser::parse("$ . store [ 'book' ] [ 0 ] . title ").unwrap();
+    assert_eq!(path.segments.len(), 4);
+    assert!(matches!(path.segments[0].selectors[0], Selector::Name(_)));
+    assert!(matches!(path.segments[1].selectors[0], Selector::Name(_)));
+    assert!(matches!(path.segments[2].selectors[0], Selector::Index(0)));
+    assert!(matches!(path.segments[3].selectors[0], Selector::Name(_)));
 }
 
 #[test]

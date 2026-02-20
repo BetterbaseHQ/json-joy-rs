@@ -67,6 +67,55 @@ fn descendant_name_equivalence_matrix() {
 }
 
 #[test]
+fn descendant_index_across_nested_arrays_matrix() {
+    let data = json!({
+        "store": {
+            "book": [
+                {"title": "Book 1", "price": 10},
+                {"title": "Book 2", "price": 20}
+            ],
+            "bicycle": {"price": 100}
+        },
+        "other": [
+            ["x", "y"],
+            ["z"]
+        ]
+    });
+    let firsts = eval_values("$..[0]", &data);
+    assert!(firsts.contains(&json!({"title": "Book 1", "price": 10})));
+    assert!(firsts.contains(&json!("x")));
+    assert!(firsts.contains(&json!("z")));
+}
+
+#[test]
+fn descendant_includes_deep_containers_and_primitives_matrix() {
+    let data = json!({
+        "a": {
+            "b": {
+                "c": {
+                    "d": "deep"
+                }
+            }
+        }
+    });
+    let values = eval_values("$..*", &data);
+    assert!(values.contains(&json!({"b": {"c": {"d": "deep"}}})));
+    assert!(values.contains(&json!({"c": {"d": "deep"}})));
+    assert!(values.contains(&json!({"d": "deep"})));
+    assert!(values.contains(&json!("deep")));
+}
+
+#[test]
+fn descendant_nonexistent_name_returns_empty_matrix() {
+    let data = json!({
+        "store": {
+            "book": [{"title": "Book 1"}]
+        }
+    });
+    assert!(eval_values("$..nonexistent", &data).is_empty());
+}
+
+#[test]
 fn descendant_codegen_parity_matrix() {
     let data = json!({
         "a": {"b": {"price": 1}},

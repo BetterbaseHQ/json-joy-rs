@@ -58,9 +58,11 @@ impl<'a> JsonPathParser<'a> {
             match self.peek() {
                 Some('.') => {
                     self.advance();
+                    self.skip_whitespace();
                     // Check for .. (recursive descent)
                     if self.peek() == Some('.') {
                         self.advance();
+                        self.skip_whitespace();
                         // This is recursive descent, parse the selector
                         let selector = self.parse_recursive_selector()?;
                         segments.push(PathSegment::new(vec![selector], true));
@@ -92,6 +94,7 @@ impl<'a> JsonPathParser<'a> {
         // - An identifier: ..name
         // - A bracket: ..[...]
         // - A wildcard: ..*
+        self.skip_whitespace();
 
         if self.peek() == Some('*') {
             self.advance();
@@ -473,9 +476,11 @@ impl<'a> JsonPathParser<'a> {
             }
             if self.peek() == Some('.') {
                 self.advance();
+                self.skip_whitespace();
                 // Check for recursive descent (..)
                 if self.peek() == Some('.') {
                     self.advance();
+                    self.skip_whitespace();
                     let selector = self.parse_recursive_selector()?;
                     segments.push(PathSegment::new(vec![selector], true));
                 } else if self.peek() == Some('*') {
