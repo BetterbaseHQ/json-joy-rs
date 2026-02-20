@@ -205,6 +205,26 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_multiple_selectors_in_brackets() {
+        let doc = json!(["a", "b", "c", "d", "e"]);
+        let path = JsonPathParser::parse("$[0, 3]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0], &json!("a"));
+        assert_eq!(results[1], &json!("d"));
+    }
+
+    #[test]
+    fn test_eval_named_selector_union() {
+        let doc = json!({"a": 1, "b": 2, "c": 3});
+        let path = JsonPathParser::parse("$['a', 'c']").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0], &json!(1));
+        assert_eq!(results[1], &json!(3));
+    }
+
+    #[test]
     fn test_eval_empty_result() {
         let doc = json!({"a": 1});
         let path = JsonPathParser::parse("$.missing").unwrap();
@@ -276,6 +296,23 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_recursive_descent_dot_and_bracket_equivalent() {
+        let doc = json!({
+            "store": {
+                "book": [
+                    {"title": "Book 1"},
+                    {"title": "Book 2"}
+                ]
+            }
+        });
+        let dot_path = JsonPathParser::parse("$..title").unwrap();
+        let bracket_path = JsonPathParser::parse("$..['title']").unwrap();
+        let dot_results = JsonPathEval::eval(&dot_path, &doc);
+        let bracket_results = JsonPathEval::eval(&bracket_path, &doc);
+        assert_eq!(dot_results, bracket_results);
+    }
+
+    #[test]
     fn test_parse_quoted_string() {
         let path = JsonPathParser::parse("$['store name']").unwrap();
         assert_eq!(path.segments.len(), 1);
@@ -307,6 +344,18 @@ mod tests {
                 assert_eq!(*operator, ComparisonOperator::Less);
             }
             other => panic!("Expected comparison filter, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_filter_without_outer_parens_logical_and() {
+        let path = JsonPathParser::parse("$[?@.isbn && @.price < 20]").unwrap();
+        let seg = &path.segments[0];
+        match &seg.selectors[0] {
+            Selector::Filter(FilterExpression::Logical { operator, .. }) => {
+                assert_eq!(*operator, LogicalOperator::And);
+            }
+            other => panic!("Expected logical filter, got {:?}", other),
         }
     }
 
