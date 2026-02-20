@@ -51,10 +51,83 @@ impl JsonDecoderDag {
             if let Some(cid) = self.try_read_cid()? {
                 return Ok(PackValue::Str(cid));
             }
-            return self.inner.read_obj();
+            return self.read_obj();
+        }
+        if ch == b'[' {
+            return self.read_arr();
         }
         // Delegate to base decoder for all other types
         self.inner.read_any()
+    }
+
+    fn read_arr(&mut self) -> Result<PackValue, JsonError> {
+        if self.inner.x >= self.inner.data.len() || self.inner.data[self.inner.x] != b'[' {
+            return Err(JsonError::Invalid(self.inner.x));
+        }
+        self.inner.x += 1;
+        let mut arr = Vec::new();
+        let mut first = true;
+        loop {
+            self.inner.skip_whitespace();
+            if self.inner.x >= self.inner.data.len() {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            let ch = self.inner.data[self.inner.x];
+            if ch == b']' {
+                self.inner.x += 1;
+                return Ok(PackValue::Array(arr));
+            }
+            if ch == b',' {
+                self.inner.x += 1;
+            } else if !first {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            self.inner.skip_whitespace();
+            arr.push(self.read_any()?);
+            first = false;
+        }
+    }
+
+    fn read_obj(&mut self) -> Result<PackValue, JsonError> {
+        if self.inner.x >= self.inner.data.len() || self.inner.data[self.inner.x] != b'{' {
+            return Err(JsonError::Invalid(self.inner.x));
+        }
+        self.inner.x += 1;
+        let mut obj = Vec::new();
+        let mut first = true;
+        loop {
+            self.inner.skip_whitespace();
+            if self.inner.x >= self.inner.data.len() {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            let ch = self.inner.data[self.inner.x];
+            if ch == b'}' {
+                self.inner.x += 1;
+                return Ok(PackValue::Object(obj));
+            }
+            if ch == b',' {
+                self.inner.x += 1;
+            } else if !first {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            self.inner.skip_whitespace();
+            if self.inner.x >= self.inner.data.len() || self.inner.data[self.inner.x] != b'"' {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            let key = self.inner.read_key()?;
+            if key == "__proto__" {
+                return Err(JsonError::InvalidKey);
+            }
+            self.inner.skip_whitespace();
+            if self.inner.x >= self.inner.data.len() || self.inner.data[self.inner.x] != b':' {
+                return Err(JsonError::Invalid(self.inner.x));
+            }
+            self.inner.x += 1;
+            self.inner.skip_whitespace();
+            let val = self.read_any()?;
+            obj.push((key, val));
+            first = false;
+        }
     }
 
     /// Try to read `{"/":{"bytes":"<b64>"}}`.

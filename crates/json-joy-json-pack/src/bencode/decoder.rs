@@ -13,15 +13,26 @@ struct Cur<'a> {
 
 impl<'a> Cur<'a> {
     #[inline]
-    fn peek(&self) -> u8 {
-        self.data[self.pos]
+    fn check(&self, n: usize) -> Result<(), BencodeError> {
+        if self.pos + n > self.data.len() {
+            Err(BencodeError::UnexpectedEof)
+        } else {
+            Ok(())
+        }
     }
 
     #[inline]
-    fn u8(&mut self) -> u8 {
+    fn peek(&self) -> Result<u8, BencodeError> {
+        self.check(1)?;
+        Ok(self.data[self.pos])
+    }
+
+    #[inline]
+    fn u8(&mut self) -> Result<u8, BencodeError> {
+        self.check(1)?;
         let v = self.data[self.pos];
         self.pos += 1;
-        v
+        Ok(v)
     }
 }
 
@@ -43,7 +54,7 @@ impl BencodeDecoder {
     }
 
     fn read_any(&self, c: &mut Cur) -> Result<PackValue, BencodeError> {
-        let ch = c.peek();
+        let ch = c.peek()?;
         match ch {
             b'i' => self.read_num(c),
             b'd' => self.read_obj(c),
@@ -71,13 +82,13 @@ impl BencodeDecoder {
 
     /// Read a bencode integer (`i<decimal>e`) as a PackValue.
     fn read_num(&self, c: &mut Cur) -> Result<PackValue, BencodeError> {
-        if c.u8() != b'i' {
+        if c.u8()? != b'i' {
             return Err(BencodeError::InvalidByte(c.pos - 1));
         }
         let mut num_str = String::new();
         let mut i = 0usize;
         loop {
-            let ch = c.u8();
+            let ch = c.u8()?;
             if ch == b'e' {
                 break;
             }
@@ -111,7 +122,7 @@ impl BencodeDecoder {
         let mut len_str = String::new();
         let mut i = 0usize;
         loop {
-            let ch = c.u8();
+            let ch = c.u8()?;
             if ch == b':' {
                 break;
             }
@@ -125,6 +136,7 @@ impl BencodeDecoder {
             }
         }
         let len: usize = len_str.parse().map_err(|_| BencodeError::IntegerOverflow)?;
+        c.check(len)?;
         let buf = c.data[c.pos..c.pos + len].to_vec();
         c.pos += len;
         Ok(buf)
@@ -137,11 +149,11 @@ impl BencodeDecoder {
     }
 
     fn read_arr(&self, c: &mut Cur) -> Result<PackValue, BencodeError> {
-        if c.u8() != b'l' {
+        if c.u8()? != b'l' {
             return Err(BencodeError::InvalidByte(c.pos - 1));
         }
         let mut arr = Vec::new();
-        while c.peek() != b'e' {
+        while c.peek()? != b'e' {
             arr.push(self.read_any(c)?);
         }
         c.pos += 1; // consume 'e'
@@ -149,11 +161,11 @@ impl BencodeDecoder {
     }
 
     fn read_obj(&self, c: &mut Cur) -> Result<PackValue, BencodeError> {
-        if c.u8() != b'd' {
+        if c.u8()? != b'd' {
             return Err(BencodeError::InvalidByte(c.pos - 1));
         }
         let mut obj = Vec::new();
-        while c.peek() != b'e' {
+        while c.peek()? != b'e' {
             let key = self.read_str(c)?;
             if key == "__proto__" {
                 return Err(BencodeError::InvalidKey);
