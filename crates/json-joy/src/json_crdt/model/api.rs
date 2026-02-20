@@ -19,7 +19,6 @@
 
 use serde_json::Value;
 
-use crate::json_crdt::constants::ORIGIN;
 use crate::json_crdt::model::Model;
 use crate::json_crdt::nodes::{
     ArrNode, BinNode, ConNode, CrdtNode, IndexExt, ObjNode, StrNode, ValNode, VecNode,
@@ -374,21 +373,13 @@ impl<'a> ModelApi<'a> {
 
     /// Insert `values` at position `index` in an `arr` node.
     ///
-    /// Each value is turned into a `con` constant node and referenced by the
-    /// array slot. To insert nested objects/arrays/strings, create those nodes
-    /// first and pass their IDs directly via [`arr_ins_ids`].
-    ///
     /// Mirrors `ArrApi.ins()` in the upstream TypeScript.
     pub fn arr_ins(&mut self, arr_id: Ts, index: usize, values: &[Value]) -> Result<(), ApiError> {
         if values.is_empty() {
             return Ok(());
         }
         let after = if index == 0 {
-            // Use ORIGIN as the "before everything" sentinel so the RGA always
-            // prepends the new elements.  Using `arr_id` does not work for
-            // non-empty arrays because the Rga only recognises (sid=0, time=0)
-            // as the prepend anchor.
-            ORIGIN
+            arr_id
         } else {
             let node = match IndexExt::get(&self.model.index, &arr_id) {
                 Some(CrdtNode::Arr(n)) => n,
@@ -399,7 +390,7 @@ impl<'a> ModelApi<'a> {
 
         let value_ids: Vec<Ts> = values
             .iter()
-            .map(|v| self.const_or_json(v))
+            .map(|v| self.json(v))
             .collect::<Result<_, _>>()?;
 
         self.builder.ins_arr(arr_id, after, value_ids);
@@ -416,8 +407,7 @@ impl<'a> ModelApi<'a> {
             return Ok(());
         }
         let after = if index == 0 {
-            // Same fix as arr_ins: use ORIGIN so the RGA prepends correctly.
-            ORIGIN
+            arr_id
         } else {
             let node = match IndexExt::get(&self.model.index, &arr_id) {
                 Some(CrdtNode::Arr(n)) => n,
@@ -475,7 +465,7 @@ impl<'a> ModelApi<'a> {
     ///
     /// Mirrors the root-level `ModelApi.set(json)` call in the upstream.
     pub fn set(&mut self, json: &Value) -> Result<(), ApiError> {
-        let id = self.json(json)?;
+        let id = self.const_or_json(json)?;
         self.builder.root(id);
         self.apply();
         Ok(())
@@ -491,12 +481,19 @@ impl<'a> ModelApi<'a> {
     /// Mirrors `PatchBuilder.constOrJson()` from the upstream TypeScript.
     pub fn const_or_json(&mut self, v: &Value) -> Result<Ts, ApiError> {
         match v {
-            Value::Array(_) | Value::Object(_) => self.json(v),
-            _ => {
+            Value::Null | Value::Bool(_) | Value::Number(_) => {
                 let pv = json_to_pack(v);
                 Ok(self.builder.con_val(pv))
             }
+            _ => self.json(v),
         }
+    }
+
+    fn json_val(&mut self, value: PackValue) -> Ts {
+        let val_id = self.builder.val();
+        let con_id = self.builder.con_val(value);
+        self.builder.set_val(val_id, con_id);
+        val_id
     }
 
     /// Recursively build CRDT nodes from a JSON value.
@@ -506,19 +503,16 @@ impl<'a> ModelApi<'a> {
     /// Mirrors `PatchBuilder.json()` from the upstream TypeScript.
     pub fn json(&mut self, v: &Value) -> Result<Ts, ApiError> {
         match v {
-            Value::Null => Ok(self.builder.con_val(PackValue::Null)),
-            Value::Bool(b) => Ok(self.builder.con_val(PackValue::Bool(*b))),
-            Value::Number(n) => {
-                let pv = if let Some(i) = n.as_i64() {
-                    PackValue::Integer(i)
-                } else if let Some(f) = n.as_f64() {
-                    PackValue::Float(f)
-                } else {
-                    PackValue::Null
-                };
-                Ok(self.builder.con_val(pv))
+            Value::Null => Ok(self.json_val(PackValue::Null)),
+            Value::Bool(b) => Ok(self.json_val(PackValue::Bool(*b))),
+            Value::Number(_) => Ok(self.json_val(json_to_pack(v))),
+            Value::String(s) => {
+                let str_id = self.builder.str_node();
+                if !s.is_empty() {
+                    self.builder.ins_str(str_id, str_id, s.clone());
+                }
+                Ok(str_id)
             }
-            Value::String(s) => Ok(self.builder.con_val(PackValue::Str(s.clone()))),
             Value::Array(items) => {
                 let arr_id = self.builder.arr();
                 if !items.is_empty() {
@@ -536,7 +530,12 @@ impl<'a> ModelApi<'a> {
                     let pairs: Vec<(String, Ts)> = map
                         .iter()
                         .map(|(k, v)| {
-                            let id = self.json(v)?;
+                            let id = match v {
+                                Value::Null | Value::Bool(_) | Value::Number(_) => {
+                                    self.builder.con_val(json_to_pack(v))
+                                }
+                                _ => self.json(v)?,
+                            };
                             Ok((k.clone(), id))
                         })
                         .collect::<Result<_, ApiError>>()?;
@@ -805,6 +804,17 @@ mod tests {
     }
 
     #[test]
+    fn set_root_string_uses_str_node() {
+        let mut model = Model::create();
+        let mut api = ModelApi::new(&mut model);
+        api.set_root(&json!("hello")).unwrap();
+        assert!(matches!(
+            IndexExt::get(&model.index, &model.root.val),
+            Some(CrdtNode::Str(_))
+        ));
+    }
+
+    #[test]
     fn set_root_object() {
         let mut model = Model::create();
         let mut api = ModelApi::new(&mut model);
@@ -830,6 +840,44 @@ mod tests {
         let v = model.view();
         assert_eq!(v["a"][0], json!(1));
         assert_eq!(v["a"][1]["b"], json!(true));
+    }
+
+    #[test]
+    fn set_root_array_wraps_numeric_elements_in_val_nodes() {
+        let mut model = Model::create();
+        let mut api = ModelApi::new(&mut model);
+        api.set_root(&json!([1])).unwrap();
+
+        let arr_id = model.root.val;
+        let elem_id = match IndexExt::get(&model.index, &arr_id) {
+            Some(CrdtNode::Arr(arr)) => arr.get_data_ts(0).expect("missing array element"),
+            _ => panic!("root should be an arr node"),
+        };
+        let child_id = match IndexExt::get(&model.index, &elem_id) {
+            Some(CrdtNode::Val(val)) => val.val,
+            _ => panic!("array primitive should be wrapped in val"),
+        };
+        assert!(matches!(
+            IndexExt::get(&model.index, &child_id),
+            Some(CrdtNode::Con(_))
+        ));
+    }
+
+    #[test]
+    fn set_root_object_keeps_numeric_fields_as_con_nodes() {
+        let mut model = Model::create();
+        let mut api = ModelApi::new(&mut model);
+        api.set_root(&json!({"n": 1})).unwrap();
+
+        let obj_id = model.root.val;
+        let n_id = match IndexExt::get(&model.index, &obj_id) {
+            Some(CrdtNode::Obj(obj)) => obj.keys.get("n").copied().expect("missing n"),
+            _ => panic!("root should be an obj node"),
+        };
+        assert!(matches!(
+            IndexExt::get(&model.index, &n_id),
+            Some(CrdtNode::Con(_))
+        ));
     }
 
     // ── obj editing ─────────────────────────────────────────────────────────
@@ -884,6 +932,29 @@ mod tests {
         let v = model.view();
         assert_eq!(v["a"], json!(1));
         assert_eq!(v["b"], json!(2));
+    }
+
+    #[test]
+    fn obj_set_string_value_uses_str_node() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set_root(&json!({})).unwrap();
+        }
+        let obj_id = model.root.val;
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.obj_set(obj_id, &[("title".to_string(), json!("hello"))])
+                .unwrap();
+        }
+        let title_id = match IndexExt::get(&model.index, &obj_id) {
+            Some(CrdtNode::Obj(obj)) => obj.keys.get("title").copied().expect("missing title"),
+            _ => panic!("root should be an obj node"),
+        };
+        assert!(matches!(
+            IndexExt::get(&model.index, &title_id),
+            Some(CrdtNode::Str(_))
+        ));
     }
 
     #[test]
@@ -1095,6 +1166,30 @@ mod tests {
         }
         let api = ModelApi::new(&mut model);
         assert_eq!(api.arr_len(arr_id), Some(2));
+    }
+
+    #[test]
+    fn arr_ins_string_value_uses_str_node() {
+        let mut model = Model::create();
+        let arr_id = {
+            let mut api = ModelApi::new(&mut model);
+            let id = api.builder.arr();
+            api.builder.root(id);
+            api.apply();
+            id
+        };
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.arr_ins(arr_id, 0, &[json!("hello")]).unwrap();
+        }
+        let elem_id = {
+            let api = ModelApi::new(&mut model);
+            api.arr_get(arr_id, 0).expect("missing array element")
+        };
+        assert!(matches!(
+            IndexExt::get(&model.index, &elem_id),
+            Some(CrdtNode::Str(_))
+        ));
     }
 
     // ── vec editing ─────────────────────────────────────────────────────────

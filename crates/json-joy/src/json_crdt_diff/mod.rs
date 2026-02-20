@@ -184,9 +184,7 @@ impl<'a> JsonCrdtDiff<'a> {
                     }
                 }
             }
-            // Use build_view so arrays and objects get proper CRDT node types
-            // (NewArr/NewObj), not a ConNode(null) from build_con_view.
-            let new_id = self.build_view(dst_val);
+            let new_id = self.build_con_view(dst_val);
             inserts.push((key.clone(), new_id));
         }
 
@@ -206,8 +204,7 @@ impl<'a> JsonCrdtDiff<'a> {
                 return Ok(());
             }
         }
-        // Use build_view so arrays and objects get proper CRDT node types.
-        let new_id = self.build_view(dst);
+        let new_id = self.build_con_view(dst);
         self.builder.set_val(src.id, new_id);
         Ok(())
     }
@@ -322,6 +319,13 @@ impl<'a> JsonCrdtDiff<'a> {
 
     // ── Builders ─────────────────────────────────────────────────────────
 
+    fn build_json_val(&mut self, dst: &Value) -> Ts {
+        let val_id = self.builder.val();
+        let con_id = self.builder.con_val(json_to_pack(dst));
+        self.builder.set_val(val_id, con_id);
+        val_id
+    }
+
     fn build_view(&mut self, dst: &Value) -> Ts {
         match dst {
             Value::String(s) => {
@@ -347,19 +351,28 @@ impl<'a> JsonCrdtDiff<'a> {
                 let obj_id = self.builder.obj();
                 let inserts: Vec<(String, Ts)> = map
                     .iter()
-                    .map(|(k, v)| (k.clone(), self.build_view(v)))
+                    .map(|(k, v)| {
+                        let id = match v {
+                            Value::Null | Value::Bool(_) | Value::Number(_) => self.build_con_view(v),
+                            _ => self.build_view(v),
+                        };
+                        (k.clone(), id)
+                    })
                     .collect();
                 if !inserts.is_empty() {
                     self.builder.ins_obj(obj_id, inserts);
                 }
                 obj_id
             }
-            _ => self.build_con_view(dst),
+            Value::Null | Value::Bool(_) | Value::Number(_) => self.build_json_val(dst),
         }
     }
 
     fn build_con_view(&mut self, dst: &Value) -> Ts {
-        self.builder.con_val(json_to_pack(dst))
+        match dst {
+            Value::Null | Value::Bool(_) | Value::Number(_) => self.builder.con_val(json_to_pack(dst)),
+            _ => self.build_view(dst),
+        }
     }
 }
 
@@ -456,7 +469,7 @@ mod tests {
     use super::*;
     use crate::json_crdt::constants::ORIGIN;
     use crate::json_crdt::model::Model;
-    use crate::json_crdt::nodes::TsKey;
+    use crate::json_crdt::nodes::{CrdtNode, TsKey};
     use crate::json_crdt_patch::clock::ts;
     use crate::json_crdt_patch::operations::{ConValue, Op};
     use serde_json::json;
@@ -632,5 +645,62 @@ mod tests {
         .unwrap();
         model.apply_patch(&patch);
         assert_eq!(model.view(), json!([10, 20]));
+        let elem_id = match model.index.get(&TsKey { sid, time: 1 }) {
+            Some(CrdtNode::Arr(arr)) => arr.get_data_ts(0).expect("missing array element"),
+            _ => panic!("root should be arr"),
+        };
+        let con_id = match model.index.get(&TsKey::from(elem_id)) {
+            Some(CrdtNode::Val(val)) => val.val,
+            _ => panic!("array primitive should be wrapped in val"),
+        };
+        assert!(matches!(
+            model.index.get(&TsKey::from(con_id)),
+            Some(CrdtNode::Con(_))
+        ));
+    }
+
+    #[test]
+    fn diff_obj_replaces_string_with_str_node() {
+        let sid = sid();
+        let mut model = Model::new(sid);
+        model.apply_operation(&Op::NewObj { id: ts(sid, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(sid, 2),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(sid, 3),
+            obj: ts(sid, 1),
+            data: vec![("a".to_string(), ts(sid, 2))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(sid, 4),
+            obj: ORIGIN,
+            val: ts(sid, 1),
+        });
+
+        let src_node = model
+            .index
+            .get(&TsKey { sid, time: 1 })
+            .expect("missing obj node")
+            .clone();
+        let patch = diff_node(
+            &src_node,
+            &model.index,
+            model.clock.sid,
+            model.clock.time,
+            &json!({"a": "hello"}),
+        )
+        .unwrap();
+        model.apply_patch(&patch);
+
+        let a_id = match model.index.get(&TsKey { sid, time: 1 }) {
+            Some(CrdtNode::Obj(obj)) => obj.keys.get("a").copied().expect("missing key"),
+            _ => panic!("root should be obj"),
+        };
+        assert!(matches!(
+            model.index.get(&TsKey::from(a_id)),
+            Some(CrdtNode::Str(_))
+        ));
     }
 }
