@@ -42,6 +42,7 @@ Notes:
 - `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_matrix.rs` covering canonical bookstore queries from upstream `testJsonPathExec`.
 - `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_descendant_matrix.rs` covering descendant-selector behavior and codegen/eval equivalence from upstream `descendant-selector.spec.ts`.
 - `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_exec_matrix.rs` covering root-format errors, combined selectors, and practical edge-case scenarios from upstream `testJsonPathExec`.
+- `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_functions_matrix.rs` covering function extension scenarios (`length`, `count`, `match`, `search`, `value`) and combined logical usage from upstream `testJsonPathExec`.
 - Prefixed crate naming is intentional and documented in `AGENTS.md` package mapping.
 
 ## Explicit non-parity choices currently in tree
@@ -144,6 +145,6 @@ Implication:
 
 ## Recommended next review slices
 
-1. `json-path`: continue porting additional upstream `testJsonPathExec` scenario groups (remaining function/complex logical cases not yet represented in integration matrices) to widen behavioral coverage.
+1. `json-path`: continue porting additional upstream `testJsonPathExec` scenario groups (remaining misc parser/selector/path-shape cases not yet represented in integration matrices) to widen behavioral coverage.
 2. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
 3. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.
