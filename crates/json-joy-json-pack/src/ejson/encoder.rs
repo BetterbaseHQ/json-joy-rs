@@ -309,12 +309,16 @@ impl EjsonEncoder {
             self.write_number_long_wrapper_i64(timestamp_ms);
         } else {
             // Relaxed: ISO string for years 1970-9999, else $numberLong
-            let year = year_from_ms(timestamp_ms);
-            if (1970..=9999).contains(&year) {
-                if let Some(s) = iso {
-                    self.write_str(s);
+            if let Some((year, _, _, _, _, _, _)) = date_parts_from_unix_ms(timestamp_ms) {
+                if (1970..=9999).contains(&year) {
+                    if let Some(s) = iso {
+                        self.write_str(s);
+                    } else if let Some(generated) = iso_string_from_unix_ms(timestamp_ms) {
+                        self.write_str(&generated);
+                    } else {
+                        self.write_number_long_wrapper_i64(timestamp_ms);
+                    }
                 } else {
-                    // Fallback to timestamp
                     self.write_number_long_wrapper_i64(timestamp_ms);
                 }
             } else {
@@ -541,12 +545,40 @@ fn object_id_to_hex(id: &BsonObjectId) -> String {
     format!("{:08x}{:010x}{:06x}", id.timestamp, id.process, id.counter)
 }
 
-/// Estimate the calendar year from a Unix epoch millisecond timestamp.
-/// This is a simplified approximation sufficient for the 1970-9999 range check.
-fn year_from_ms(ms: i64) -> i64 {
-    // ~365.25 days/year * 24h * 60m * 60s * 1000ms
-    const MS_PER_YEAR: i64 = 31_557_600_000;
-    1970 + ms / MS_PER_YEAR
+fn iso_string_from_unix_ms(ms: i64) -> Option<String> {
+    let (year, month, day, hour, minute, second, millis) = date_parts_from_unix_ms(ms)?;
+    if !(1970..=9999).contains(&year) {
+        return None;
+    }
+    Some(format!(
+        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{millis:03}Z"
+    ))
+}
+
+fn date_parts_from_unix_ms(ms: i64) -> Option<(i64, i64, i64, i64, i64, i64, i64)> {
+    let secs = ms.div_euclid(1000);
+    let millis = ms.rem_euclid(1000);
+    let days = secs.div_euclid(86_400);
+    let second_of_day = secs.rem_euclid(86_400);
+    let hour = second_of_day / 3_600;
+    let minute = (second_of_day % 3_600) / 60;
+    let second = second_of_day % 60;
+    let (year, month, day) = civil_from_days(days)?;
+    Some((year, month, day, hour, minute, second, millis))
+}
+
+fn civil_from_days(days: i64) -> Option<(i64, i64, i64)> {
+    let z = days.checked_add(719_468)?;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096).div_euclid(365);
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2).div_euclid(153);
+    let day = doy - (153 * mp + 2).div_euclid(5) + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if month <= 2 { 1 } else { 0 };
+    Some((year, month, day))
 }
 
 /// Simplified decimal128 to string conversion.
