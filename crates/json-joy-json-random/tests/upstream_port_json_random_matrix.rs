@@ -1,3 +1,4 @@
+use json_joy_json_random::examples as ex;
 use json_joy_json_random::number::{int, int64};
 use json_joy_json_random::string::{random_string, Token};
 use json_joy_json_random::structured::templates;
@@ -211,12 +212,88 @@ fn template_json_exercises_additional_template_variants() {
 
 #[test]
 fn examples_generators_are_callable() {
-    let user = json_joy_json_random::examples::gen_user();
+    let user = ex::gen_user();
     assert!(user.is_object());
 
-    let api = json_joy_json_random::examples::gen_api_response();
+    let api = ex::gen_api_response();
     assert!(api.is_object());
 
-    let random = json_joy_json_random::examples::gen_random_example();
+    let random = ex::gen_random_example();
     assert!(random.is_null() || random.is_object() || random.is_array() || random.is_string());
+}
+
+#[test]
+fn examples_template_catalog_matrix() {
+    let object_templates = vec![
+        ex::api_response_detailed(),
+        ex::service_config(),
+        ex::product(),
+        ex::order(),
+        ex::user_token(),
+        ex::user_role(),
+        ex::log_entry(),
+        ex::metric_data(),
+        ex::address(),
+        ex::location(),
+        ex::transaction(),
+        ex::bank_account(),
+        ex::social_post(),
+        ex::social_profile(),
+        ex::sensor_reading(),
+        ex::iot_device(),
+        ex::patient(),
+        ex::medical_record(),
+        ex::student(),
+        ex::course(),
+        ex::grade(),
+        ex::empty_structures(),
+        ex::unicode_text(),
+        ex::large_numbers(),
+        ex::load_test_user(),
+    ];
+    for template in object_templates {
+        let value = TemplateJson::gen(Some(template), None);
+        assert!(value.is_object(), "expected object template");
+    }
+
+    let map_templates = vec![ex::config_map(), ex::permissions(), ex::translations()];
+    for template in map_templates {
+        let value = TemplateJson::gen(Some(template), None);
+        assert!(value.is_object(), "expected map/object template");
+    }
+
+    let recursive_templates = vec![ex::tree(), ex::comment()];
+    for template in recursive_templates {
+        let value = TemplateJson::gen(Some(template), None);
+        assert!(value.is_object(), "expected recursive object template");
+    }
+
+    let coords = TemplateJson::gen(Some(ex::coordinates()), None);
+    assert!(coords.is_array());
+    assert_eq!(coords.as_array().expect("coordinates array").len(), 3);
+    assert_eq!(coords[2], Value::String("WGS84".to_string()));
+
+    let perf = TemplateJson::gen(Some(ex::performance_test()), None);
+    assert!(perf.is_array());
+    assert_eq!(perf.as_array().expect("performance array").len(), 100);
+
+    let mixed = TemplateJson::gen(Some(ex::mixed_types()), None);
+    assert!(
+        mixed.is_string()
+            || mixed.is_number()
+            || mixed.is_boolean()
+            || mixed.is_null()
+            || mixed.is_array()
+            || mixed.is_object()
+    );
+
+    let any = TemplateJson::gen(Some(ex::all_examples()), None);
+    assert!(
+        any.is_null()
+            || any.is_object()
+            || any.is_array()
+            || any.is_string()
+            || any.is_number()
+            || any.is_boolean()
+    );
 }
