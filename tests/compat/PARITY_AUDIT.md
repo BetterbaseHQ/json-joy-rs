@@ -53,8 +53,6 @@ Current xfail scenarios:
 - `model_canonical_encode`
 - `model_lifecycle_workflow`
 - `lessdb_model_manager`
-- `codec_indexed_binary_parity`
-- `codec_sidecar_binary_parity`
 - `model_decode_error`
 - `patch_decode_error`
 
@@ -68,6 +66,15 @@ Notes:
   - `clock_observed.patch_ids` is now emitted from patch IDs.
   - root `bin` view is normalized to JS `Uint8Array` JSON shape (`{"0":...}`).
 - `model_diff_parity` wildcard xfail was removed; scenario passes unmasked.
+- `codec_indexed_binary_parity` wildcard xfail was removed after indexed codec parity alignment:
+  - indexed timestamp IDs now encode/decode absolute `time` (upstream), not relative deltas.
+  - object field encoding preserves insertion order (upstream `Map.forEach`), not sorted order.
+  - CBOR string and scalar value encoding now mirrors upstream encoder behavior.
+  - indexed CBOR decoder now handles float32 (`0xfa`) as well as float64 (`0xfb`).
+- `codec_sidecar_binary_parity` wildcard xfail was removed after sidecar binary view/meta parity alignment:
+  - sidecar object encoding now writes interleaved key/value CBOR pairs (upstream order), with decoder matching that layout.
+  - sidecar view-value encoding now mirrors upstream CBOR encoder behavior for scalar values.
+  - sidecar CBOR decoder now handles float32 (`0xfa`) in addition to float64 (`0xfb`).
 - Slice A closures completed in this pass:
   - `patch_schema_parity` xfail removed after aligning schema fixture replay root wiring plus binary string/header parity.
   - `patch_canonical_encode` xfail removed after canonical patch encoder parity fixes.

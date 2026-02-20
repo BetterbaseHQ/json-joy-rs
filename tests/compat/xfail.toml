@@ -20,20 +20,6 @@ source_file = "crates/json-joy/src/json_crdt/log.rs"
 issue = "parity-lessdb-model-manager"
 
 [[xfail]]
-scenario = "codec_indexed_binary_parity"
-name = "*"
-reason = "Indexed binary codec roundtrip parity has known mismatches against upstream fixture corpus."
-source_file = "crates/json-joy/src/json_crdt/codec/indexed/binary.rs"
-issue = "parity-codec-indexed-binary"
-
-[[xfail]]
-scenario = "codec_sidecar_binary_parity"
-name = "*"
-reason = "Sidecar binary codec parity has known mismatches against upstream fixture corpus."
-source_file = "crates/json-joy/src/json_crdt/codec/sidecar/binary.rs"
-issue = "parity-codec-sidecar-binary"
-
-[[xfail]]
 scenario = "model_decode_error"
 name = "*"
 reason = "Model decode error classification differs from upstream and still includes panicking paths."

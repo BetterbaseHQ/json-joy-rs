@@ -155,12 +155,9 @@ fn encode_val(w: &mut CrdtWriter, node: &ValNode, table: &ClockTable) {
 
 fn encode_obj(w: &mut CrdtWriter, node: &ObjNode, table: &ClockTable) {
     write_tl(w, MAJOR_OBJ, node.keys.len());
-    let mut sorted_keys: Vec<&String> = node.keys.keys().collect();
-    sorted_keys.sort();
-    for key in &sorted_keys {
-        let child_ts = node.keys[key.as_str()];
+    for (key, child_ts) in &node.keys {
         write_cbor_str(w, key);
-        write_ts_indexed(w, child_ts, table);
+        write_ts_indexed(w, *child_ts, table);
     }
 }
 
@@ -600,6 +597,12 @@ fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, CborError> {
             21 => Ok(PackValue::Bool(true)),
             22 => Ok(PackValue::Null),
             23 => Ok(PackValue::Undefined),
+            26 => {
+                let b = r.buf(4);
+                Ok(PackValue::Float(
+                    f32::from_be_bytes([b[0], b[1], b[2], b[3]]) as f64,
+                ))
+            }
             27 => {
                 let b = r.buf(8);
                 Ok(PackValue::Float(f64::from_be_bytes([

@@ -27,6 +27,7 @@ use crate::json_crdt_patch::codec::clock::{ClockDecoder, ClockEncoder};
 use crate::json_crdt_patch::enums::JsonCrdtDataType;
 use crate::json_crdt_patch::operations::ConValue;
 use crate::json_crdt_patch::util::binary::{CrdtReader, CrdtWriter};
+use json_joy_json_pack::CborEncoder;
 use json_joy_json_pack::PackValue;
 
 const MAJOR_CON: u8 = (JsonCrdtDataType::Con as u8) << 5;
@@ -183,9 +184,6 @@ fn encode_obj(
     write_cbor_map_hdr(view_w, n);
     for key in &sorted_keys {
         write_cbor_str(view_w, key);
-    }
-
-    for key in &sorted_keys {
         let child_ts = node.keys[key.as_str()];
         if let Some(child) = model.index.get(&TsKey::from(child_ts)) {
             encode_node(model, child, view_w, meta_w, enc);
@@ -316,96 +314,51 @@ fn write_cbor_null(w: &mut CrdtWriter) {
 }
 
 fn write_cbor_value(w: &mut CrdtWriter, pv: &PackValue) {
-    use json_joy_json_pack::PackValue as PV;
-    match pv {
-        PV::Null => w.u8(0xF6),
-        PV::Undefined => w.u8(0xF7),
-        PV::Bool(true) => w.u8(0xF5),
-        PV::Bool(false) => w.u8(0xF4),
-        PV::Integer(n) => {
-            if *n >= 0 {
-                write_cbor_uint(w, *n as u64);
-            } else {
-                write_cbor_neg(w, (-1 - n) as u64);
-            }
-        }
-        PV::Float(f) => {
-            w.u8(0xFB);
-            w.buf(&f.to_be_bytes());
-        }
-        PV::Str(s) => write_cbor_str(w, s),
-        PV::Bytes(b) => write_cbor_bin(w, b),
-        PV::Array(arr) => {
-            write_cbor_arr_hdr(w, arr.len());
-            for item in arr {
-                write_cbor_value(w, item);
-            }
-        }
-        PV::Object(map) => {
-            write_cbor_map_hdr(w, map.len());
-            for (k, v) in map {
-                write_cbor_str(w, k);
-                write_cbor_value(w, v);
-            }
-        }
-        PV::UInteger(n) => write_cbor_uint(w, *n),
-        PV::BigInt(n) => {
-            if *n >= 0 {
-                write_cbor_uint(w, *n as u64);
-            } else {
-                write_cbor_neg(w, (-1 - n) as u64);
-            }
-        }
-        PV::Extension(_) | PV::Blob(_) => w.u8(0xF6),
-    }
-}
-
-fn write_cbor_uint(w: &mut CrdtWriter, n: u64) {
-    if n <= 23 {
-        w.u8(n as u8);
-    } else if n <= 0xFF {
-        w.u8(0x18);
-        w.u8(n as u8);
-    } else if n <= 0xFFFF {
-        w.u8(0x19);
-        w.buf(&(n as u16).to_be_bytes());
-    } else if n <= 0xFFFF_FFFF {
-        w.u8(0x1A);
-        w.buf(&(n as u32).to_be_bytes());
-    } else {
-        w.u8(0x1B);
-        w.buf(&n.to_be_bytes());
-    }
-}
-
-fn write_cbor_neg(w: &mut CrdtWriter, n: u64) {
-    if n <= 23 {
-        w.u8(0x20 | n as u8);
-    } else if n <= 0xFF {
-        w.u8(0x38);
-        w.u8(n as u8);
-    } else {
-        w.u8(0x39);
-        w.buf(&(n as u16).to_be_bytes());
-    }
+    let mut enc = CborEncoder::new();
+    let bytes = enc.encode(pv);
+    w.buf(&bytes);
 }
 
 fn write_cbor_str(w: &mut CrdtWriter, s: &str) {
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    if len <= 23 {
-        w.u8(0x60 | len as u8);
-    } else if len <= 0xFF {
-        w.u8(0x78);
-        w.u8(len as u8);
-    } else if len <= 0xFFFF {
-        w.u8(0x79);
-        w.buf(&(len as u16).to_be_bytes());
+    // Mirrors upstream CborEncoderFast.writeStr behavior.
+    let logical_len = s.encode_utf16().count();
+    let max_size = logical_len * 4;
+    w.ensure_capacity(5 + s.len());
+
+    let length_offset: usize;
+    if max_size <= 23 {
+        length_offset = w.inner.x;
+        w.inner.x += 1;
+    } else if max_size <= 0xFF {
+        w.inner.uint8[w.inner.x] = 0x78;
+        w.inner.x += 1;
+        length_offset = w.inner.x;
+        w.inner.x += 1;
+    } else if max_size <= 0xFFFF {
+        w.inner.uint8[w.inner.x] = 0x79;
+        w.inner.x += 1;
+        length_offset = w.inner.x;
+        w.inner.x += 2;
     } else {
-        w.u8(0x7A);
-        w.buf(&(len as u32).to_be_bytes());
+        w.inner.uint8[w.inner.x] = 0x7a;
+        w.inner.x += 1;
+        length_offset = w.inner.x;
+        w.inner.x += 4;
     }
-    w.buf(bytes);
+
+    let bytes_written = w.utf8(s);
+    if max_size <= 23 {
+        w.inner.uint8[length_offset] = 0x60 | bytes_written as u8;
+    } else if max_size <= 0xFF {
+        w.inner.uint8[length_offset] = bytes_written as u8;
+    } else if max_size <= 0xFFFF {
+        let b = (bytes_written as u16).to_be_bytes();
+        w.inner.uint8[length_offset] = b[0];
+        w.inner.uint8[length_offset + 1] = b[1];
+    } else {
+        let b = (bytes_written as u32).to_be_bytes();
+        w.inner.uint8[length_offset..length_offset + 4].copy_from_slice(&b);
+    }
 }
 
 fn write_cbor_bin(w: &mut CrdtWriter, b: &[u8]) {
@@ -611,16 +564,12 @@ fn decode_obj(
     cd: &ClockDecoder,
 ) -> Result<Ts, DecodeError> {
     use crate::json_crdt::nodes::ObjNode;
-    // Read view: CBOR map header + key strings (sorted)
+    // Read view map and decode value nodes in key/value order.
     skip_cbor_map_header(view_r)?;
-    let mut keys = Vec::new();
-    for _ in 0..length {
-        let k = read_cbor_str_sidecar(view_r)?;
-        keys.push(k);
-    }
 
     let mut node = ObjNode::new(id);
-    for key in keys {
+    for _ in 0..length {
+        let key = read_cbor_str_sidecar(view_r)?;
         let child_id = decode_node(view_r, meta_r, model, cd)?;
         node.keys.insert(key, child_id);
     }
@@ -809,6 +758,12 @@ fn read_cbor_value_sidecar(r: &mut CrdtReader) -> Result<PackValue, DecodeError>
             21 => Ok(PackValue::Bool(true)),
             22 => Ok(PackValue::Null),
             23 => Ok(PackValue::Undefined),
+            26 => {
+                let b = r.buf(4);
+                Ok(PackValue::Float(
+                    f32::from_be_bytes([b[0], b[1], b[2], b[3]]) as f64,
+                ))
+            }
             27 => {
                 let b = r.buf(8);
                 Ok(PackValue::Float(f64::from_be_bytes([
