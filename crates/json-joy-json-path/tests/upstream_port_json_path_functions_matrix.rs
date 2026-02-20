@@ -68,10 +68,7 @@ fn function_length_and_count_matrix() {
         eval_values("$[?length(@.info.contacts) == 2]", &data).len(),
         1
     );
-    assert_eq!(
-        eval_values("$[?length(@.store.book) >= 4]", &data).len(),
-        1
-    );
+    assert_eq!(eval_values("$[?length(@.store.book) >= 4]", &data).len(), 1);
     assert_eq!(
         eval_values("$[?length(@.nonexistent) == 0]", &data).len(),
         0
@@ -81,7 +78,11 @@ fn function_length_and_count_matrix() {
         0
     );
     assert_eq!(
-        eval_values("$[?length(@.text) == 13]", &json!({"text": "Hello 🌍 World"})).len(),
+        eval_values(
+            "$[?length(@.text) == 13]",
+            &json!({"text": "Hello 🌍 World"})
+        )
+        .len(),
         1
     );
 
@@ -115,7 +116,7 @@ fn function_match_and_search_matrix() {
     );
     assert_eq!(
         eval_values(
-            "$.store.book[?match(@.isbn, \"[0-9]+-[0-9]+-[0-9]+-[0-9]+\")]", 
+            "$.store.book[?match(@.isbn, \"[0-9]+-[0-9]+-[0-9]+-[0-9]+\")]",
             &data
         )
         .len(),
