@@ -112,6 +112,22 @@ impl RespEncoder {
         self.write_rn();
     }
 
+    pub fn write_null_str(&mut self) {
+        // $-1\r\n
+        self.writer.u8u32(
+            Resp::STR_BULK,
+            (b'-' as u32) << 24 | (b'1' as u32) << 16 | Resp::RN as u32,
+        );
+    }
+
+    pub fn write_null_arr(&mut self) {
+        // *-1\r\n
+        self.writer.u8u32(
+            Resp::ARR,
+            (b'-' as u32) << 24 | (b'1' as u32) << 16 | Resp::RN as u32,
+        );
+    }
+
     pub fn write_boolean(&mut self, b: bool) {
         // #t\r\n or #f\r\n — 4 bytes packed as a u32 big-endian
         let val: u32 = if b {
@@ -203,6 +219,22 @@ impl RespEncoder {
         self.write_rn();
     }
 
+    pub fn write_ascii_str(&mut self, s: &str) {
+        if !s.contains('\r') && !s.contains('\n') {
+            self.write_simple_str(s);
+        } else {
+            self.write_bulk_str(s);
+        }
+    }
+
+    pub fn write_err(&mut self, s: &str) {
+        if s.len() < 64 && !s.contains('\r') && !s.contains('\n') {
+            self.write_simple_err(s);
+        } else {
+            self.write_bulk_err(s);
+        }
+    }
+
     pub fn write_simple_err(&mut self, s: &str) {
         self.writer.u8(Resp::ERR_SIMPLE); // -
         self.writer.utf8(s);
@@ -273,6 +305,16 @@ impl RespEncoder {
         }
     }
 
+    pub fn write_set(&mut self, arr: &[PackValue]) {
+        let length = arr.len();
+        self.writer.u8(Resp::SET); // ~
+        self.write_length(length);
+        self.write_rn();
+        for item in arr {
+            self.write_any(item);
+        }
+    }
+
     // -------------------------------------------------------- Command encoding
 
     /// Encodes a Redis command (RESP2-style inline array of bulk strings).
@@ -318,6 +360,10 @@ impl RespEncoder {
             .u32((Resp::ARR as u32) << 24 | (b'?' as u32) << 16 | Resp::RN as u32);
     }
 
+    pub fn write_arr_chunk(&mut self, item: &PackValue) {
+        self.write_any(item);
+    }
+
     pub fn write_end_arr(&mut self) {
         // .\r\n
         self.writer.u8(b'.');
@@ -330,9 +376,32 @@ impl RespEncoder {
             .u32((Resp::OBJ as u32) << 24 | (b'?' as u32) << 16 | Resp::RN as u32);
     }
 
+    pub fn write_obj_chunk(&mut self, key: &str, value: &PackValue) {
+        self.write_str(key);
+        self.write_any(value);
+    }
+
     pub fn write_end_obj(&mut self) {
         // .\r\n
         self.writer.u8(b'.');
         self.write_rn();
+    }
+
+    pub fn write_start_bin(&mut self) {
+        // $?\r\n
+        self.write_start_str();
+    }
+
+    pub fn write_bin_chunk(&mut self, buf: &[u8]) {
+        self.writer.u8(b';');
+        self.write_length(buf.len());
+        self.write_rn();
+        self.writer.buf(buf);
+        self.write_rn();
+    }
+
+    pub fn write_end_bin(&mut self) {
+        // ;0\r\n
+        self.write_end_str();
     }
 }

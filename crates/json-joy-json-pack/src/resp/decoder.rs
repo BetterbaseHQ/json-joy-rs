@@ -49,11 +49,27 @@ impl RespDecoder {
         }
     }
 
+    /// Resets decoder state to read from `data`.
+    pub fn reset(&mut self, data: &[u8]) {
+        self.data.clear();
+        self.data.extend_from_slice(data);
+        self.pos = 0;
+    }
+
+    /// Returns how many bytes were consumed from the current input.
+    pub fn position(&self) -> usize {
+        self.pos
+    }
+
     /// Decodes a RESP3 value from `data`.
     pub fn decode(&mut self, data: &[u8]) -> Result<PackValue, RespDecodeError> {
-        self.data = data.to_vec();
-        self.pos = 0;
+        self.reset(data);
         self.read_any()
+    }
+
+    /// Alias for [`Self::decode`] to match upstream naming.
+    pub fn read(&mut self, data: &[u8]) -> Result<PackValue, RespDecodeError> {
+        self.decode(data)
     }
 
     // ---------------------------------------------------------------- helpers
@@ -164,6 +180,52 @@ impl RespDecoder {
         }
     }
 
+    /// Decodes a RESP command frame (`*<n>\r\n$<len>\r\n...`) where each argument
+    /// is a bulk string. The command name is uppercased, and all entries are
+    /// returned as raw bytes.
+    pub fn read_cmd(&mut self) -> Result<Vec<Vec<u8>>, RespDecodeError> {
+        if self.u8()? != Resp::ARR {
+            return Err(RespDecodeError::InvalidCommand);
+        }
+        if self.peek()? == Resp::MINUS {
+            return Err(RespDecodeError::InvalidCommand);
+        }
+        let len = self.read_length()?;
+        if len == 0 {
+            return Err(RespDecodeError::InvalidCommand);
+        }
+
+        let prior_try_utf8 = self.try_utf8;
+        let cmd = self.read_ascii_bulk_string()?.to_uppercase().into_bytes();
+        let mut args = Vec::with_capacity(len);
+        args.push(cmd);
+
+        self.try_utf8 = false;
+        for _ in 1..len {
+            if self.u8()? != Resp::STR_BULK {
+                self.try_utf8 = prior_try_utf8;
+                return Err(RespDecodeError::InvalidCommand);
+            }
+            let decoded = self.read_str_bulk();
+            let arg = match decoded {
+                Ok(PackValue::Bytes(bytes)) => bytes,
+                Ok(PackValue::Str(s)) => s.into_bytes(),
+                Ok(_) => {
+                    self.try_utf8 = prior_try_utf8;
+                    return Err(RespDecodeError::InvalidCommand);
+                }
+                Err(err) => {
+                    self.try_utf8 = prior_try_utf8;
+                    return Err(err);
+                }
+            };
+            args.push(arg);
+        }
+
+        self.try_utf8 = prior_try_utf8;
+        Ok(args)
+    }
+
     fn read_bool(&mut self) -> Result<PackValue, RespDecodeError> {
         let c = self.u8()?;
         self.skip(2)?; // \r\n
@@ -265,6 +327,16 @@ impl RespDecoder {
             }
         }
         Ok(PackValue::Bytes(bytes))
+    }
+
+    fn read_ascii_bulk_string(&mut self) -> Result<String, RespDecodeError> {
+        if self.u8()? != Resp::STR_BULK {
+            return Err(RespDecodeError::InvalidCommand);
+        }
+        let length = self.read_length()?;
+        let bytes = self.buf(length)?;
+        self.skip(2)?; // \r\n
+        String::from_utf8(bytes).map_err(|_| RespDecodeError::InvalidUtf8)
     }
 
     fn read_str_verbatim(&mut self) -> Result<PackValue, RespDecodeError> {
@@ -369,6 +441,13 @@ impl RespDecoder {
             t if t == Resp::ATTR => self.skip_obj(),
             other => Err(RespDecodeError::UnknownType(other)),
         }
+    }
+
+    pub fn skip_n(&mut self, n: usize) -> Result<(), RespDecodeError> {
+        for _ in 0..n {
+            self.skip_any()?;
+        }
+        Ok(())
     }
 
     fn skip_line(&mut self) -> Result<(), RespDecodeError> {

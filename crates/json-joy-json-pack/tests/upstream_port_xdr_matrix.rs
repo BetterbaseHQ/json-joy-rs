@@ -317,7 +317,10 @@ fn xdr_schema_quadruple_is_not_implemented_matrix() {
     let mut schema_decoder = XdrSchemaDecoder::new();
 
     let err = schema_encoder
-        .encode(&XdrValue::Double(std::f64::consts::PI), &XdrSchema::Quadruple)
+        .encode(
+            &XdrValue::Double(std::f64::consts::PI),
+            &XdrSchema::Quadruple,
+        )
         .expect_err("quadruple encode should be unsupported");
     assert_eq!(err, XdrEncodeError::UnsupportedType("quadruple"));
 
