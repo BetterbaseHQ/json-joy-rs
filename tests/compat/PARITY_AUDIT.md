@@ -38,7 +38,7 @@ It is a review checkpoint artifact and should be updated as gaps are closed.
 Notes:
 
 - `json-pointer` local `src` count is +3 vs upstream because Rust requires crate/module scaffolding files (`lib.rs`, `codegen/mod.rs`, `findByPointer/mod.rs`) that have no direct TS counterparts.
-- `json-path` now includes explicit `codegen`, `util`, and `value` modules mapped from upstream package families; remaining differences are primarily parser/evaluator decomposition details.
+- `json-path` now includes explicit `codegen`, `util`, and `value` modules mapped from upstream package families; key evaluator semantics from upstream test families are aligned (function filters, no-paren filters, reverse/negative slices, and root-object filters), with remaining differences primarily around broader test-family coverage and Rust decomposition.
 - Prefixed crate naming is intentional and documented in `AGENTS.md` package mapping.
 
 ## Explicit non-parity choices currently in tree
@@ -141,6 +141,6 @@ Implication:
 
 ## Recommended next review slices
 
-1. `json-path`: close remaining evaluator/function semantics gaps (e.g., full function behavior parity for `match/search/value/count/length` in filter contexts).
+1. `json-path`: port additional upstream `__tests__` families (especially `testJsonPathExec` and `descendant-selector`) into Rust parity matrices to widen behavioral coverage.
 2. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
 3. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.

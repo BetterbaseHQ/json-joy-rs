@@ -143,6 +143,36 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_slice_negative_step() {
+        let doc = json!(["a", "b", "c", "d", "e", "f", "g"]);
+        let path = JsonPathParser::parse("$[5:1:-2]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0], &json!("f"));
+        assert_eq!(results[1], &json!("d"));
+    }
+
+    #[test]
+    fn test_eval_slice_reverse() {
+        let doc = json!(["a", "b", "c", "d"]);
+        let path = JsonPathParser::parse("$[::-1]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0], &json!("d"));
+        assert_eq!(results[1], &json!("c"));
+        assert_eq!(results[2], &json!("b"));
+        assert_eq!(results[3], &json!("a"));
+    }
+
+    #[test]
+    fn test_eval_slice_zero_step_returns_empty() {
+        let doc = json!(["a", "b", "c", "d"]);
+        let path = JsonPathParser::parse("$[1:3:0]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert!(results.is_empty());
+    }
+
+    #[test]
     fn test_eval_empty_result() {
         let doc = json!({"a": 1});
         let path = JsonPathParser::parse("$.missing").unwrap();
@@ -185,6 +215,43 @@ mod tests {
         match &seg.selectors[0] {
             Selector::Filter(FilterExpression::Existence { path: inner }) => {
                 assert_eq!(inner.segments.len(), 1);
+            }
+            other => panic!("Expected existence filter, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_filter_without_outer_parens() {
+        let path = JsonPathParser::parse("$[?@.price < 10]").unwrap();
+        let seg = &path.segments[0];
+        match &seg.selectors[0] {
+            Selector::Filter(FilterExpression::Comparison { operator, .. }) => {
+                assert_eq!(*operator, ComparisonOperator::Less);
+            }
+            other => panic!("Expected comparison filter, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_filter_function_without_outer_parens() {
+        let path = JsonPathParser::parse("$[?length(@.name)]").unwrap();
+        let seg = &path.segments[0];
+        match &seg.selectors[0] {
+            Selector::Filter(FilterExpression::Function { name, args }) => {
+                assert_eq!(name, "length");
+                assert_eq!(args.len(), 1);
+            }
+            other => panic!("Expected function filter, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_filter_literal_primary_defaults_to_existence() {
+        let path = JsonPathParser::parse("$[?true]").unwrap();
+        let seg = &path.segments[0];
+        match &seg.selectors[0] {
+            Selector::Filter(FilterExpression::Existence { path }) => {
+                assert!(path.segments.is_empty());
             }
             other => panic!("Expected existence filter, got {:?}", other),
         }
@@ -411,6 +478,48 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_filter_without_outer_parens() {
+        let doc = json!({
+            "store": {
+                "book": [
+                    {"title": "A", "price": 12.0},
+                    {"title": "B", "price": 8.0}
+                ]
+            }
+        });
+        let path = JsonPathParser::parse("$.store.book[?@.price < 10]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0]["title"], json!("B"));
+    }
+
+    #[test]
+    fn test_eval_root_object_filter_targets_object() {
+        let doc = json!({
+            "kind": "book",
+            "price": 10
+        });
+        let path = JsonPathParser::parse("$[?@.kind == 'book']").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0]["kind"], json!("book"));
+    }
+
+    #[test]
+    fn test_eval_filter_function_without_outer_parens() {
+        let doc = json!([
+            {"name": ""},
+            {"name": "Alice"},
+            {"name": "Bob"}
+        ]);
+        let path = JsonPathParser::parse("$[?length(@.name)]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0]["name"], json!("Alice"));
+        assert_eq!(results[1]["name"], json!("Bob"));
+    }
+
+    #[test]
     fn test_eval_filter_ne() {
         let doc = json!([
             {"status": "active"},
@@ -532,11 +641,13 @@ mod tests {
     fn test_eval_filter_object_members() {
         // Filter also works on object values
         let doc = json!({
-            "alice": {"age": 30},
-            "bob": {"age": 25},
-            "carol": {"age": 35}
+            "users": {
+                "alice": {"age": 30},
+                "bob": {"age": 25},
+                "carol": {"age": 35}
+            }
         });
-        let path = JsonPathParser::parse("$[?(@.age > 28)]").unwrap();
+        let path = JsonPathParser::parse("$.users[?(@.age > 28)]").unwrap();
         let results = JsonPathEval::eval(&path, &doc);
         assert_eq!(results.len(), 2);
     }
@@ -594,5 +705,70 @@ mod tests {
         );
         assert_eq!(node.pointer(), "/a/0/b~1c");
         assert_eq!(node.json_path(), "$['a'][0]['b/c']");
+    }
+
+    #[test]
+    fn test_eval_filter_length_function() {
+        let doc = json!([
+            {"name": "Al"},
+            {"name": "Alice"},
+            {"name": "Bob"},
+            {"name": "Charlie"}
+        ]);
+        let path = JsonPathParser::parse("$[?(length(@.name) >= 5)]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0]["name"], json!("Alice"));
+        assert_eq!(results[1]["name"], json!("Charlie"));
+    }
+
+    #[test]
+    fn test_eval_filter_count_function() {
+        let doc = json!([
+            {"tags": ["a"]},
+            {"tags": ["a", "b"]},
+            {"tags": ["a", "b", "c"]}
+        ]);
+        let path = JsonPathParser::parse("$[?(count(@.tags[*]) >= 2)]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_eval_filter_value_function() {
+        let doc = json!([
+            {"n": 1},
+            {"n": 2},
+            {"n": 3}
+        ]);
+        let path = JsonPathParser::parse("$[?(value(@.n) == 2)]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0]["n"], json!(2));
+    }
+
+    #[test]
+    fn test_eval_filter_match_function() {
+        let doc = json!([
+            {"name": "Alice"},
+            {"name": "Alicia"},
+            {"name": "Bob"}
+        ]);
+        let path = JsonPathParser::parse(r#"$[?(match(@.name, "Alic.*"))]"#).unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_eval_filter_search_function() {
+        let doc = json!([
+            {"name": "Alice"},
+            {"name": "Bob"},
+            {"name": "Liam"}
+        ]);
+        let path = JsonPathParser::parse(r#"$[?(search(@.name, "li"))]"#).unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0]["name"], json!("Alice"));
     }
 }

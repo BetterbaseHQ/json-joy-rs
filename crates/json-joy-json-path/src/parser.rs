@@ -148,9 +148,17 @@ impl<'a> JsonPathParser<'a> {
             Some('?') => {
                 self.advance();
                 self.skip_whitespace();
-                self.expect('(')?;
+                let has_parens = if self.peek() == Some('(') {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
                 let expr = self.parse_filter_expression()?;
-                self.expect(')')?;
+                if has_parens {
+                    self.skip_whitespace();
+                    self.expect(')')?;
+                }
                 Ok(Selector::Filter(expr))
             }
             _ => Err(ParseError::InvalidSelector),
@@ -352,7 +360,11 @@ impl<'a> JsonPathParser<'a> {
                 name: name.clone(),
                 args: args.clone(),
             }),
-            _ => Err(ParseError::InvalidSelector),
+            // Match upstream parser behavior: non-path primaries in test position
+            // are treated as a current-node existence test.
+            _ => Ok(FilterExpression::Existence {
+                path: JSONPath::new(vec![]),
+            }),
         }
     }
 

@@ -425,6 +425,7 @@ dependencies = [
 name = "json-joy-json-path"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "serde_json",
  "thiserror",
 ]
