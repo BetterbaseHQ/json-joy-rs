@@ -69,8 +69,20 @@ fn function_length_and_count_matrix() {
         1
     );
     assert_eq!(
+        eval_values("$[?length(@.store.book) >= 4]", &data).len(),
+        1
+    );
+    assert_eq!(
         eval_values("$[?length(@.nonexistent) == 0]", &data).len(),
         0
+    );
+    assert_eq!(
+        eval_values("$[?length(@.store.bicycle.price) == 0]", &data).len(),
+        0
+    );
+    assert_eq!(
+        eval_values("$[?length(@.text) == 13]", &json!({"text": "Hello 🌍 World"})).len(),
+        1
     );
 
     assert_eq!(
@@ -79,6 +91,11 @@ fn function_length_and_count_matrix() {
     );
     assert_eq!(
         eval_values("$[?count(@.store.book[?@.isbn]) == 2]", &data).len(),
+        1
+    );
+    assert_eq!(eval_values("$[?count(@..*) > 20]", &data).len(), 1);
+    assert_eq!(
+        eval_values("$[?count(@.nonexistent[*]) == 0]", &data).len(),
         1
     );
     assert_eq!(eval_values("$[?count(@..price) == 5]", &data).len(), 1);
@@ -97,6 +114,26 @@ fn function_match_and_search_matrix() {
         1
     );
     assert_eq!(
+        eval_values(
+            "$.store.book[?match(@.isbn, \"[0-9]+-[0-9]+-[0-9]+-[0-9]+\")]", 
+            &data
+        )
+        .len(),
+        2
+    );
+    assert_eq!(
+        eval_values("$.store.book[?match(@.category, \"Fiction\")]", &data).len(),
+        0
+    );
+    assert_eq!(
+        eval_values("$.store.book[?match(@.author, \".*Tolkien\")]", &data).len(),
+        1
+    );
+    assert_eq!(
+        eval_values("$.store.book[?match(@.price, \"12\\\\.99\")]", &data).len(),
+        0
+    );
+    assert_eq!(
         eval_values("$.store.book[?match(@.title, \"[\")]", &data).len(),
         0
     );
@@ -104,6 +141,26 @@ fn function_match_and_search_matrix() {
     assert_eq!(
         eval_values("$.store.book[?search(@.title, \"Lord\")]", &data).len(),
         1
+    );
+    assert_eq!(
+        eval_values("$.store.book[?search(@.author, \"[JE].*\")]", &data).len(),
+        2
+    );
+    assert_eq!(
+        eval_values("$.store.book[?search(@.title, \"[Ss]word\")]", &data).len(),
+        1
+    );
+    assert_eq!(
+        eval_values("$.store.book[?search(@.isbn, \"[0-9]+\")]", &data).len(),
+        2
+    );
+    assert_eq!(
+        eval_values("$.store.book[?search(@.category, \"[Ff]iction\")]", &data).len(),
+        3
+    );
+    assert_eq!(
+        eval_values("$.store.book[?search(@.price, \"99\")]", &data).len(),
+        0
     );
     assert_eq!(
         eval_values("$.authors[?search(@, \"^Bob$\")]", &data),
@@ -163,5 +220,17 @@ fn function_combined_usage_matrix() {
         )
         .len(),
         2
+    );
+    assert_eq!(
+        eval_values("$[?length(@.name, @.other) == 5]", &data).len(),
+        0
+    );
+    assert_eq!(eval_values("$[?unknown(@.name) == true]", &data).len(), 0);
+    assert_eq!(
+        eval_values(
+            "$.items[?length(@) == 0]",
+            &json!({"items": [null, "", 0, false]}),
+        ),
+        vec![json!("")]
     );
 }
