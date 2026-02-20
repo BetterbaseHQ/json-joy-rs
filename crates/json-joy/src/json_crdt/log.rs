@@ -309,27 +309,29 @@ impl Log {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Codec stubs (Wave 3)
+// Log codec
 // ──────────────────────────────────────────────────────────────────────────────
 
 pub mod codec {
-    //! Binary codec for `Log`.
-    //!
-    //! This preserves:
-    //! - start-model snapshot
-    //! - metadata map
-    //! - ordered patch list (binary patch codec payloads)
-    //!
-    //! Format:
-    //! - magic: `JLOG1` (5 bytes)
-    //! - start_len: `u32` LE
-    //! - start_bytes
-    //! - metadata_len: `u32` LE (JSON object bytes)
-    //! - metadata_bytes
-    //! - patch_count: `u32` LE
-    //! - repeated: patch_len `u32` LE + patch_bytes
+    //! Mirrors `packages/json-joy/src/json-crdt/log/codec/*`.
 
-    /// Encoding format constants — mirrors `log/codec/constants.ts`.
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+
+    use json_joy_json_pack::json::{JsonDecoder, JsonEncoder};
+    use json_joy_json_pack::{decode_cbor_value_with_consumed, CborEncoder, PackValue};
+    use serde_json::Value;
+
+    use crate::json_crdt::codec::sidecar::binary as sidecar_binary;
+    use crate::json_crdt::codec::structural::compact as structural_compact;
+    use crate::json_crdt::codec::structural::verbose as structural_verbose;
+    use crate::json_crdt_patch::codec::compact::decode as patch_decode_compact;
+    use crate::json_crdt_patch::codec::compact::encode as patch_encode_compact;
+    use crate::json_crdt_patch::codec::verbose::decode as patch_decode_verbose;
+    use crate::json_crdt_patch::codec::verbose::encode as patch_encode_verbose;
+    use crate::json_crdt_patch::enums::SESSION;
+    use crate::json_crdt_patch::patch::Patch;
+
+    /// `log/codec/constants.ts`.
     #[repr(u8)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FileModelEncoding {
@@ -337,7 +339,158 @@ pub mod codec {
         SidecarBinary = 1,
     }
 
-    /// Stub log encoder. Not yet implemented.
+    /// `LogEncoder.SerializeParams`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct SerializeParams {
+        pub no_view: bool,
+        pub model: ModelFormat,
+        pub history: HistoryFormat,
+    }
+
+    impl Default for SerializeParams {
+        fn default() -> Self {
+            Self {
+                no_view: false,
+                model: ModelFormat::Sidecar,
+                history: HistoryFormat::Binary,
+            }
+        }
+    }
+
+    /// `LogEncoder.EncodingParams`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct EncodingParams {
+        pub format: EncodingFormat,
+        pub no_view: bool,
+        pub model: ModelFormat,
+        pub history: HistoryFormat,
+    }
+
+    impl Default for EncodingParams {
+        fn default() -> Self {
+            Self {
+                format: EncodingFormat::SeqCbor,
+                no_view: false,
+                model: ModelFormat::Sidecar,
+                history: HistoryFormat::Binary,
+            }
+        }
+    }
+
+    /// `LogDecoder.DeserializeParams`.
+    #[derive(Debug, Clone, Default)]
+    pub struct DeserializeParams {
+        pub view: bool,
+        pub sidecar_view: Option<Value>,
+        pub frontier: bool,
+        pub history: bool,
+    }
+
+    /// `LogDecoder.DecodeParams`.
+    #[derive(Debug, Clone)]
+    pub struct DecodeParams {
+        pub format: EncodingFormat,
+        pub view: bool,
+        pub sidecar_view: Option<Value>,
+        pub frontier: bool,
+        pub history: bool,
+    }
+
+    impl Default for DecodeParams {
+        fn default() -> Self {
+            Self {
+                format: EncodingFormat::SeqCbor,
+                view: false,
+                sidecar_view: None,
+                frontier: false,
+                history: false,
+            }
+        }
+    }
+
+    /// High-level wire format.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum EncodingFormat {
+        Ndjson,
+        SeqCbor,
+    }
+
+    /// Model encoding format in serialized components.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ModelFormat {
+        Sidecar,
+        Binary,
+        Compact,
+        Verbose,
+        None,
+    }
+
+    /// History encoding format in serialized components.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum HistoryFormat {
+        Binary,
+        Compact,
+        Verbose,
+        None,
+    }
+
+    /// Decoding output.
+    #[derive(Default)]
+    pub struct DecodeResult {
+        pub view: Option<Value>,
+        pub frontier: Option<super::Log>,
+        pub history: Option<super::Log>,
+    }
+
+    fn pack_to_json(pack: &PackValue) -> Value {
+        Value::from(pack.clone())
+    }
+
+    fn parse_header(
+        header: &PackValue,
+    ) -> Result<(serde_json::Map<String, Value>, FileModelEncoding), String> {
+        let fields = match header {
+            PackValue::Array(fields) => fields,
+            _ => return Err("INVALID_HEADER".to_string()),
+        };
+        let metadata = match fields.first() {
+            Some(field) => match pack_to_json(field) {
+                Value::Object(map) => map,
+                _ => return Err("INVALID_HEADER_METADATA".to_string()),
+            },
+            None => return Err("INVALID_HEADER_METADATA".to_string()),
+        };
+        let model_encoding = match fields.get(1) {
+            Some(PackValue::UInteger(1)) | Some(PackValue::Integer(1)) => {
+                FileModelEncoding::SidecarBinary
+            }
+            _ => FileModelEncoding::Auto,
+        };
+        Ok((metadata, model_encoding))
+    }
+
+    fn parse_history(
+        history: Option<&PackValue>,
+    ) -> Result<(Option<PackValue>, Vec<PackValue>), String> {
+        let Some(history) = history else {
+            return Ok((None, Vec::new()));
+        };
+        let fields = match history {
+            PackValue::Array(fields) => fields,
+            _ => return Err("INVALID_HISTORY".to_string()),
+        };
+        let start = fields.first().and_then(|v| match v {
+            PackValue::Null => None,
+            other => Some(other.clone()),
+        });
+        let patches = match fields.get(1) {
+            None => Vec::new(),
+            Some(PackValue::Array(patches)) => patches.clone(),
+            Some(_) => return Err("INVALID_HISTORY_PATCHES".to_string()),
+        };
+        Ok((start, patches))
+    }
+
     pub struct LogEncoder;
 
     impl LogEncoder {
@@ -345,30 +498,108 @@ pub mod codec {
             Self
         }
 
-        pub fn encode(&self, log: &super::Log) -> Vec<u8> {
-            const MAGIC: &[u8; 5] = b"JLOG1";
-            let start_bytes = log.start().to_binary();
-            let metadata_bytes =
-                serde_json::to_vec(&serde_json::Value::Object(log.metadata.clone()))
-                    .unwrap_or_else(|_| b"{}".to_vec());
+        pub fn serialize(
+            &self,
+            log: &super::Log,
+            params: SerializeParams,
+        ) -> Result<Vec<PackValue>, String> {
+            let (model_encoding, model_component) = match params.model {
+                ModelFormat::Sidecar => {
+                    let (_, meta) = sidecar_binary::encode(&log.end);
+                    (
+                        FileModelEncoding::SidecarBinary as u8,
+                        PackValue::Bytes(meta),
+                    )
+                }
+                ModelFormat::Binary => (
+                    FileModelEncoding::Auto as u8,
+                    PackValue::Bytes(log.end.to_binary()),
+                ),
+                ModelFormat::Compact => (
+                    FileModelEncoding::Auto as u8,
+                    PackValue::from(structural_compact::encode(&log.end)),
+                ),
+                ModelFormat::Verbose => (
+                    FileModelEncoding::Auto as u8,
+                    PackValue::from(structural_verbose::encode(&log.end)),
+                ),
+                ModelFormat::None => (FileModelEncoding::Auto as u8, PackValue::Null),
+            };
 
-            let mut out = Vec::new();
-            out.extend_from_slice(MAGIC);
+            let header = PackValue::Array(vec![
+                PackValue::from(Value::Object(log.metadata.clone())),
+                PackValue::UInteger(model_encoding as u64),
+            ]);
 
-            out.extend_from_slice(&(start_bytes.len() as u32).to_le_bytes());
-            out.extend_from_slice(&start_bytes);
+            let (history_start, history_patches) = match params.history {
+                HistoryFormat::Binary => {
+                    let start = PackValue::Bytes(log.start().to_binary());
+                    let patches = log
+                        .patches
+                        .values()
+                        .map(|patch| PackValue::Bytes(patch.to_binary()))
+                        .collect();
+                    (start, patches)
+                }
+                HistoryFormat::Compact => {
+                    let start = PackValue::from(structural_compact::encode(&log.start()));
+                    let patches = log
+                        .patches
+                        .values()
+                        .map(|patch| {
+                            let encoded = patch_encode_compact(patch);
+                            PackValue::from(Value::Array(encoded))
+                        })
+                        .collect();
+                    (start, patches)
+                }
+                HistoryFormat::Verbose => {
+                    let start = PackValue::from(structural_verbose::encode(&log.start()));
+                    let patches = log
+                        .patches
+                        .values()
+                        .map(|patch| PackValue::from(patch_encode_verbose(patch)))
+                        .collect();
+                    (start, patches)
+                }
+                HistoryFormat::None => (PackValue::Null, Vec::new()),
+            };
 
-            out.extend_from_slice(&(metadata_bytes.len() as u32).to_le_bytes());
-            out.extend_from_slice(&metadata_bytes);
+            let history = PackValue::Array(vec![history_start, PackValue::Array(history_patches)]);
+            let view = if params.no_view {
+                PackValue::Null
+            } else {
+                PackValue::from(log.end.view())
+            };
+            Ok(vec![view, header, model_component, history])
+        }
 
-            out.extend_from_slice(&(log.patches.len() as u32).to_le_bytes());
-            for patch in log.patches.values() {
-                let patch_bytes = patch.to_binary();
-                out.extend_from_slice(&(patch_bytes.len() as u32).to_le_bytes());
-                out.extend_from_slice(&patch_bytes);
+        pub fn encode(&self, log: &super::Log, params: EncodingParams) -> Result<Vec<u8>, String> {
+            let sequence = self.serialize(
+                log,
+                SerializeParams {
+                    no_view: params.no_view,
+                    model: params.model,
+                    history: params.history,
+                },
+            )?;
+            match params.format {
+                EncodingFormat::Ndjson => {
+                    let mut json = JsonEncoder::new();
+                    for component in &sequence {
+                        json.write_any(component);
+                        json.writer.u8(b'\n');
+                    }
+                    Ok(json.writer.flush())
+                }
+                EncodingFormat::SeqCbor => {
+                    let mut cbor = CborEncoder::new();
+                    for component in &sequence {
+                        cbor.write_any(component);
+                    }
+                    Ok(cbor.writer.flush())
+                }
             }
-
-            out
         }
     }
 
@@ -378,7 +609,6 @@ pub mod codec {
         }
     }
 
-    /// Stub log decoder. Not yet implemented.
     pub struct LogDecoder;
 
     impl LogDecoder {
@@ -386,75 +616,175 @@ pub mod codec {
             Self
         }
 
-        /// Decode bytes into a log, panicking on malformed payload.
-        pub fn decode(&self, data: &[u8]) -> super::Log {
-            self.decode_result(data)
-                .expect("LogDecoder::decode: malformed payload")
+        pub fn decode(&self, blob: &[u8], params: DecodeParams) -> Result<DecodeResult, String> {
+            let components = match params.format {
+                EncodingFormat::Ndjson => self.decode_ndjson_components(blob)?,
+                EncodingFormat::SeqCbor => self.decode_seq_cbor_components(blob)?,
+            };
+            self.deserialize(
+                &components,
+                DeserializeParams {
+                    view: params.view,
+                    sidecar_view: params.sidecar_view,
+                    frontier: params.frontier,
+                    history: params.history,
+                },
+            )
         }
 
-        /// Decode bytes into a log.
-        pub fn decode_result(&self, data: &[u8]) -> Result<super::Log, String> {
-            const MAGIC: &[u8; 5] = b"JLOG1";
-            let mut offset = 0usize;
-
-            fn read_u32(data: &[u8], offset: &mut usize) -> Result<u32, String> {
-                if *offset + 4 > data.len() {
-                    return Err("truncated u32".to_string());
-                }
-                let num = u32::from_le_bytes(
-                    data[*offset..*offset + 4]
-                        .try_into()
-                        .map_err(|_| "bad u32".to_string())?,
-                );
-                *offset += 4;
-                Ok(num)
-            }
-
-            fn read_bytes<'a>(
-                data: &'a [u8],
-                offset: &mut usize,
-                len: usize,
-            ) -> Result<&'a [u8], String> {
-                if *offset + len > data.len() {
-                    return Err("truncated bytes".to_string());
-                }
-                let slice = &data[*offset..*offset + len];
-                *offset += len;
-                Ok(slice)
-            }
-
-            if data.len() < MAGIC.len() || &data[..MAGIC.len()] != MAGIC {
-                return Err("bad magic".to_string());
-            }
-            offset += MAGIC.len();
-
-            let start_len = read_u32(data, &mut offset)? as usize;
-            let start_bytes = read_bytes(data, &mut offset, start_len)?;
-            let start_model = super::Model::from_binary(start_bytes)?;
-            let mut log = super::Log::from_model(start_model);
-
-            let metadata_len = read_u32(data, &mut offset)? as usize;
-            let metadata_bytes = read_bytes(data, &mut offset, metadata_len)?;
-            let metadata_value: serde_json::Value =
-                serde_json::from_slice(metadata_bytes).map_err(|e| e.to_string())?;
-            log.metadata = match metadata_value {
-                serde_json::Value::Object(map) => map,
-                _ => return Err("metadata must be object".to_string()),
-            };
-
-            let patch_count = read_u32(data, &mut offset)? as usize;
-            for _ in 0..patch_count {
-                let patch_len = read_u32(data, &mut offset)? as usize;
-                let patch_bytes = read_bytes(data, &mut offset, patch_len)?;
-                let patch = crate::json_crdt_patch::patch::Patch::from_binary(patch_bytes)
+        pub fn decode_ndjson_components(&self, blob: &[u8]) -> Result<Vec<PackValue>, String> {
+            let mut decoder = JsonDecoder::new();
+            let mut components: Vec<PackValue> = Vec::new();
+            let mut start = 0usize;
+            while start < blob.len() {
+                let Some(nl) = blob[start..].iter().position(|b| *b == b'\n') else {
+                    return Err("NDJSON_UNEXPECTED_NEWLINE".to_string());
+                };
+                let end = start + nl;
+                let component = decoder
+                    .decode(&blob[start..end])
                     .map_err(|e| e.to_string())?;
+                components.push(component);
+                start = end + 1;
+            }
+            Ok(components)
+        }
+
+        pub fn decode_seq_cbor_components(&self, blob: &[u8]) -> Result<Vec<PackValue>, String> {
+            let mut components = Vec::new();
+            let mut offset = 0usize;
+            while offset < blob.len() {
+                let (component, consumed) =
+                    decode_cbor_value_with_consumed(&blob[offset..]).map_err(|e| e.to_string())?;
+                if consumed == 0 {
+                    return Err("SEQ_CBOR_EMPTY_COMPONENT".to_string());
+                }
+                components.push(component);
+                offset += consumed;
+            }
+            Ok(components)
+        }
+
+        pub fn deserialize(
+            &self,
+            components: &[PackValue],
+            params: DeserializeParams,
+        ) -> Result<DecodeResult, String> {
+            if components.len() < 4 {
+                return Err("INVALID_COMPONENTS".to_string());
+            }
+            let mut view = components[0].clone();
+            if matches!(view, PackValue::Null) {
+                if let Some(sidecar_view) = params.sidecar_view {
+                    view = PackValue::from(sidecar_view);
+                }
+            }
+            let header = &components[1];
+            let model = &components[2];
+
+            let mut result = DecodeResult::default();
+            if params.view {
+                result.view = Some(pack_to_json(&view));
+            }
+            if params.history {
+                result.history = Some(self.deserialize_history(components)?);
+            }
+            if params.frontier {
+                if matches!(model, PackValue::Null) && result.history.is_none() {
+                    result.history = Some(self.deserialize_history(components)?);
+                }
+                if let Some(history) = &result.history {
+                    result.frontier = Some(history.clone_log());
+                } else if !matches!(model, PackValue::Null) {
+                    let (metadata, model_encoding) = parse_header(header)?;
+                    let end = if model_encoding == FileModelEncoding::SidecarBinary {
+                        let meta = match model {
+                            PackValue::Bytes(blob) => blob.as_slice(),
+                            _ => return Err("NOT_BLOB".to_string()),
+                        };
+                        let view_json = pack_to_json(&view);
+                        let mut cbor = CborEncoder::new();
+                        let view_blob = cbor.encode_json(&view_json);
+                        sidecar_binary::decode(&view_blob, meta).map_err(|e| e.to_string())?
+                    } else {
+                        self.deserialize_model(model)?
+                    };
+                    let mut log = super::Log::from_model(end);
+                    log.metadata = metadata;
+                    for patch in components.iter().skip(4) {
+                        let patch = self.deserialize_patch(patch)?;
+                        log.apply(patch);
+                    }
+                    result.frontier = Some(log);
+                } else {
+                    return Err("NO_MODEL".to_string());
+                }
+            }
+            Ok(result)
+        }
+
+        pub fn deserialize_history(&self, components: &[PackValue]) -> Result<super::Log, String> {
+            let header = components
+                .get(1)
+                .ok_or_else(|| "INVALID_COMPONENTS".to_string())?;
+            let (metadata, _) = parse_header(header)?;
+            let (start, patches) = parse_history(components.get(3))?;
+
+            let mut log = match start {
+                Some(start) => {
+                    let model = self.deserialize_model(&start)?;
+                    super::Log::from_model(model)
+                }
+                None => super::Log::from_new_model(super::Model::new(SESSION::GLOBAL)),
+            };
+            log.metadata = metadata;
+
+            for patch in patches {
+                let patch = self.deserialize_patch(&patch)?;
                 log.apply(patch);
             }
-
-            if offset != data.len() {
-                return Err("trailing bytes".to_string());
+            for patch in components.iter().skip(4) {
+                let patch = self.deserialize_patch(patch)?;
+                log.apply(patch);
             }
             Ok(log)
+        }
+
+        pub fn deserialize_model(&self, serialized: &PackValue) -> Result<super::Model, String> {
+            match serialized {
+                PackValue::Null => Err("NO_MODEL".to_string()),
+                PackValue::Bytes(blob) => super::Model::from_binary(blob),
+                PackValue::Array(_) => {
+                    let json = pack_to_json(serialized);
+                    structural_compact::decode(&json).map_err(|e| e.to_string())
+                }
+                PackValue::Object(_) => {
+                    let json = pack_to_json(serialized);
+                    structural_verbose::decode(&json).map_err(|e| e.to_string())
+                }
+                _ => Err("UNKNOWN_MODEL".to_string()),
+            }
+        }
+
+        pub fn deserialize_patch(&self, serialized: &PackValue) -> Result<Patch, String> {
+            match serialized {
+                PackValue::Null => Err("NO_PATCH".to_string()),
+                PackValue::Bytes(blob) => Patch::from_binary(blob).map_err(|e| e.to_string()),
+                PackValue::Array(_) => {
+                    let json = pack_to_json(serialized);
+                    let arr = json
+                        .as_array()
+                        .ok_or_else(|| "INVALID_PATCH_COMPACT".to_string())?;
+                    catch_unwind(AssertUnwindSafe(|| patch_decode_compact(arr.as_slice())))
+                        .map_err(|_| "INVALID_PATCH_COMPACT".to_string())
+                }
+                PackValue::Object(_) => {
+                    let json = pack_to_json(serialized);
+                    catch_unwind(AssertUnwindSafe(|| patch_decode_verbose(&json)))
+                        .map_err(|_| "INVALID_PATCH_VERBOSE".to_string())
+                }
+                _ => Err("UNKNOWN_PATCH".to_string()),
+            }
         }
     }
 
@@ -466,75 +796,20 @@ pub mod codec {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Model binary serialization — thin wrappers until a full codec lands
-// ──────────────────────────────────────────────────────────────────────────────
-
-impl Model {
-    /// Serialize this model to a compact binary representation.
-    ///
-    /// Used internally by `Log::from_model` and `Log::clone_log` to capture
-    /// a frozen snapshot of the baseline. The format is the binary patch
-    /// codec applied to all operations accumulated in the model index.
-    ///
-    /// This is a minimal implementation: it serialises the clock vector so
-    /// that a round-trip through `from_binary` restores an equivalent model.
-    pub fn to_binary(&self) -> Vec<u8> {
-        // Format: magic(4) | sid(8 LE) | time(8 LE) | peer_count(4 LE) | peers…
-        // Each peer: sid(8 LE) | time(8 LE)
-        let peers: Vec<_> = self.clock.peers.values().collect();
-        let mut buf = Vec::with_capacity(24 + peers.len() * 16);
-        buf.extend_from_slice(b"JCRD");
-        buf.extend_from_slice(&self.clock.sid.to_le_bytes());
-        buf.extend_from_slice(&self.clock.time.to_le_bytes());
-        buf.extend_from_slice(&(peers.len() as u32).to_le_bytes());
-        for peer_ts in &peers {
-            buf.extend_from_slice(&peer_ts.sid.to_le_bytes());
-            buf.extend_from_slice(&peer_ts.time.to_le_bytes());
-        }
-        buf
-    }
-
-    /// Restore a model from a binary snapshot produced by [`Model::to_binary`].
-    ///
-    /// Returns an error string if the data is malformed.
-    pub fn from_binary(data: &[u8]) -> Result<Model, String> {
-        if data.len() < 24 {
-            return Err("too short".to_string());
-        }
-        if &data[..4] != b"JCRD" {
-            return Err("bad magic".to_string());
-        }
-        let sid = u64::from_le_bytes(data[4..12].try_into().unwrap());
-        let time = u64::from_le_bytes(data[12..20].try_into().unwrap());
-        let peer_count = u32::from_le_bytes(data[20..24].try_into().unwrap()) as usize;
-        let mut model = Model::new(sid);
-        model.clock.time = time;
-        let mut offset = 24;
-        for _ in 0..peer_count {
-            if offset + 16 > data.len() {
-                return Err("truncated peers".to_string());
-            }
-            let p_sid = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-            let p_time = u64::from_le_bytes(data[offset + 8..offset + 16].try_into().unwrap());
-            // observe the peer clock: use span=1 so that observe(ts(p_sid, p_time), 1) records p_time.
-            model
-                .clock
-                .observe(crate::json_crdt_patch::clock::Ts::new(p_sid, p_time), 1);
-            offset += 16;
-        }
-        Ok(model)
-    }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
 // Tests
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::json_crdt::log::codec::{
+        DecodeParams, DeserializeParams, EncodingFormat, EncodingParams, HistoryFormat, LogDecoder,
+        LogEncoder, ModelFormat, SerializeParams,
+    };
     use crate::json_crdt_patch::clock::ts;
-    use crate::json_crdt_patch::operations::Op;
+    use crate::json_crdt_patch::operations::{ConValue, Op};
+    use json_joy_json_pack::json::JsonDecoder;
+    use json_joy_json_pack::{decode_cbor_value_with_consumed, PackValue};
     use serde_json::json;
 
     fn sid() -> u64 {
@@ -575,6 +850,53 @@ mod tests {
             }],
             meta: None,
         }
+    }
+
+    fn make_base_object_patch(s: u64) -> Patch {
+        Patch {
+            ops: vec![
+                Op::NewObj { id: ts(s, 1) },
+                Op::NewCon {
+                    id: ts(s, 2),
+                    val: ConValue::Val(PackValue::Str("bar".to_string())),
+                },
+                Op::InsObj {
+                    id: ts(s, 3),
+                    obj: ts(s, 1),
+                    data: vec![("foo".to_string(), ts(s, 2))],
+                },
+                Op::InsVal {
+                    id: ts(s, 4),
+                    obj: crate::json_crdt::constants::ORIGIN,
+                    val: ts(s, 1),
+                },
+            ],
+            meta: None,
+        }
+    }
+
+    fn make_frontier_patch(s: u64) -> Patch {
+        Patch {
+            ops: vec![
+                Op::NewCon {
+                    id: ts(s, 5),
+                    val: ConValue::Val(PackValue::Integer(123)),
+                },
+                Op::InsObj {
+                    id: ts(s, 6),
+                    obj: ts(s, 1),
+                    data: vec![("xyz".to_string(), ts(s, 5))],
+                },
+            ],
+            meta: None,
+        }
+    }
+
+    fn setup_log_for_codec() -> Log {
+        let s = sid();
+        let mut log = Log::from_new_model(Model::new(s));
+        log.apply(make_base_object_patch(s));
+        log
     }
 
     // ── Log::from_new_model ───────────────────────────────────────────────
@@ -854,44 +1176,288 @@ mod tests {
     // ── Log codec ───────────────────────────────────────────────────────────
 
     #[test]
-    fn log_codec_round_trip_preserves_state_and_metadata() {
-        let s = sid();
-        let mut log = Log::from_new_model(Model::new(s));
-        log.metadata.insert("source".into(), json!("test"));
-
-        let patch = Patch {
-            ops: vec![
-                Op::NewStr { id: ts(s, 1) },
-                Op::InsStr {
-                    id: ts(s, 2),
-                    obj: ts(s, 1),
-                    after: crate::json_crdt::constants::ORIGIN,
-                    data: "codec".into(),
+    fn log_encoder_ndjson_first_component_is_view() {
+        let log = setup_log_for_codec();
+        let encoder = LogEncoder::new();
+        let blob = encoder
+            .encode(
+                &log,
+                EncodingParams {
+                    format: EncodingFormat::Ndjson,
+                    model: ModelFormat::Compact,
+                    history: HistoryFormat::Compact,
+                    ..EncodingParams::default()
                 },
-                Op::InsVal {
-                    id: ts(s, 7),
-                    obj: crate::json_crdt::constants::ORIGIN,
-                    val: ts(s, 1),
+            )
+            .expect("encode ndjson");
+        let newline = blob
+            .iter()
+            .position(|b| *b == b'\n')
+            .expect("first newline");
+        let mut decoder = JsonDecoder::new();
+        let first = decoder
+            .decode(&blob[..newline])
+            .expect("decode first ndjson");
+        assert_eq!(Value::from(first), json!({"foo": "bar"}));
+    }
+
+    #[test]
+    fn log_encoder_seq_cbor_first_component_is_view() {
+        let log = setup_log_for_codec();
+        let encoder = LogEncoder::new();
+        let blob = encoder
+            .encode(&log, EncodingParams::default())
+            .expect("encode seq.cbor");
+        let (first, _) = decode_cbor_value_with_consumed(&blob).expect("decode first cbor");
+        assert_eq!(Value::from(first), json!({"foo": "bar"}));
+    }
+
+    #[test]
+    fn log_decoder_sidecar_model_without_stored_view_uses_sidecar_view() {
+        let log = setup_log_for_codec();
+        let view = log.end.view();
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let blob = encoder
+            .encode(
+                &log,
+                EncodingParams {
+                    format: EncodingFormat::SeqCbor,
+                    model: ModelFormat::Sidecar,
+                    history: HistoryFormat::Binary,
+                    no_view: true,
                 },
-            ],
-            meta: None,
-        };
-        log.apply(patch);
+            )
+            .expect("encode sidecar");
+        let decoded = decoder
+            .decode(
+                &blob,
+                DecodeParams {
+                    format: EncodingFormat::SeqCbor,
+                    frontier: true,
+                    sidecar_view: Some(view.clone()),
+                    ..DecodeParams::default()
+                },
+            )
+            .expect("decode sidecar");
+        assert_eq!(decoded.frontier.expect("frontier").end.view(), view);
+    }
 
-        let encoded = crate::json_crdt::log::codec::LogEncoder::new().encode(&log);
-        let decoded = crate::json_crdt::log::codec::LogDecoder::new()
-            .decode_result(&encoded)
-            .expect("decode log");
+    #[test]
+    fn log_decoder_decodes_ndjson_frontier_and_history() {
+        let log = setup_log_for_codec();
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let blob = encoder
+            .encode(
+                &log,
+                EncodingParams {
+                    format: EncodingFormat::Ndjson,
+                    model: ModelFormat::Compact,
+                    history: HistoryFormat::Compact,
+                    ..EncodingParams::default()
+                },
+            )
+            .expect("encode");
+        let decoded = decoder
+            .decode(
+                &blob,
+                DecodeParams {
+                    format: EncodingFormat::Ndjson,
+                    frontier: true,
+                    history: true,
+                    ..DecodeParams::default()
+                },
+            )
+            .expect("decode");
+        let frontier = decoded.frontier.expect("frontier");
+        let history = decoded.history.expect("history");
+        assert_eq!(frontier.end.view(), json!({"foo": "bar"}));
+        assert_eq!(history.start().view(), json!(null));
+        assert_eq!(history.end.view(), json!({"foo": "bar"}));
+    }
 
-        assert_eq!(decoded.metadata.get("source"), Some(&json!("test")));
-        assert_eq!(decoded.patches.len(), log.patches.len());
-        assert_eq!(decoded.replay_to_end().view(), log.replay_to_end().view());
-        assert_eq!(decoded.end.view(), log.end.view());
+    #[test]
+    fn log_decoder_decodes_seq_cbor_frontier_and_history() {
+        let log = setup_log_for_codec();
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let blob = encoder
+            .encode(
+                &log,
+                EncodingParams {
+                    format: EncodingFormat::SeqCbor,
+                    model: ModelFormat::Binary,
+                    history: HistoryFormat::Binary,
+                    ..EncodingParams::default()
+                },
+            )
+            .expect("encode");
+        let decoded = decoder
+            .decode(
+                &blob,
+                DecodeParams {
+                    format: EncodingFormat::SeqCbor,
+                    frontier: true,
+                    history: true,
+                    ..DecodeParams::default()
+                },
+            )
+            .expect("decode");
+        let frontier = decoded.frontier.expect("frontier");
+        let history = decoded.history.expect("history");
+        assert_eq!(frontier.end.view(), json!({"foo": "bar"}));
+        assert_eq!(history.start().view(), json!(null));
+        assert_eq!(history.end.view(), json!({"foo": "bar"}));
+    }
+
+    #[test]
+    fn log_codec_round_trip_preserves_metadata() {
+        let mut log = setup_log_for_codec();
+        log.metadata.insert("baz".into(), json!("qux"));
+        log.metadata.insert("time".into(), json!(123));
+        log.metadata.insert("active".into(), json!(true));
+
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let blob = encoder
+            .encode(
+                &log,
+                EncodingParams {
+                    format: EncodingFormat::SeqCbor,
+                    ..EncodingParams::default()
+                },
+            )
+            .expect("encode");
+        let decoded = decoder
+            .decode(
+                &blob,
+                DecodeParams {
+                    format: EncodingFormat::SeqCbor,
+                    frontier: true,
+                    history: true,
+                    ..DecodeParams::default()
+                },
+            )
+            .expect("decode");
+        assert_eq!(decoded.frontier.expect("frontier").metadata, log.metadata);
+        assert_eq!(decoded.history.expect("history").metadata, log.metadata);
+    }
+
+    fn assert_encoding(log: &Log, params: EncodingParams) {
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let encoded = encoder.encode(log, params).expect("encode");
+        let decoded = decoder
+            .decode(
+                &encoded,
+                DecodeParams {
+                    format: params.format,
+                    frontier: true,
+                    history: true,
+                    ..DecodeParams::default()
+                },
+            )
+            .expect("decode");
+        let frontier = decoded.frontier.expect("frontier");
+        let history = decoded.history.expect("history");
+        assert_eq!(frontier.end.view(), log.end.view());
+        assert_eq!(history.start().view(), json!(null));
+        assert_eq!(history.replay_to_end().view(), log.end.view());
+        assert_eq!(history.patches.len(), log.patches.len());
+    }
+
+    #[test]
+    fn log_codec_all_format_combinations_round_trip() {
+        let formats = [EncodingFormat::Ndjson, EncodingFormat::SeqCbor];
+        let model_formats = [
+            ModelFormat::Sidecar,
+            ModelFormat::Binary,
+            ModelFormat::Compact,
+            ModelFormat::Verbose,
+        ];
+        let history_formats = [
+            HistoryFormat::Binary,
+            HistoryFormat::Compact,
+            HistoryFormat::Verbose,
+        ];
+        let no_views = [true, false];
+        for format in formats {
+            for model in model_formats {
+                for history in history_formats {
+                    for no_view in no_views {
+                        if no_view && model == ModelFormat::Sidecar {
+                            continue;
+                        }
+                        let params = EncodingParams {
+                            format,
+                            model,
+                            history,
+                            no_view,
+                        };
+                        let log = setup_log_for_codec();
+                        assert_encoding(&log, params);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn log_decoder_deserialize_applies_frontier() {
+        let log = setup_log_for_codec();
+        let encoder = LogEncoder::new();
+        let decoder = LogDecoder::new();
+        let mut serialized = encoder
+            .serialize(
+                &log,
+                SerializeParams {
+                    history: HistoryFormat::Binary,
+                    ..SerializeParams::default()
+                },
+            )
+            .expect("serialize");
+        serialized.push(PackValue::Bytes(make_frontier_patch(sid()).to_binary()));
+
+        let deserialized_frontier = decoder
+            .deserialize(
+                &serialized,
+                DeserializeParams {
+                    frontier: true,
+                    ..DeserializeParams::default()
+                },
+            )
+            .expect("deserialize frontier");
+        let deserialized_history = decoder
+            .deserialize(
+                &serialized,
+                DeserializeParams {
+                    history: true,
+                    ..DeserializeParams::default()
+                },
+            )
+            .expect("deserialize history");
+
+        assert_eq!(
+            deserialized_frontier.frontier.expect("frontier").end.view(),
+            json!({"foo": "bar", "xyz": 123})
+        );
+        assert_eq!(
+            deserialized_history.history.expect("history").end.view(),
+            json!({"foo": "bar", "xyz": 123})
+        );
     }
 
     #[test]
     fn log_decoder_rejects_malformed_payload() {
-        let decoder = crate::json_crdt::log::codec::LogDecoder::new();
-        assert!(decoder.decode_result(b"bad").is_err());
+        let decoder = LogDecoder::new();
+        let err = decoder.decode(
+            b"{\"foo\":\"bar\"}",
+            DecodeParams {
+                format: EncodingFormat::Ndjson,
+                ..DecodeParams::default()
+            },
+        );
+        assert!(err.is_err());
     }
 }

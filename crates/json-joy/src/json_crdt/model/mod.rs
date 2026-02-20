@@ -77,6 +77,20 @@ impl Model {
         self.root.view(&self.index)
     }
 
+    /// Serialize this model using structural binary encoding.
+    ///
+    /// Mirrors upstream `Model.toBinary()`.
+    pub fn to_binary(&self) -> Vec<u8> {
+        crate::json_crdt::codec::structural::binary::encode(self)
+    }
+
+    /// Decode a model from structural binary encoding.
+    ///
+    /// Mirrors upstream `Model.fromBinary(...)`.
+    pub fn from_binary(data: &[u8]) -> Result<Model, String> {
+        crate::json_crdt::codec::structural::binary::decode(data).map_err(|e| e.to_string())
+    }
+
     /// Apply all operations in `patch` to this model.
     ///
     /// Increments `self.tick` after all operations are applied, mirroring
