@@ -15,7 +15,7 @@ use json_joy_json_pack::PackValue;
 /// - array → 2 + sum of element sizes
 /// - object → 2 + sum of (2 + key bytes + value size) per entry
 /// - pre-encoded blob → raw byte length as-is
-/// - extension → 6 + recursive size of contained value
+/// - extension with byte payload → 6 + payload length
 pub fn msgpack_size_fast(value: &PackValue) -> usize {
     match value {
         PackValue::Null | PackValue::Undefined => 1,
@@ -41,11 +41,13 @@ pub fn msgpack_size_fast(value: &PackValue) -> usize {
             size
         }
         PackValue::Blob(blob) => blob.val.len(),
-        // Note: upstream JsonPackExtension.val is a raw Uint8Array (byte count = 6 + val.length).
-        // In the Rust port JsonPackExtension.val is Box<PackValue>, so we recurse to estimate its
-        // encoded size. This is an intentional approximation; the result differs from upstream
-        // when the inner value is not a flat byte blob.
-        PackValue::Extension(ext) => 6 + msgpack_size_fast(&ext.val),
+        // Upstream extensions always wrap raw bytes and use `6 + payload.length`.
+        // Rust allows non-byte extension payloads; for those we mirror the local
+        // msgpack encoder fallback and size the inner value directly.
+        PackValue::Extension(ext) => match ext.val.as_ref() {
+            PackValue::Bytes(bytes) => 6 + bytes.len(),
+            other => msgpack_size_fast(other),
+        },
     }
 }
 
@@ -120,9 +122,63 @@ mod tests {
     fn extension_size() {
         let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
             1,
+            PackValue::Bytes(vec![1, 2, 3, 4, 5]),
+        )));
+        assert_eq!(msgpack_size_fast(&ext), 11);
+    }
+
+    #[test]
+    fn extension_non_bytes_uses_fallback_value_size() {
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            1,
             PackValue::Str("hi".to_owned()),
         )));
-        // 6 + (4 + 2) = 12
-        assert_eq!(msgpack_size_fast(&ext), 12);
+        assert_eq!(msgpack_size_fast(&ext), 6);
+    }
+
+    #[test]
+    fn complex_object_matches_upstream_math() {
+        let embedded = PackValue::Blob(JsonPackValue::new(vec![1, 2]));
+        let extension = PackValue::Extension(Box::new(JsonPackExtension::new(
+            445,
+            PackValue::Bytes(vec![1, 2, 3]),
+        )));
+
+        let json = PackValue::Object(vec![
+            ("a".to_owned(), PackValue::Integer(1)),
+            ("b".to_owned(), PackValue::Bool(true)),
+            ("c".to_owned(), PackValue::Bool(false)),
+            ("d".to_owned(), PackValue::Null),
+            ("e.e".to_owned(), PackValue::Float(2.2)),
+            ("f".to_owned(), PackValue::Str("".to_owned())),
+            ("g".to_owned(), PackValue::Str("asdf".to_owned())),
+            (
+                "h".to_owned(),
+                PackValue::Object(vec![
+                    ("foo".to_owned(), PackValue::Bytes(vec![123])),
+                    ("s".to_owned(), embedded.clone()),
+                    ("ext".to_owned(), extension.clone()),
+                ]),
+            ),
+            (
+                "i".to_owned(),
+                PackValue::Array(vec![
+                    PackValue::Integer(1),
+                    PackValue::Bool(true),
+                    PackValue::Bool(false),
+                    PackValue::Null,
+                    PackValue::Float(2.2),
+                    PackValue::Str("".to_owned()),
+                    PackValue::Str("asdf".to_owned()),
+                    PackValue::Object(vec![]),
+                    PackValue::Bytes(vec![123]),
+                    extension.clone(),
+                    embedded,
+                ]),
+            ),
+            ("j".to_owned(), PackValue::Bytes(vec![1, 2, 3])),
+        ]);
+
+        assert_eq!(msgpack_size_fast(&json), 161);
     }
 }

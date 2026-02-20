@@ -105,7 +105,6 @@ Notes:
 
 - `crates/codegen/src/lib.rs`: package is explicitly a stub; runtime JS codegen not ported.
 - `crates/json-joy/src/json_crdt/draft.rs`: redo methods are explicit stubs.
-- `crates/json-joy/src/json_crdt/codec/structural/verbose.rs`: local stub-node fallback path has comment noting upstream would error.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
 - `crates/json-joy-json-pack/src/ejson/decoder.rs`: Decimal128 decoder returns zero 16-byte stub (matching upstream stub behavior).
 - `crates/json-joy-json-pointer/src/findByPointer/v1.rs`..`v5.rs`: variants are mirrored for path/layout parity, but delegate to `v6` implementation.

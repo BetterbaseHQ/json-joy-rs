@@ -138,12 +138,9 @@ fn encode_val(model: &Model, node: &ValNode) -> Value {
 fn encode_obj(model: &Model, node: &ObjNode) -> Value {
     let id = encode_ts(node.id);
     let mut map = serde_json::Map::new();
-    let mut sorted_keys: Vec<&String> = node.keys.keys().collect();
-    sorted_keys.sort();
-    for key in &sorted_keys {
-        let child_ts = node.keys[key.as_str()];
-        if let Some(child) = model.index.get(&TsKey::from(child_ts)) {
-            map.insert((*key).clone(), encode_node(model, child));
+    for (key, child_ts) in &node.keys {
+        if let Some(child) = model.index.get(&TsKey::from(*child_ts)) {
+            map.insert(key.clone(), encode_node(model, child));
         }
     }
     json!({ "type": "obj", "id": id, "map": map })
@@ -320,12 +317,10 @@ fn decode_root(val: &Value, model: &mut Model) -> Result<(), DecodeError> {
         .as_object()
         .ok_or_else(|| DecodeError::Format("root must be object".into()))?;
 
-    // Root is always a "val" node
-    let value_val = obj
-        .get("value")
-        .ok_or_else(|| DecodeError::MissingField("root.value".into()))?;
-    let child_id = decode_node(value_val, model)?;
-    model.root.val = child_id;
+    if let Some(value_val) = obj.get("value") {
+        let child_id = decode_node(value_val, model)?;
+        model.root.val = child_id;
+    }
     Ok(())
 }
 
@@ -388,19 +383,10 @@ fn decode_val(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
             .ok_or_else(|| DecodeError::MissingField("val.id".into()))?,
     )?;
 
-    let child_id = match obj.get("value") {
-        Some(v) => decode_node(v, model)?,
-        None => {
-            // Create a stub undefined con node
-            let stub_id = id; // reuse parent id as stub — upstream would error; just use id
-            let con = CrdtNode::Con(crate::json_crdt::nodes::ConNode::new(
-                stub_id,
-                ConValue::Val(PackValue::Undefined),
-            ));
-            model.index.insert(TsKey::from(stub_id), con);
-            stub_id
-        }
-    };
+    let value = obj
+        .get("value")
+        .ok_or_else(|| DecodeError::MissingField("val.value".into()))?;
+    let child_id = decode_node(value, model)?;
 
     use crate::json_crdt::nodes::ValNode;
     let mut node = ValNode::new(id);
@@ -600,6 +586,7 @@ mod tests {
     use crate::json_crdt_patch::clock::ts;
     use crate::json_crdt_patch::operations::{ConValue, Op};
     use json_joy_json_pack::PackValue;
+    use serde_json::json;
 
     fn sid() -> u64 {
         654321
@@ -654,5 +641,75 @@ mod tests {
         let encoded = encode(&model);
         let decoded = decode(&encoded).expect("decode should succeed");
         assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn decode_root_without_value_defaults_to_null() {
+        let data = json!({
+            "time": 0,
+            "root": {
+                "type": "val",
+                "id": 0
+            }
+        });
+        let decoded = decode(&data).expect("decode should succeed");
+        assert_eq!(decoded.view(), json!(null));
+    }
+
+    #[test]
+    fn decode_val_without_value_field_errors() {
+        let data = json!({
+            "time": 0,
+            "root": {
+                "type": "val",
+                "id": 0,
+                "value": {
+                    "type": "val",
+                    "id": 1
+                }
+            }
+        });
+        let err = decode(&data).expect_err("decode should fail");
+        assert!(matches!(err, DecodeError::MissingField(field) if field == "val.value"));
+    }
+
+    #[test]
+    fn encode_obj_preserves_insertion_order() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Str("b".to_string())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("a".to_string())),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![("b".to_string(), ts(s, 2))],
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![("a".to_string(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let encoded = encode(&model);
+        let map = encoded
+            .get("root")
+            .and_then(|node| node.get("value"))
+            .and_then(|node| node.get("map"))
+            .and_then(|node| node.as_object())
+            .expect("encoded object map");
+        let keys: Vec<&str> = map.keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["b", "a"]);
     }
 }
