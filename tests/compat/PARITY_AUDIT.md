@@ -98,7 +98,6 @@ Notes:
 - `crates/json-joy/src/json_crdt/codec/structural/verbose.rs`: local stub-node fallback path has comment noting upstream would error.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
 - `crates/json-joy-json-pack/src/ejson/decoder.rs`: Decimal128 decoder returns zero 16-byte stub (matching upstream stub behavior).
-- `crates/json-joy-json-random/src/examples.rs`: symbol family is mirrored, but many example templates are currently placeholder `Template::nil()` constructors until full data-template catalog is ported.
 - `crates/json-joy-json-pointer/src/findByPointer/v1.rs`..`v5.rs`: variants are mirrored for path/layout parity, but delegate to `v6` implementation.
 - `crates/json-joy-json-pointer/src/codegen/find.rs` and `crates/json-joy-json-pointer/src/codegen/findRef.rs`: upstream emits specialized JS code; Rust uses closure wrappers over runtime traversal.
 - `crates/sonic-forest/src/util/mod.rs`: key-based helpers (`find`, `insert`, `find_or_next_lower`) take a `key_of` closure instead of direct node-field access to fit arena-indexed Rust nodes.
@@ -141,6 +140,5 @@ Implication:
 ## Recommended next review slices
 
 1. `json-path`: complete module-family parity with upstream package layout.
-2. `json-random`: complete full `examples.ts` catalog parity (replace placeholder templates with full upstream mappings).
-3. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
-4. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.
+2. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
+3. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.

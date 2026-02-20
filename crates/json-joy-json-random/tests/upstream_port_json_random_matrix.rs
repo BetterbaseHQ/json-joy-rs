@@ -220,5 +220,75 @@ fn examples_generators_are_callable() {
     assert!(api.is_object());
 
     let random = json_joy_json_random::examples::gen_random_example();
-    assert!(random.is_null() || random.is_object() || random.is_array() || random.is_string());
+    assert!(
+        random.is_null()
+            || random.is_object()
+            || random.is_array()
+            || random.is_string()
+            || random.is_boolean()
+            || random.is_number()
+    );
+}
+
+#[test]
+fn examples_catalog_templates_are_not_placeholders() {
+    let non_nil_templates: [fn() -> Template; 31] = [
+        json_joy_json_random::examples::api_response_detailed,
+        json_joy_json_random::examples::service_config,
+        json_joy_json_random::examples::config_map,
+        json_joy_json_random::examples::permissions,
+        json_joy_json_random::examples::translations,
+        json_joy_json_random::examples::tree,
+        json_joy_json_random::examples::comment,
+        json_joy_json_random::examples::product,
+        json_joy_json_random::examples::order,
+        json_joy_json_random::examples::user_token,
+        json_joy_json_random::examples::user_role,
+        json_joy_json_random::examples::log_entry,
+        json_joy_json_random::examples::metric_data,
+        json_joy_json_random::examples::coordinates,
+        json_joy_json_random::examples::address,
+        json_joy_json_random::examples::location,
+        json_joy_json_random::examples::transaction,
+        json_joy_json_random::examples::bank_account,
+        json_joy_json_random::examples::social_post,
+        json_joy_json_random::examples::social_profile,
+        json_joy_json_random::examples::sensor_reading,
+        json_joy_json_random::examples::iot_device,
+        json_joy_json_random::examples::patient,
+        json_joy_json_random::examples::medical_record,
+        json_joy_json_random::examples::student,
+        json_joy_json_random::examples::course,
+        json_joy_json_random::examples::grade,
+        json_joy_json_random::examples::empty_structures,
+        json_joy_json_random::examples::unicode_text,
+        json_joy_json_random::examples::large_numbers,
+        json_joy_json_random::examples::performance_test,
+    ];
+
+    for make in non_nil_templates {
+        assert!(
+            !matches!(make(), Template::Nil),
+            "example template unexpectedly nil"
+        );
+    }
+
+    assert!(
+        !matches!(json_joy_json_random::examples::mixed_types(), Template::Nil),
+        "mixed_types unexpectedly nil",
+    );
+    assert!(
+        !matches!(
+            json_joy_json_random::examples::load_test_user(),
+            Template::Nil
+        ),
+        "load_test_user unexpectedly nil",
+    );
+    assert!(
+        !matches!(
+            json_joy_json_random::examples::all_examples(),
+            Template::Nil
+        ),
+        "all_examples unexpectedly nil",
+    );
 }
