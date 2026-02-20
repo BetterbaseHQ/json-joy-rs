@@ -1,6 +1,7 @@
 //! JSONPath types and interfaces based on RFC 9535.
 
 use serde_json::Value;
+use std::fmt;
 
 /// Selector types for JSONPath.
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +21,55 @@ pub enum Selector {
     /// Filter expression for conditional selection: `[?(@.price < 10)]`
     Filter(FilterExpression),
 }
+
+/// Normalized path segment, mirrors upstream `(string | number)[]`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NormalizedPathSegment {
+    Key(String),
+    Index(i64),
+}
+
+impl From<&str> for NormalizedPathSegment {
+    fn from(value: &str) -> Self {
+        Self::Key(value.to_string())
+    }
+}
+
+impl From<String> for NormalizedPathSegment {
+    fn from(value: String) -> Self {
+        Self::Key(value)
+    }
+}
+
+impl From<usize> for NormalizedPathSegment {
+    fn from(value: usize) -> Self {
+        Self::Index(value as i64)
+    }
+}
+
+impl From<i64> for NormalizedPathSegment {
+    fn from(value: i64) -> Self {
+        Self::Index(value)
+    }
+}
+
+impl From<i32> for NormalizedPathSegment {
+    fn from(value: i32) -> Self {
+        Self::Index(value as i64)
+    }
+}
+
+impl fmt::Display for NormalizedPathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(k) => f.write_str(k),
+            Self::Index(i) => write!(f, "{i}"),
+        }
+    }
+}
+
+/// Normalized JSONPath result path.
+pub type NormalizedPath = Vec<NormalizedPathSegment>;
 
 /// Path segment containing one or more selectors.
 #[derive(Debug, Clone, PartialEq)]
@@ -138,4 +188,45 @@ pub struct QueryResult<'a> {
 pub enum PathComponent {
     Key(String),
     Index(usize),
+}
+
+/// JSONPath parse result shape, mirrors upstream `IParseResult`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParseResult {
+    pub success: bool,
+    pub path: Option<JSONPath>,
+    pub error: Option<String>,
+    pub position: Option<usize>,
+}
+
+impl ParseResult {
+    /// Compatibility helper for existing `Result`-style call sites.
+    pub fn unwrap(self) -> JSONPath {
+        self.expect("called ParseResult::unwrap() on an unsuccessful parse result")
+    }
+
+    /// Compatibility helper for existing `Result`-style call sites.
+    pub fn expect(self, msg: &str) -> JSONPath {
+        if self.success {
+            return self.path.expect("successful parse result missing path");
+        }
+        panic!(
+            "{msg}: error={:?}, position={:?}",
+            self.error, self.position
+        );
+    }
+
+    /// Compatibility helper for existing `Result`-style call sites.
+    pub fn unwrap_or_else<F>(self, op: F) -> JSONPath
+    where
+        F: FnOnce(String) -> JSONPath,
+    {
+        if self.success {
+            return self.path.expect("successful parse result missing path");
+        }
+        let err = self
+            .error
+            .unwrap_or_else(|| "unknown parse error".to_string());
+        op(err)
+    }
 }

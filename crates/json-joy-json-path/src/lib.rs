@@ -33,10 +33,36 @@ mod ast;
 pub use ast::Ast;
 
 mod parser;
-pub use parser::{JsonPathParser, ParseError};
+pub use parser::Parser;
+
+mod parser_impl;
+pub use parser_impl::ParseError;
+
+#[path = "JsonPathParser.rs"]
+mod json_path_parser_upstream;
+pub use json_path_parser_upstream::JsonPathParser;
 
 mod eval;
 pub use eval::JsonPathEval;
+
+#[allow(dead_code, unused_imports)]
+#[path = "JsonPathEval.rs"]
+mod json_path_eval_layout;
+
+#[path = "Value.rs"]
+mod value_upstream;
+pub use value_upstream::Value;
+
+#[path = "JsonPathCodegen.rs"]
+mod json_path_codegen_upstream;
+pub use json_path_codegen_upstream::{JsonPathCodegen, JsonPathCompiledFn};
+
+mod util;
+pub use util::{get_accessed_properties, json_path_equals, json_path_to_string};
+
+#[allow(dead_code, unused_imports)]
+#[path = "index.rs"]
+mod index_layout;
 
 #[cfg(test)]
 mod tests {
