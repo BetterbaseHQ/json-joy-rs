@@ -476,10 +476,10 @@ fn or_validates_first_matching_type() {
 }
 
 #[test]
-fn or_error_code_is_or() {
+fn or_error_code_is_selected_branch_error() {
     let type_ = t().Or(vec![t().num(), t().str()]);
     let result = validate(&json!(null), &type_, &opts_obj(), &[]);
-    assert_eq!(error_code(result), "OR");
+    assert_eq!(error_code(result), "NUM");
 }
 
 // ── Tuple type ───────────────────────────────────────────────────────────────

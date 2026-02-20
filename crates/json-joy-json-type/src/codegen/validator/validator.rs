@@ -4,6 +4,7 @@
 
 use serde_json::Value;
 
+use crate::codegen::discriminator::DiscriminatorCodegen;
 use crate::constants::ValidationError;
 use crate::schema::NumFormat;
 use crate::type_def::classes::*;
@@ -452,15 +453,31 @@ fn validate_or(
     if t.types.is_empty() {
         return make_error(ValidationError::Or, path, opts);
     }
-    // Try each type in order — first match wins.
-    // Run with the caller's opts directly: a successful result is returned as-is,
-    // and we only skip to the next branch on failure.
+
+    if t.types.len() == 1 {
+        return validate_inner(value, &t.types[0], opts, path);
+    }
+
+    if let Ok(discriminator) = DiscriminatorCodegen::get(t) {
+        if let Ok(index) = discriminator(value) {
+            if index >= 0 {
+                let index = index as usize;
+                if index < t.types.len() {
+                    return validate_inner(value, &t.types[index], opts, path);
+                }
+            }
+        }
+        return make_error(ValidationError::Or, path, opts);
+    }
+
+    // Fallback path for imported/custom schemas with no discriminator expression.
     for type_ in &t.types {
         let r = validate_inner(value, type_, opts, path);
         if r.is_ok() {
             return r;
         }
     }
+
     make_error(ValidationError::Or, path, opts)
 }
 

@@ -496,9 +496,8 @@ impl OrType {
     }
 }
 
-fn compute_discriminator(_types: &[super::TypeNode]) -> Value {
-    // Default: unresolved discriminator (will be computed at runtime if needed)
-    serde_json::json!(["num", -1])
+fn compute_discriminator(types: &[super::TypeNode]) -> Value {
+    super::discriminator::Discriminator::create_expression(types)
 }
 
 // -------------------------------------------------------------------------

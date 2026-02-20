@@ -263,7 +263,9 @@ impl TypeBuilder {
             Schema::Ref(s) => self.Ref(s.ref_.clone()),
             Schema::Or(s) => {
                 let types: Vec<TypeNode> = s.types.iter().map(|t| self.import(t)).collect();
-                TypeNode::Or(OrType::new(types).sys(self.sys()))
+                let mut or = OrType::new(types).sys(self.sys());
+                or.discriminator = s.discriminator.clone();
+                TypeNode::Or(or)
             }
             Schema::Fn(s) => {
                 let req = self.import(&s.req);

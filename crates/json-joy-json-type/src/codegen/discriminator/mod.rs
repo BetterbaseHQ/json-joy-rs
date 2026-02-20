@@ -1,5 +1,3 @@
-//! Discriminator codegen stub.
-//!
-//! Upstream reference: json-type/src/codegen/discriminator/
+pub mod index;
 
-// TODO: Port DiscriminatorCodegen.
+pub use index::{DiscriminatorCodegen, DiscriminatorFn};
