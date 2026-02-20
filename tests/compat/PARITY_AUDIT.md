@@ -45,6 +45,7 @@ Notes:
 - `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_functions_matrix.rs` covering function extension scenarios (`length`, `count`, `match`, `search`, `value`) and combined logical usage from upstream `testJsonPathExec`.
 - `json-path` now has an upstream-mapped integration matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_parser_matrix.rs` covering parser-shape scenarios for unions, recursive+filter composition, bracket-notation existence filters, and parser error handling from upstream `JsonPathParser.spec.ts`.
 - `json-path` now has an expression inventory matrix at `crates/json-joy-json-path/tests/upstream_port_json_path_expression_inventory.rs` to enforce a broad set of known-valid and known-invalid parser cases derived from upstream test suites.
+- `json-type` codegen families (`capacity`, `json`, `discriminator`, `binary`) are now implemented as runtime Rust codegen adapters with upstream-mapped parity coverage at `crates/json-joy-json-type/tests/upstream_port_json_type_codegen_matrix.rs`.
 - Prefixed crate naming is intentional and documented in `AGENTS.md` package mapping.
 
 ## Explicit non-parity choices currently in tree
@@ -97,10 +98,6 @@ Notes:
 ### In-code stubs and intentional behavior notes
 
 - `crates/codegen/src/lib.rs`: package is explicitly a stub; runtime JS codegen not ported.
-- `crates/json-joy-json-type/src/codegen/binary/mod.rs`: TODO for binary codegen classes.
-- `crates/json-joy-json-type/src/codegen/json/mod.rs`: JSON text codegen stub/TODO.
-- `crates/json-joy-json-type/src/codegen/discriminator/mod.rs`: discriminator codegen stub/TODO.
-- `crates/json-joy-json-type/src/codegen/capacity/mod.rs`: capacity estimator codegen stub/TODO.
 - `crates/json-joy/src/json_crdt/draft.rs`: redo methods are explicit stubs.
 - `crates/json-joy/src/json_crdt/codec/structural/verbose.rs`: local stub-node fallback path has comment noting upstream would error.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
@@ -148,5 +145,5 @@ Implication:
 ## Recommended next review slices
 
 1. `json-path`: continue porting additional upstream parser/evaluator corner cases (especially high-complexity nested filter/function combinations) into matrix tests to widen behavioral coverage.
-2. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
+2. `json-type`: expand codegen parity matrices with deeper edge-case coverage (complex `or` discriminators, nested refs, and binary shape variants).
 3. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.

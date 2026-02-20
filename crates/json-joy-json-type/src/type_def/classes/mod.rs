@@ -8,6 +8,7 @@ use std::sync::Arc;
 use super::abs_type::BaseInfo;
 use super::module_type::ModuleType;
 use crate::schema::*;
+use crate::type_def::discriminator::Discriminator;
 
 // -------------------------------------------------------------------------
 // AnyType
@@ -496,9 +497,10 @@ impl OrType {
     }
 }
 
-fn compute_discriminator(_types: &[super::TypeNode]) -> Value {
-    // Default: unresolved discriminator (will be computed at runtime if needed)
-    serde_json::json!(["num", -1])
+fn compute_discriminator(types: &[super::TypeNode]) -> Value {
+    // Preserve a usable fallback when discriminator derivation fails, but prefer
+    // the upstream expression builder for parity.
+    Discriminator::create_expression(types).unwrap_or_else(|_| serde_json::json!(["num", -1]))
 }
 
 // -------------------------------------------------------------------------
