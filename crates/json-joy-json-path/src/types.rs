@@ -107,8 +107,10 @@ pub enum ValueExpression {
     Root,
     /// Literal value: `"string"`, `42`, `true`, `null`
     Literal(Value),
-    /// Path expression: `@.name`
+    /// Relative path expression from current node: `@.name`
     Path(JSONPath),
+    /// Absolute path expression from root node: `$.name`
+    AbsolutePath(JSONPath),
     /// Function call: `length(@)`
     Function {
         name: String,

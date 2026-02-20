@@ -38,6 +38,15 @@ pub use parser::{JsonPathParser, ParseError};
 mod eval;
 pub use eval::JsonPathEval;
 
+mod value;
+pub use value::ValueNode;
+
+mod util;
+pub use util::{get_accessed_properties, json_path_equals, json_path_to_string};
+
+mod codegen;
+pub use codegen::{JsonPathCodegen, JsonPathCompiledFn};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -530,5 +539,60 @@ mod tests {
         let path = JsonPathParser::parse("$[?(@.age > 28)]").unwrap();
         let results = JsonPathEval::eval(&path, &doc);
         assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_eval_query_returns_paths() {
+        let doc = json!({"store": {"books": [{"title": "A"}, {"title": "B"}]}});
+        let path = JsonPathParser::parse("$.store.books[*].title").unwrap();
+        let result = JsonPathEval::eval_query(&path, &doc);
+        assert_eq!(result.values.len(), 2);
+        assert_eq!(result.paths.len(), 2);
+        assert_eq!(
+            result.paths[0],
+            vec![
+                PathComponent::Key("store".into()),
+                PathComponent::Key("books".into()),
+                PathComponent::Index(0),
+                PathComponent::Key("title".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_eval_filter_absolute_path_uses_root_context() {
+        let doc = json!({
+            "threshold": 7,
+            "items": [{"v": 3}, {"v": 7}, {"v": 9}]
+        });
+        let path = JsonPathParser::parse("$.items[?(@.v >= $.threshold)]").unwrap();
+        let results = JsonPathEval::eval(&path, &doc);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0]["v"], json!(7));
+        assert_eq!(results[1]["v"], json!(9));
+    }
+
+    #[test]
+    fn test_json_path_util_helpers() {
+        let path = JsonPathParser::parse("$.store..title").unwrap();
+        let text = json_path_to_string(&path);
+        assert_eq!(text, "$.store..title");
+        assert!(json_path_equals(&path, &path));
+        assert_eq!(get_accessed_properties(&path), vec!["store", "title"]);
+    }
+
+    #[test]
+    fn test_value_node_helpers() {
+        let doc = json!({"a": [{"b/c": 1}]});
+        let node = ValueNode::new(
+            &doc["a"][0]["b/c"],
+            vec![
+                PathComponent::Key("a".into()),
+                PathComponent::Index(0),
+                PathComponent::Key("b/c".into()),
+            ],
+        );
+        assert_eq!(node.pointer(), "/a/0/b~1c");
+        assert_eq!(node.json_path(), "$['a'][0]['b/c']");
     }
 }

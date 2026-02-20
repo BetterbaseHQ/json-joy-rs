@@ -29,7 +29,7 @@ It is a review checkpoint artifact and should be updated as gaps are closed.
 | `json-expression` | `json-expression` | 29 | 23 |
 | `json-joy` | `json-joy` | 1044 | 107 |
 | `json-pack` | `json-joy-json-pack` | 398 | 97 |
-| `json-path` | `json-joy-json-path` | 24 | 5 |
+| `json-path` | `json-joy-json-path` | 24 | 8 |
 | `json-pointer` | `json-joy-json-pointer` | 31 | 34 |
 | `json-random` | `json-joy-json-random` | 18 | 10 |
 | `json-type` | `json-joy-json-type` | 123 | 39 |
@@ -38,6 +38,7 @@ It is a review checkpoint artifact and should be updated as gaps are closed.
 Notes:
 
 - `json-pointer` local `src` count is +3 vs upstream because Rust requires crate/module scaffolding files (`lib.rs`, `codegen/mod.rs`, `findByPointer/mod.rs`) that have no direct TS counterparts.
+- `json-path` now includes explicit `codegen`, `util`, and `value` modules mapped from upstream package families; remaining differences are primarily parser/evaluator decomposition details.
 - Prefixed crate naming is intentional and documented in `AGENTS.md` package mapping.
 
 ## Explicit non-parity choices currently in tree
@@ -100,6 +101,7 @@ Notes:
 - `crates/json-joy-json-pack/src/ejson/decoder.rs`: Decimal128 decoder returns zero 16-byte stub (matching upstream stub behavior).
 - `crates/json-joy-json-pointer/src/findByPointer/v1.rs`..`v5.rs`: variants are mirrored for path/layout parity, but delegate to `v6` implementation.
 - `crates/json-joy-json-pointer/src/codegen/find.rs` and `crates/json-joy-json-pointer/src/codegen/findRef.rs`: upstream emits specialized JS code; Rust uses closure wrappers over runtime traversal.
+- `crates/json-joy-json-path/src/codegen.rs`: upstream generates specialized JS code; Rust uses pre-parsed AST closures over `JsonPathEval`.
 - `crates/sonic-forest/src/util/mod.rs`: key-based helpers (`find`, `insert`, `find_or_next_lower`) take a `key_of` closure instead of direct node-field access to fit arena-indexed Rust nodes.
 - `crates/sonic-forest/src/llrb-tree/LlrbTree.rs`: `get_or_next_lower`, `for_each`, `iterator0`, and `iterator` intentionally panic with "Method not implemented." to match upstream stubs; `clear()` intentionally mirrors upstream and only clears `root`.
 - `crates/sonic-forest/src/radix/radix.rs`: string-key prefix math uses Unicode scalar (`char`) boundaries to stay Rust-safe; upstream JS indexes UTF-16 code units.
@@ -139,6 +141,6 @@ Implication:
 
 ## Recommended next review slices
 
-1. `json-path`: complete module-family parity with upstream package layout.
+1. `json-path`: close remaining evaluator/function semantics gaps (e.g., full function behavior parity for `match/search/value/count/length` in filter contexts).
 2. `json-type`: close codegen stub modules first (`binary`, `json`, `discriminator`, `capacity`).
 3. Revisit xfail scenarios one family at a time and remove wildcard entries as cases are fixed.

@@ -11,6 +11,11 @@ impl JsonPathEval {
     ///
     /// Returns a vector of references to matching values.
     pub fn eval<'a>(path: &JSONPath, doc: &'a Value) -> Vec<&'a Value> {
+        Self::eval_query(path, doc).values
+    }
+
+    /// Evaluate a JSONPath and return both matched values and normalized paths.
+    pub fn eval_query<'a>(path: &JSONPath, doc: &'a Value) -> QueryResult<'a> {
         let mut results = vec![doc];
         let mut paths: Vec<Vec<PathComponent>> = vec![vec![]];
 
@@ -22,13 +27,13 @@ impl JsonPathEval {
                 let current_path = &paths[i];
 
                 if segment.recursive {
-                    // Recursive descent
                     Self::eval_recursive(
                         value,
                         &segment.selectors,
                         current_path,
                         &mut new_results,
                         &mut new_paths,
+                        doc,
                     );
                 } else {
                     Self::eval_segment(
@@ -37,6 +42,7 @@ impl JsonPathEval {
                         current_path,
                         &mut new_results,
                         &mut new_paths,
+                        doc,
                     );
                 }
             }
@@ -45,7 +51,10 @@ impl JsonPathEval {
             paths = new_paths;
         }
 
-        results
+        QueryResult {
+            values: results,
+            paths,
+        }
     }
 
     fn eval_segment<'a>(
@@ -54,9 +63,10 @@ impl JsonPathEval {
         current_path: &[PathComponent],
         results: &mut Vec<&'a Value>,
         paths: &mut Vec<Vec<PathComponent>>,
+        root: &'a Value,
     ) {
         for selector in &segment.selectors {
-            Self::eval_selector(value, selector, current_path, results, paths);
+            Self::eval_selector(value, selector, current_path, results, paths, root);
         }
     }
 
@@ -66,26 +76,25 @@ impl JsonPathEval {
         current_path: &[PathComponent],
         results: &mut Vec<&'a Value>,
         paths: &mut Vec<Vec<PathComponent>>,
+        root: &'a Value,
     ) {
-        // First, try to match at current level
         for selector in selectors {
-            Self::eval_selector(value, selector, current_path, results, paths);
+            Self::eval_selector(value, selector, current_path, results, paths, root);
         }
 
-        // Then recurse into children
         match value {
             Value::Object(map) => {
                 for (key, child) in map {
                     let mut new_path = current_path.to_vec();
                     new_path.push(PathComponent::Key(key.clone()));
-                    Self::eval_recursive(child, selectors, &new_path, results, paths);
+                    Self::eval_recursive(child, selectors, &new_path, results, paths, root);
                 }
             }
             Value::Array(arr) => {
                 for (idx, child) in arr.iter().enumerate() {
                     let mut new_path = current_path.to_vec();
                     new_path.push(PathComponent::Index(idx));
-                    Self::eval_recursive(child, selectors, &new_path, results, paths);
+                    Self::eval_recursive(child, selectors, &new_path, results, paths, root);
                 }
             }
             _ => {}
@@ -98,6 +107,7 @@ impl JsonPathEval {
         current_path: &[PathComponent],
         results: &mut Vec<&'a Value>,
         paths: &mut Vec<Vec<PathComponent>>,
+        root: &'a Value,
     ) {
         match selector {
             Selector::Name(name) => {
@@ -165,32 +175,29 @@ impl JsonPathEval {
                     }
                 }
             }
-            Selector::Filter(expr) => {
-                // Evaluate filter expression against all children
-                match value {
-                    Value::Object(map) => {
-                        for (key, child) in map {
-                            if Self::eval_filter(expr, child, value) {
-                                let mut new_path = current_path.to_vec();
-                                new_path.push(PathComponent::Key(key.clone()));
-                                results.push(child);
-                                paths.push(new_path);
-                            }
+            Selector::Filter(expr) => match value {
+                Value::Object(map) => {
+                    for (key, child) in map {
+                        if Self::eval_filter(expr, child, root) {
+                            let mut new_path = current_path.to_vec();
+                            new_path.push(PathComponent::Key(key.clone()));
+                            results.push(child);
+                            paths.push(new_path);
                         }
                     }
-                    Value::Array(arr) => {
-                        for (idx, child) in arr.iter().enumerate() {
-                            if Self::eval_filter(expr, child, value) {
-                                let mut new_path = current_path.to_vec();
-                                new_path.push(PathComponent::Index(idx));
-                                results.push(child);
-                                paths.push(new_path);
-                            }
-                        }
-                    }
-                    _ => {}
                 }
-            }
+                Value::Array(arr) => {
+                    for (idx, child) in arr.iter().enumerate() {
+                        if Self::eval_filter(expr, child, root) {
+                            let mut new_path = current_path.to_vec();
+                            new_path.push(PathComponent::Index(idx));
+                            results.push(child);
+                            paths.push(new_path);
+                        }
+                    }
+                }
+                _ => {}
+            },
         }
     }
 
@@ -204,72 +211,62 @@ impl JsonPathEval {
         })
     }
 
-    fn eval_filter(expr: &FilterExpression, current: &Value, _parent: &Value) -> bool {
+    fn eval_filter(expr: &FilterExpression, current: &Value, root: &Value) -> bool {
         match expr {
-            FilterExpression::Existence { path } => {
-                // Check if path exists from current node
-                let results = Self::eval(path, current);
-                !results.is_empty()
-            }
+            FilterExpression::Existence { path } => !Self::eval(path, current).is_empty(),
             FilterExpression::Comparison {
                 operator,
                 left,
                 right,
             } => {
-                let left_val = Self::eval_value_expr(left, current);
-                let right_val = Self::eval_value_expr(right, current);
+                let left_val = Self::eval_value_expr(left, current, root);
+                let right_val = Self::eval_value_expr(right, current, root);
                 Self::compare(operator, &left_val, &right_val)
             }
             FilterExpression::Logical {
                 operator,
                 left,
                 right,
-            } => {
-                let left_result = Self::eval_filter(left, current, _parent);
-                let right_result = Self::eval_filter(right, current, _parent);
-                match operator {
-                    LogicalOperator::And => left_result && right_result,
-                    LogicalOperator::Or => left_result || right_result,
+            } => match operator {
+                LogicalOperator::And => {
+                    Self::eval_filter(left, current, root)
+                        && Self::eval_filter(right, current, root)
                 }
-            }
-            FilterExpression::Negation(expr) => !Self::eval_filter(expr, current, _parent),
-            FilterExpression::Paren(expr) => Self::eval_filter(expr, current, _parent),
-            FilterExpression::Function { .. } => {
-                // Function evaluation not yet implemented
-                false
-            }
+                LogicalOperator::Or => {
+                    Self::eval_filter(left, current, root)
+                        || Self::eval_filter(right, current, root)
+                }
+            },
+            FilterExpression::Negation(expr) => !Self::eval_filter(expr, current, root),
+            FilterExpression::Paren(expr) => Self::eval_filter(expr, current, root),
+            FilterExpression::Function { .. } => false,
         }
     }
 
-    fn eval_value_expr(expr: &ValueExpression, current: &Value) -> Option<Value> {
+    fn eval_value_expr(expr: &ValueExpression, current: &Value, root: &Value) -> Option<Value> {
         match expr {
             ValueExpression::Current => Some(current.clone()),
-            ValueExpression::Root => None, // Root not available in this context
+            ValueExpression::Root => Some(root.clone()),
             ValueExpression::Literal(v) => Some(v.clone()),
             ValueExpression::Path(path) => {
                 let results = Self::eval(path, current);
                 results.first().map(|v| (*v).clone())
             }
-            ValueExpression::Function { .. } => None, // Not yet implemented
+            ValueExpression::AbsolutePath(path) => {
+                let results = Self::eval(path, root);
+                results.first().map(|v| (*v).clone())
+            }
+            ValueExpression::Function { .. } => None,
         }
     }
 
     fn compare(operator: &ComparisonOperator, left: &Option<Value>, right: &Option<Value>) -> bool {
         match (left, right) {
-            (None, None) => match operator {
-                ComparisonOperator::Equal => true,
-                ComparisonOperator::NotEqual => false,
-                _ => false,
-            },
+            (None, None) => matches!(operator, ComparisonOperator::Equal),
             (Some(l), Some(r)) => {
-                // Use compare_values for all operators. This handles the case where
-                // a numeric literal parsed as f64 (e.g. 1.0) must compare equal to an
-                // integer JSON value (e.g. json!(1)), since serde_json's PartialEq
-                // distinguishes integer and float representations.
                 let ord = Self::compare_values(l, r);
                 match operator {
                     ComparisonOperator::Equal => {
-                        // For numbers use ordering-based equality; for other types use PartialEq
                         if let (Value::Number(_), Value::Number(_)) = (l, r) {
                             ord == Some(std::cmp::Ordering::Equal)
                         } else {

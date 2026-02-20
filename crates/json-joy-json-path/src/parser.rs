@@ -371,7 +371,10 @@ impl<'a> JsonPathParser<'a> {
         if self.peek() == Some('$') {
             self.advance();
             let segments = self.parse_filter_path_segments()?;
-            return Ok(ValueExpression::Path(JSONPath::new(segments)));
+            if segments.is_empty() {
+                return Ok(ValueExpression::Root);
+            }
+            return Ok(ValueExpression::AbsolutePath(JSONPath::new(segments)));
         }
 
         if self.peek() == Some('\'') || self.peek() == Some('"') {
