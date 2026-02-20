@@ -32,7 +32,7 @@ use crate::json_crdt_patch::codec::clock::{ClockDecoder, ClockEncoder};
 use crate::json_crdt_patch::enums::{JsonCrdtDataType, SESSION};
 use crate::json_crdt_patch::operations::ConValue;
 use crate::json_crdt_patch::util::binary::{CrdtReader, CrdtWriter};
-use json_joy_json_pack::PackValue;
+use json_joy_json_pack::{decode_cbor_value_with_consumed, CborEncoder, PackValue};
 
 // ── CRDT major type constants ───────────────────────────────────────────────
 
@@ -373,65 +373,9 @@ fn encode_arr_logical(model: &Model, node: &ArrNode, w: &mut CrdtWriter, enc: &m
 // ── CBOR primitive writers ─────────────────────────────────────────────────
 
 fn write_cbor_value(w: &mut CrdtWriter, pv: &PackValue) {
-    use json_joy_json_pack::PackValue as PV;
-    match pv {
-        PV::Null => w.u8(0xF6),      // CBOR null
-        PV::Undefined => w.u8(0xF7), // CBOR undefined
-        PV::Bool(true) => w.u8(0xF5),
-        PV::Bool(false) => w.u8(0xF4),
-        PV::Integer(n) => {
-            if *n >= 0 {
-                write_cbor_uint(w, *n as u64);
-            } else {
-                write_cbor_neg(w, (-1 - n) as u64);
-            }
-        }
-        PV::Float(f) => {
-            // 64-bit float
-            w.u8(0xFB);
-            let bytes = f.to_be_bytes();
-            w.buf(&bytes);
-        }
-        PV::Str(s) => write_cbor_str(w, s),
-        PV::Bytes(b) => {
-            // CBOR byte string
-            let len = b.len();
-            if len <= 23 {
-                w.u8(0x40 | len as u8);
-            } else if len <= 0xFF {
-                w.u8(0x58);
-                w.u8(len as u8);
-            } else {
-                w.u8(0x59);
-                w.buf(&(len as u16).to_be_bytes());
-            }
-            w.buf(b);
-        }
-        PV::Array(arr) => {
-            let len = arr.len();
-            write_cbor_arr_header(w, len);
-            for item in arr {
-                write_cbor_value(w, item);
-            }
-        }
-        PV::Object(map) => {
-            let len = map.len();
-            write_cbor_map_header(w, len);
-            for (k, v) in map {
-                write_cbor_str(w, k);
-                write_cbor_value(w, v);
-            }
-        }
-        PV::UInteger(n) => write_cbor_uint(w, *n),
-        PV::BigInt(n) => {
-            if *n >= 0 {
-                write_cbor_uint(w, *n as u64);
-            } else {
-                write_cbor_neg(w, (-1 - n) as u64);
-            }
-        }
-        PV::Extension(_) | PV::Blob(_) => w.u8(0xF6), // null fallback
-    }
+    let mut enc = CborEncoder::new();
+    let bytes = enc.encode(pv);
+    w.buf(&bytes);
 }
 
 fn write_cbor_uint(w: &mut CrdtWriter, n: u64) {
@@ -452,22 +396,6 @@ fn write_cbor_uint(w: &mut CrdtWriter, n: u64) {
     }
 }
 
-fn write_cbor_neg(w: &mut CrdtWriter, n: u64) {
-    // n = -1 - actual_value, so CBOR neg = 0x20 | ...
-    if n <= 23 {
-        w.u8(0x20 | n as u8);
-    } else if n <= 0xFF {
-        w.u8(0x38);
-        w.u8(n as u8);
-    } else if n <= 0xFFFF {
-        w.u8(0x39);
-        w.buf(&(n as u16).to_be_bytes());
-    } else {
-        w.u8(0x3A);
-        w.buf(&(n as u32).to_be_bytes());
-    }
-}
-
 fn write_cbor_str(w: &mut CrdtWriter, s: &str) {
     let bytes = s.as_bytes();
     let len = bytes.len();
@@ -484,30 +412,6 @@ fn write_cbor_str(w: &mut CrdtWriter, s: &str) {
         w.buf(&(len as u32).to_be_bytes());
     }
     w.buf(bytes);
-}
-
-fn write_cbor_arr_header(w: &mut CrdtWriter, len: usize) {
-    if len <= 23 {
-        w.u8(0x80 | len as u8);
-    } else if len <= 0xFF {
-        w.u8(0x98);
-        w.u8(len as u8);
-    } else {
-        w.u8(0x99);
-        w.buf(&(len as u16).to_be_bytes());
-    }
-}
-
-fn write_cbor_map_header(w: &mut CrdtWriter, len: usize) {
-    if len <= 23 {
-        w.u8(0xA0 | len as u8);
-    } else if len <= 0xFF {
-        w.u8(0xB8);
-        w.u8(len as u8);
-    } else {
-        w.u8(0xB9);
-        w.buf(&(len as u16).to_be_bytes());
-    }
 }
 
 // ── Decode ──────────────────────────────────────────────────────────────────
@@ -1011,111 +915,11 @@ fn decode_arr_logical(
 // ── Minimal CBOR reader ───────────────────────────────────────────────────
 
 fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, DecodeError> {
-    let byte = r.u8();
-    let major = byte >> 5;
-    let info = byte & 0x1F;
-
-    match major {
-        0 => {
-            // Unsigned int
-            let n = read_cbor_argument(r, info)?;
-            Ok(PackValue::Integer(n as i64))
-        }
-        1 => {
-            // Negative int: -1 - n
-            let n = read_cbor_argument(r, info)?;
-            Ok(PackValue::Integer(-1 - n as i64))
-        }
-        2 => {
-            // Byte string
-            let len = read_cbor_argument(r, info)? as usize;
-            Ok(PackValue::Bytes(r.buf(len).to_vec()))
-        }
-        3 => {
-            // Text string
-            let len = read_cbor_argument(r, info)? as usize;
-            let s = r.utf8(len);
-            Ok(PackValue::Str(s.to_string()))
-        }
-        4 => {
-            // Array
-            let len = read_cbor_argument(r, info)? as usize;
-            let mut items = Vec::with_capacity(len);
-            for _ in 0..len {
-                items.push(read_cbor_value(r)?);
-            }
-            Ok(PackValue::Array(items))
-        }
-        5 => {
-            // Map
-            let len = read_cbor_argument(r, info)? as usize;
-            let mut map = Vec::with_capacity(len);
-            for _ in 0..len {
-                let key = read_cbor_value(r)?;
-                let key_str = match key {
-                    PackValue::Str(s) => s,
-                    _ => String::new(),
-                };
-                let val = read_cbor_value(r)?;
-                map.push((key_str, val));
-            }
-            Ok(PackValue::Object(map))
-        }
-        7 => {
-            // Float/special
-            match info {
-                20 => Ok(PackValue::Bool(false)),
-                21 => Ok(PackValue::Bool(true)),
-                22 => Ok(PackValue::Null),
-                23 => Ok(PackValue::Undefined),
-                25 => {
-                    let bytes = r.buf(2);
-                    let bits = u16::from_be_bytes([bytes[0], bytes[1]]);
-                    Ok(PackValue::Float(json_joy_buffers::decode_f16(bits) as f64))
-                }
-                26 => {
-                    let bytes = r.buf(4);
-                    let f = f32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-                    Ok(PackValue::Float(f as f64))
-                }
-                27 => {
-                    let bytes = r.buf(8);
-                    let f = f64::from_be_bytes([
-                        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
-                        bytes[7],
-                    ]);
-                    Ok(PackValue::Float(f))
-                }
-                _ => Ok(PackValue::Null),
-            }
-        }
-        _ => Err(DecodeError::Format(format!("unknown CBOR major {}", major))),
-    }
-}
-
-fn read_cbor_argument(r: &mut CrdtReader, info: u8) -> Result<u64, DecodeError> {
-    match info {
-        n if n <= 23 => Ok(n as u64),
-        24 => Ok(r.u8() as u64),
-        25 => {
-            let b = r.buf(2);
-            Ok(u16::from_be_bytes([b[0], b[1]]) as u64)
-        }
-        26 => {
-            let b = r.buf(4);
-            Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as u64)
-        }
-        27 => {
-            let b = r.buf(8);
-            Ok(u64::from_be_bytes([
-                b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-            ]))
-        }
-        _ => Err(DecodeError::Format(format!(
-            "unsupported CBOR additional info {}",
-            info
-        ))),
-    }
+    let bytes = &r.data[r.x..];
+    let (value, consumed) = decode_cbor_value_with_consumed(bytes)
+        .map_err(|e| DecodeError::Format(format!("invalid CBOR value: {e}")))?;
+    r.x += consumed;
+    Ok(value)
 }
 
 fn read_cbor_str(r: &mut CrdtReader) -> Result<String, DecodeError> {
