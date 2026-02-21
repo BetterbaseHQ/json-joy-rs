@@ -13,6 +13,7 @@ pub mod avro;
 pub mod bencode;
 pub mod bson;
 pub mod cbor;
+pub mod codecs;
 pub mod ejson;
 pub mod ion;
 pub mod json;
