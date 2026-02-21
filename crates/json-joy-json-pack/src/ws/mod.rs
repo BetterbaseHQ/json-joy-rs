@@ -5,9 +5,11 @@
 pub mod constants;
 pub mod decoder;
 pub mod encoder;
+pub mod errors;
 pub mod frames;
 
 pub use constants::WsFrameOpcode;
 pub use decoder::{WsFrameDecoder, WsFrameDecodingError};
 pub use encoder::WsFrameEncoder;
+pub use errors::WsFrameEncodingError;
 pub use frames::{WsCloseFrame, WsFrame, WsFrameHeader, WsPingFrame, WsPongFrame};

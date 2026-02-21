@@ -12,6 +12,8 @@ mod encoder_dag;
 mod encoder_fast;
 mod encoder_stable;
 mod error;
+mod shared;
+mod types;
 
 pub use codec::CborJsonValueCodec;
 pub use convert::{cbor_to_json, cbor_to_json_owned, json_to_cbor};
@@ -28,3 +30,5 @@ pub use encoder_fast::{
 };
 pub use encoder_stable::CborEncoderStable;
 pub use error::CborError;
+pub use shared::{decode, encode};
+pub use types::CborUint8Array;

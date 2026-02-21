@@ -9,6 +9,7 @@ pub mod encoder;
 pub mod encoder_dag;
 pub mod encoder_stable;
 pub mod error;
+pub mod types;
 pub mod util;
 
 pub use decoder::JsonDecoder;
@@ -18,3 +19,4 @@ pub use encoder::JsonEncoder;
 pub use encoder_dag::JsonEncoderDag;
 pub use encoder_stable::JsonEncoderStable;
 pub use error::JsonError;
+pub use types::JsonUint8Array;
