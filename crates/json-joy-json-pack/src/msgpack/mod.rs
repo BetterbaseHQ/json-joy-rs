@@ -9,6 +9,7 @@ pub mod encoder_fast;
 pub mod encoder_stable;
 pub mod error;
 pub mod to_json;
+pub mod util;
 
 pub use decoder::{MsgPackDecoder, MsgPackPathSegment};
 pub use decoder_fast::MsgPackDecoderFast;
@@ -17,3 +18,4 @@ pub use encoder_fast::MsgPackEncoderFast;
 pub use encoder_stable::MsgPackEncoderStable;
 pub use error::MsgPackError;
 pub use to_json::MsgPackToJsonConverter;
+pub use util::{decode, encode, encode_full, MsgPack};
