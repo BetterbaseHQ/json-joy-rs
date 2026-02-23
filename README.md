@@ -1,34 +1,27 @@
 # json-joy-rs
 
-Upstream Credit: This repository ports and adapts the upstream `json-joy`
-project by streamich.
-- Upstream repository: <https://github.com/streamich/json-joy>
-- Upstream docs: <https://jsonjoy.com/libs/json-joy-js>
-- Upstream package source mirrored here: `packages/*`
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-`json-joy-rs` is a Rust-first implementation of core `json-joy` CRDT, patch,
-diff, and codec functionality, plus native bridges for WASM and Python.
+Rust implementation of the [json-joy](https://github.com/streamich/json-joy) CRDT, patch, diff, and codec library. Provides a complete port of core json-joy functionality with native bridges for WASM and Python.
 
-## Highlights
+This project ports and adapts the upstream `json-joy` library by [streamich](https://github.com/streamich/json-joy), pinned against `json-joy@17.67.0` with 1,398 compatibility fixtures ensuring parity.
 
-- Core CRDT model and patch operations in Rust (`crates/json-joy`)
-- Fixture-driven parity harness against upstream `json-joy@17.67.0`
-- Native platform bridges:
-  - WASM (`crates/json-joy-wasm`)
-  - UniFFI/Python (`crates/json-joy-ffi`, `bindings/python`)
+## Crates
 
-## Repository layout
+| Crate | Description |
+|-------|-------------|
+| `json-joy` | Core CRDT document model, patch protocol, diff, extensions, JSON utilities |
+| `json-joy-json-pack` | Binary serialization (CBOR, MessagePack, BSON, Avro, Ion, UBJSON, Bencode, and more) |
+| `json-joy-json-type` | Type system and schema framework |
+| `json-joy-json-path` | JSONPath (RFC 9535) evaluation |
+| `json-joy-json-pointer` | JSON Pointer (RFC 6901) utilities |
+| `json-expression` | High-performance JSON expression evaluator |
+| `json-joy-json-random` | Random JSON value generator for testing |
+| `sonic-forest` | Arena-based splay tree for dual-tree data structures |
+| `json-joy-wasm` | WASM bridge via wasm-bindgen |
+| `json-joy-ffi` | UniFFI bridge for Python and other languages |
 
-- `crates/json-joy`: primary core library and parity target
-- `crates/json-joy-wasm`: WASM bridge for core model/patch interop
-- `crates/json-joy-ffi`: UniFFI bridge crate (`cdylib`)
-- `bindings/python`: Python packaging and generated bindings
-- `bindings/wasm`: WASM benchmark and interop harness scripts
-- `tests/compat`: compatibility fixture corpus, manifest, and xfail policy
-- `tests/compat/PARITY_AUDIT.md`: ongoing file-family parity and intentional divergence log
-- `bin/`: helper scripts (`compat` fixture generation, binding generation)
-
-## Quick start
+## Quick Start
 
 ```bash
 just check
@@ -43,38 +36,52 @@ mise x -- cargo clippy --workspace --all-features --all-targets -- -D warnings
 mise x -- cargo test --workspace
 ```
 
-## Compatibility and parity
+## Compatibility
 
-Generate upstream compatibility fixtures:
-
-```bash
-just compat-fixtures
-```
-
-Run fixture parity tests:
+Parity with upstream is verified through a fixture-driven harness and live differential testing.
 
 ```bash
-just parity-fixtures
+just compat-fixtures    # Generate upstream compatibility fixtures
+just parity-fixtures    # Run fixture parity tests
+just parity-live        # Live TS<->WASM differential check
+just parity             # Run both
 ```
 
-Run live manual TS<->WASM core differential check:
+See `tests/compat/PARITY_AUDIT.md` for the full parity tracking log.
 
-```bash
-just parity-live
+## Repository Layout
+
+```
+crates/
+  json-joy/                 Core library and parity target
+  json-joy-json-pack/       Binary serialization formats
+  json-joy-json-type/       Type system and schema
+  json-joy-json-path/       JSONPath (RFC 9535)
+  json-joy-json-pointer/    JSON Pointer (RFC 6901)
+  json-expression/          Expression evaluator
+  json-joy-json-random/     Random JSON generator
+  sonic-forest/             Splay tree utilities
+  json-joy-wasm/            WASM bridge
+  json-joy-ffi/             UniFFI bridge (cdylib)
+bindings/
+  python/                   Python packaging and generated bindings
+  wasm/                     WASM benchmark and interop harness
+tests/
+  compat/                   Fixture corpus, manifest, and xfail policy
 ```
 
-Run both:
+## Scope
 
-```bash
-just parity
-```
+JS editor ecosystem adapter APIs (Slate/ProseMirror/Quill-specific helpers) are intentionally out of scope in this Rust/WASM port. For those integrations, use upstream JS [json-joy](https://github.com/streamich/json-joy).
 
-## Scope note
+`json-pack` NFS protocol families are not a current parity target.
 
-JS editor ecosystem adapter APIs (Slate/ProseMirror/Quill-specific helpers)
-are intentionally out of scope in this Rust/WASM port. For those integrations,
-use upstream JS `json-joy`.
+## Related
 
-`json-pack` NFS protocol families are not a current parity target in this repo.
-In particular, upstream `json-pack/src/nfs/v3/**` is intentionally unsupported
-for now while core codec and CRDT parity work is prioritized.
+- [betterbase-dev](https://github.com/BetterbaseHQ/betterbase-dev) -- Platform orchestration
+- [@betterbase/sdk](https://github.com/BetterbaseHQ/betterbase) -- Client SDK (uses json-joy-rs for CRDT operations)
+- [json-joy](https://github.com/streamich/json-joy) -- Upstream TypeScript library
+
+## License
+
+AGPL-3.0-only

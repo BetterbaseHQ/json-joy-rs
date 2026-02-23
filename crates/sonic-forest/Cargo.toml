@@ -2,7 +2,7 @@
 name = "sonic-forest"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "AGPL-3.0-only"
 description = "Rust port of sonic-forest — arena-based splay tree utilities for dual-tree data structures"
 
 [dependencies]

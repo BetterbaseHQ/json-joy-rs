@@ -2,7 +2,7 @@
 name = "embedded-uniffi-bindgen"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "AGPL-3.0-only"
 
 [dependencies]
 uniffi = { version = "0.31.0", features = ["cli"] }

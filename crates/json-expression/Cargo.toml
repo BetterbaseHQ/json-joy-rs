@@ -2,7 +2,7 @@
 name = "json-expression"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "AGPL-3.0-only"
 repository = "https://github.com/nicoth-in/json-joy-rs"
 description = "High-performance JSON expression evaluator - port of @jsonjoy.com/json-expression"
 

@@ -2,7 +2,7 @@
 name = "json-joy-json-path"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "AGPL-3.0-only"
 repository = "https://github.com/nicoth-in/json-joy-rs"
 description = "JSONPath (RFC 9535) implementation - parse and evaluate JSONPath expressions"
 
