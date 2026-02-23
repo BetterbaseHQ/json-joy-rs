@@ -68,6 +68,19 @@ Harness rules:
 - xfail entry that now passes exactly (non-wildcard) => unexpected pass failure
 - xfail entry that matches no current fixture => stale xfail failure
 
+## Test utilities (common/)
+
+- `assertions.rs` — hex/JSON comparison logic for fixture field matching
+- `fixtures.rs` — manifest loading, contract constants, fixture I/O
+- `scenarios/` — fixture scenario evaluators, split by domain:
+  - `mod.rs` — `evaluate_fixture()` dispatcher
+  - `helpers.rs` — shared builders, path navigation, binary encoders
+  - `patch.rs` — patch decode/encode/compaction/schema/diff scenarios
+  - `model.rs` — model roundtrip/decode/diff/API/lifecycle scenarios
+  - `codec.rs` — indexed and sidecar binary codec scenarios
+  - `util.rs` — string/binary/line diff scenarios
+  - `lessdb.rs` — LessDB model manager workflow scenarios
+
 ## Live differential check
 
 Live TS<->WASM core differential checks are manual-only:
