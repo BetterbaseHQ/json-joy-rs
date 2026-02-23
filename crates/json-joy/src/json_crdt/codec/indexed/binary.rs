@@ -484,7 +484,7 @@ fn decode_str(
                 node.rga.push_chunk(Chunk::new_deleted(chunk_id, n as u64));
             }
             PackValue::Str(s) => {
-                let span = s.chars().count() as u64;
+                let span = s.encode_utf16().count() as u64;
                 node.rga.push_chunk(Chunk::new(chunk_id, span, s));
             }
             _ => {}

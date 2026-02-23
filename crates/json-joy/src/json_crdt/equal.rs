@@ -303,7 +303,7 @@ mod tests {
     use crate::json_crdt_patch::clock::ts;
     use crate::json_crdt_patch::operations::ConValue;
     use json_joy_json_pack::PackValue;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     fn sid() -> u64 {
         999
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn cmp_con_same_value() {
-        let index = HashMap::default();
+        let index = BTreeMap::default();
         let a = CrdtNode::Con(ConNode::new(
             ts(sid(), 1),
             ConValue::Val(PackValue::Integer(42)),
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn cmp_con_different_value() {
-        let index = HashMap::default();
+        let index = BTreeMap::default();
         let a = CrdtNode::Con(ConNode::new(
             ts(sid(), 1),
             ConValue::Val(PackValue::Integer(1)),
@@ -342,7 +342,7 @@ mod tests {
     #[test]
     fn cmp_con_no_content() {
         // With compareContent=false, different values should be "equal".
-        let index = HashMap::default();
+        let index = BTreeMap::default();
         let a = CrdtNode::Con(ConNode::new(
             ts(sid(), 1),
             ConValue::Val(PackValue::Integer(1)),
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn cmp_different_types_false() {
-        let index = HashMap::default();
+        let index = BTreeMap::default();
         let a = CrdtNode::Con(ConNode::new(
             ts(sid(), 1),
             ConValue::Val(PackValue::Integer(1)),

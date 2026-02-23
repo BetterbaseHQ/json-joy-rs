@@ -347,7 +347,9 @@ fn decode_node(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_con(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("con.id".into()))?,
@@ -377,7 +379,9 @@ fn decode_con(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_val(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("val.id".into()))?,
@@ -396,7 +400,9 @@ fn decode_val(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_obj(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("obj.id".into()))?,
@@ -419,7 +425,9 @@ fn decode_obj(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_vec(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("vec.id".into()))?,
@@ -446,7 +454,9 @@ fn decode_vec(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_str(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("str.id".into()))?,
@@ -474,7 +484,7 @@ fn decode_str(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
         if let Some(span) = chunk_obj.get("span").and_then(|v| v.as_u64()) {
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(s) = chunk_obj.get("value").and_then(|v| v.as_str()) {
-            let span = s.chars().count() as u64;
+            let span = s.encode_utf16().count() as u64;
             node.rga
                 .push_chunk(Chunk::new(chunk_id, span, s.to_string()));
         } else {
@@ -488,7 +498,9 @@ fn decode_str(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_bin(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("bin.id".into()))?,
@@ -531,7 +543,9 @@ fn decode_bin(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
 }
 
 fn decode_arr(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
-    let obj = val.as_object().unwrap();
+    let obj = val
+        .as_object()
+        .ok_or_else(|| DecodeError::MissingField("node object".into()))?;
     let id = decode_ts(
         obj.get("id")
             .ok_or_else(|| DecodeError::MissingField("arr.id".into()))?,
@@ -710,5 +724,72 @@ mod tests {
             .expect("encoded object map");
         let keys: Vec<&str> = map.keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["b", "a"]);
+    }
+
+    // ── Verbose codec error handling tests ───────────────────────────────
+
+    #[test]
+    fn decode_rejects_non_object_document() {
+        let data = json!("not an object");
+        let err = decode(&data).expect_err("should reject non-object document");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_missing_time_field() {
+        let data = json!({ "root": { "value": { "type": "con", "id": 0, "value": 1 } } });
+        let err = decode(&data).expect_err("should reject missing time");
+        assert!(matches!(err, DecodeError::MissingField(f) if f == "time"));
+    }
+
+    #[test]
+    fn decode_rejects_missing_root_field() {
+        let data = json!({ "time": 0 });
+        let err = decode(&data).expect_err("should reject missing root");
+        assert!(matches!(err, DecodeError::MissingField(f) if f == "root"));
+    }
+
+    #[test]
+    fn decode_rejects_non_object_root_node() {
+        let data = json!({ "time": 0, "root": "not_an_object" });
+        let err = decode(&data).expect_err("should reject non-object root");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_unknown_node_type() {
+        // Root has a "value" child with an unknown type
+        let data = json!({
+            "time": 0,
+            "root": {
+                "value": { "type": "foobar", "id": 0 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject unknown node type");
+        assert!(matches!(err, DecodeError::UnknownNodeType(t) if t == "foobar"));
+    }
+
+    #[test]
+    fn decode_rejects_node_missing_type() {
+        let data = json!({
+            "time": 0,
+            "root": {
+                "value": { "id": 0 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject node without type");
+        assert!(matches!(err, DecodeError::MissingField(f) if f == "type"));
+    }
+
+    #[test]
+    fn decode_rejects_non_object_child_node() {
+        let data = json!({
+            "time": 0,
+            "root": {
+                "value": "not_an_object"
+            }
+        });
+        let err = decode(&data).expect_err("should reject non-object child node");
+        assert!(matches!(err, DecodeError::Format(_)));
     }
 }

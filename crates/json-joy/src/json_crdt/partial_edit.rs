@@ -60,13 +60,8 @@ pub struct FieldEdits {
 ///
 /// In the TypeScript upstream, `PartialEditModel` extends `Model` and overrides
 /// `_gcTree` to record deleted node IDs.  In Rust we use composition: the
-/// inner `Model` is exposed directly, and `deletes` collects any node IDs
-/// that would have been garbage-collected.
-///
-/// **Note:** The current Rust `Model` implementation does not perform GC, so
-/// `deletes` will always be empty.  This is safe — it means partial edits only
-/// produce field *updates* and never field *deletes*, which is conservative
-/// but correct.
+/// inner `Model` applies the patch (which triggers GC internally), and we
+/// snapshot the index before/after to detect which nodes were removed.
 ///
 /// Mirrors `PartialEditModel.ts`.
 pub struct PartialEditModel {
@@ -87,9 +82,19 @@ impl PartialEditModel {
         }
     }
 
-    /// Delegate patch application to the inner model.
+    /// Apply a patch, tracking which nodes were GC'd.
+    ///
+    /// We snapshot index keys before applying, then diff to find removed nodes.
+    /// This mirrors upstream `PartialEditModel._gcTree` which overrides the
+    /// base `Model._gcTree` to also push deleted IDs into a tracking array.
     pub fn apply_patch(&mut self, patch: &Patch) {
+        use super::nodes::TsKey;
+        let before: std::collections::HashSet<TsKey> = self.inner.index.keys().copied().collect();
         self.inner.apply_patch(patch);
+        let after: std::collections::HashSet<TsKey> = self.inner.index.keys().copied().collect();
+        for key in before.difference(&after) {
+            self.deletes.push(Ts::new(key.sid, key.time));
+        }
     }
 }
 
@@ -216,7 +221,7 @@ impl PartialEdit {
     /// Returns a [`FieldEdits`] containing:
     /// - `updates`: the full re-encoded set of fields from the updated model.
     /// - `deletes`: fields for every node that was garbage-collected during the
-    ///   edit (always empty with the current Rust `Model`, which does not GC).
+    ///   edit.
     ///
     /// Panics if [`load_partial_model`] has not been called yet.
     ///
@@ -525,8 +530,8 @@ mod tests {
     }
 
     #[test]
-    fn field_edits_deletes_empty_when_no_gc() {
-        // Since the Rust Model doesn't GC, deletes is always empty.
+    fn field_edits_deletes_empty_when_no_replacement() {
+        // When no values are replaced, GC produces no deletes.
         let s = sid();
         let mut model = Model::new(s);
         model.apply_operation(&Op::NewCon {
@@ -545,6 +550,9 @@ mod tests {
         let mut pe = factory.start_partial_edit(clock_blob).expect("parse clock");
         pe.load_partial_model(&fields).expect("load");
         let edits = pe.get_field_edits();
-        assert!(edits.deletes.is_empty(), "no GC in Rust → no field deletes");
+        assert!(
+            edits.deletes.is_empty(),
+            "no value replacement → no field deletes"
+        );
     }
 }

@@ -20,7 +20,7 @@ pub mod rga;
 use indexmap::IndexMap;
 use json_joy_json_pack::PackValue;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::constants::{ORIGIN, UNDEFINED_TS};
 use crate::json_crdt_patch::clock::{compare, Ts, Tss};
@@ -210,7 +210,8 @@ impl StrNode {
     }
 
     pub fn ins(&mut self, after: Ts, id: Ts, data: String) {
-        let span = data.chars().count() as u64; // approximate span as char count
+        // Upstream uses JS `string.length` (UTF-16 code units) for span.
+        let span = data.encode_utf16().count() as u64;
         self.rga.insert(after, id, span, data);
     }
 
@@ -235,10 +236,11 @@ impl StrNode {
             .collect()
     }
 
-    /// Number of live characters in this string.
+    /// Number of live UTF-16 code units in this string.
+    ///
+    /// Matches upstream `StrNode.length()` which uses JS `string.length`
+    /// (UTF-16 code units).
     pub fn size(&self) -> usize {
-        // chunk.span is set to chars().count() at insert/decode time, so it is
-        // always the correct Unicode code-point length — no need to re-scan bytes.
         self.rga.iter_live().map(|c| c.span as usize).sum()
     }
 
@@ -577,18 +579,69 @@ impl CrdtNode {
             Self::Arr(_) => "arr",
         }
     }
+
+    /// Collect the IDs of all immediate child nodes.
+    ///
+    /// Mirrors the `children(callback)` method on each upstream node type.
+    /// - `ConNode`, `StrNode`, `BinNode` have no children.
+    /// - `ValNode` has one child: the pointed-to node.
+    /// - `ObjNode` children are all values in its keys map.
+    /// - `VecNode` children are all non-None elements.
+    /// - `ArrNode` children are all data-node timestamps across all chunks.
+    pub fn child_ids(&self) -> Vec<Ts> {
+        match self {
+            Self::Con(_) | Self::Str(_) | Self::Bin(_) => Vec::new(),
+            Self::Val(n) => {
+                if n.val.sid == 0 && n.val.time == 0 {
+                    Vec::new() // ORIGIN — no child
+                } else {
+                    vec![n.val]
+                }
+            }
+            Self::Obj(n) => n.keys.values().copied().collect(),
+            Self::Vec(n) => n.elements.iter().filter_map(|e| *e).collect(),
+            Self::Arr(n) => {
+                let mut ids = Vec::new();
+                // Walk ALL chunks (including tombstoned), matching upstream
+                // ArrNode.children() which iterates first()→next().
+                for chunk in n.rga.iter() {
+                    if let Some(data) = &chunk.data {
+                        ids.extend_from_slice(data);
+                    }
+                }
+                ids
+            }
+        }
+    }
 }
 
 // ── NodeIndex ─────────────────────────────────────────────────────────────
 
-/// Map from timestamp ID to CRDT node.
-pub type NodeIndex = HashMap<TsKey, CrdtNode>;
+/// Map from timestamp ID to CRDT node. Uses `BTreeMap` for deterministic
+/// iteration order, matching upstream's `AvlMap` with `clock.compare`
+/// (time-first, then sid).
+pub type NodeIndex = BTreeMap<TsKey, CrdtNode>;
 
-/// Hashable key for Ts (since Ts doesn't implement Hash by default).
+/// Ordered key for Ts. Compares time first, then sid — matching upstream
+/// `clock.compare` used by the `AvlMap`-backed node index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TsKey {
     pub sid: u64,
     pub time: u64,
+}
+
+impl PartialOrd for TsKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TsKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.time
+            .cmp(&other.time)
+            .then_with(|| self.sid.cmp(&other.sid))
+    }
 }
 
 impl From<Ts> for TsKey {
@@ -635,4 +688,136 @@ impl IndexExt for NodeIndex {
 
 pub fn pack_to_json(pv: &PackValue) -> Value {
     Value::from(pv.clone())
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::json_crdt::constants::ORIGIN;
+    use crate::json_crdt_patch::clock::ts;
+
+    fn sid() -> u64 {
+        42
+    }
+
+    // ── UTF-16 counting tests ───────────────────────────────────────────
+
+    #[test]
+    fn str_size_ascii() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        s.ins(ORIGIN, ts(sid(), 2), "hello".into());
+        // "hello" = 5 UTF-16 code units
+        assert_eq!(s.size(), 5);
+    }
+
+    #[test]
+    fn str_size_emoji_surrogate_pair() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        // U+1F600 (😀) is a supplementary plane character → 2 UTF-16 code units
+        s.ins(ORIGIN, ts(sid(), 2), "😀".into());
+        assert_eq!(s.size(), 2, "emoji should count as 2 UTF-16 code units");
+    }
+
+    #[test]
+    fn str_size_mixed_bmp_and_supplementary() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        // "a😀b" = 1 + 2 + 1 = 4 UTF-16 code units
+        s.ins(ORIGIN, ts(sid(), 2), "a😀b".into());
+        assert_eq!(s.size(), 4);
+    }
+
+    #[test]
+    fn str_size_multiple_supplementary_chars() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        // "🎉🎊" = 2 + 2 = 4 UTF-16 code units
+        s.ins(ORIGIN, ts(sid(), 2), "🎉🎊".into());
+        assert_eq!(s.size(), 4);
+    }
+
+    #[test]
+    fn str_size_cjk_bmp_char() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        // CJK character U+4E16 (世) is in BMP → 1 UTF-16 code unit
+        s.ins(ORIGIN, ts(sid(), 2), "世".into());
+        assert_eq!(s.size(), 1, "BMP CJK char should be 1 UTF-16 code unit");
+    }
+
+    #[test]
+    fn str_size_empty() {
+        let s = StrNode::new(ts(sid(), 1));
+        assert_eq!(s.size(), 0);
+    }
+
+    #[test]
+    fn str_find_accounts_for_utf16_spans() {
+        let mut s = StrNode::new(ts(sid(), 1));
+        // "😀b" — emoji takes positions 0,1; 'b' is at position 2
+        s.ins(ORIGIN, ts(sid(), 2), "😀b".into());
+        // Position 2 should find the character 'b' (offset 2 within the chunk)
+        let found = s.find(2);
+        assert!(found.is_some(), "should find char at UTF-16 position 2");
+        let found_ts = found.unwrap();
+        assert_eq!(found_ts.time, ts(sid(), 2).time + 2);
+    }
+
+    // ── NodeIndex TsKey ordering tests ──────────────────────────────────
+
+    #[test]
+    fn tskey_orders_by_time_first() {
+        let a = TsKey { sid: 100, time: 1 };
+        let b = TsKey { sid: 1, time: 2 };
+        // b has higher time so a < b regardless of sid
+        assert!(a < b);
+    }
+
+    #[test]
+    fn tskey_orders_by_sid_on_time_tie() {
+        let a = TsKey { sid: 1, time: 5 };
+        let b = TsKey { sid: 2, time: 5 };
+        assert!(a < b);
+    }
+
+    #[test]
+    fn node_index_iterates_in_time_first_order() {
+        let mut index = NodeIndex::new();
+        let nodes = [
+            (ts(100, 3), "con3"),
+            (ts(1, 1), "con1"),
+            (ts(50, 2), "con2"),
+        ];
+        for (id, _label) in &nodes {
+            use crate::json_crdt_patch::operations::ConValue;
+            index.insert_node(
+                *id,
+                CrdtNode::Con(ConNode::new(*id, ConValue::Val(PackValue::Null))),
+            );
+        }
+        let times: Vec<u64> = index.keys().map(|k| k.time).collect();
+        assert_eq!(
+            times,
+            vec![1, 2, 3],
+            "NodeIndex should iterate time-ascending"
+        );
+    }
+
+    #[test]
+    fn node_index_iterates_sid_ascending_on_time_tie() {
+        let mut index = NodeIndex::new();
+        let ids = [ts(30, 5), ts(10, 5), ts(20, 5)];
+        for id in &ids {
+            use crate::json_crdt_patch::operations::ConValue;
+            index.insert_node(
+                *id,
+                CrdtNode::Con(ConNode::new(*id, ConValue::Val(PackValue::Null))),
+            );
+        }
+        let sids: Vec<u64> = index.keys().map(|k| k.sid).collect();
+        assert_eq!(
+            sids,
+            vec![10, 20, 30],
+            "same-time entries should order by sid"
+        );
+    }
 }

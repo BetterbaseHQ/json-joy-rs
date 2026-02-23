@@ -77,7 +77,11 @@ impl CborEncoderFast {
     }
 
     pub fn write_number(&mut self, num: f64) {
-        if num.fract() == 0.0 && num >= i64::MIN as f64 && num <= u64::MAX as f64 {
+        // Upstream uses `isSafeInteger(num)` which checks:
+        //   Number.isInteger(num) && Math.abs(num) <= Number.MAX_SAFE_INTEGER
+        // MAX_SAFE_INTEGER = 2^53 - 1 = 9007199254740991
+        const MAX_SAFE: f64 = 9_007_199_254_740_991.0; // 2^53 - 1
+        if num.fract() == 0.0 && (-MAX_SAFE..=MAX_SAFE).contains(&num) {
             if num >= 0.0 {
                 self.write_u_integer(num as u64);
             } else {

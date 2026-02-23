@@ -6,6 +6,10 @@ pub struct OrderedMapIterator {
     pos: usize,
     len: usize,
     pub iterator_type: IteratorType,
+    /// Arena index of the tree node this iterator points to. Set by bound
+    /// methods and used by `update_key_by_iterator`/`erase_element_by_iterator`
+    /// to avoid O(n) `nth_index` lookups.
+    pub(crate) node: Option<u32>,
 }
 
 impl OrderedMapIterator {
@@ -14,6 +18,21 @@ impl OrderedMapIterator {
             pos,
             len,
             iterator_type,
+            node: None,
+        }
+    }
+
+    pub fn with_node(
+        pos: usize,
+        len: usize,
+        iterator_type: IteratorType,
+        node: Option<u32>,
+    ) -> Self {
+        Self {
+            pos,
+            len,
+            iterator_type,
+            node,
         }
     }
 
@@ -39,6 +58,7 @@ impl OrderedMapIterator {
                 }
             }
         }
+        self.node = None; // position changed; cached node is stale
         self
     }
 
@@ -62,6 +82,7 @@ impl OrderedMapIterator {
                 }
             }
         }
+        self.node = None; // position changed; cached node is stale
         self
     }
 

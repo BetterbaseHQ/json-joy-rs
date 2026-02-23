@@ -532,7 +532,7 @@ fn decode_str(
             // Tombstone
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(s) = content.as_str() {
-            let span = s.chars().count() as u64;
+            let span = s.encode_utf16().count() as u64;
             node.rga
                 .push_chunk(Chunk::new(chunk_id, span, s.to_string()));
         } else {

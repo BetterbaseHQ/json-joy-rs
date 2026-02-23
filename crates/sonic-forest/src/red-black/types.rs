@@ -10,6 +10,10 @@ pub struct RbNode<K, V> {
     pub v: V,
     /// Node color: `true` = black, `false` = red.
     pub b: bool,
+    /// Subtree size (including self). Used by `SortedMap` for O(log n) rank
+    /// queries when `enable_index` is true. Maintained lazily — callers must
+    /// call `recompute_sizes` after structural mutations.
+    pub _size: u32,
 }
 
 impl<K, V> RbNode<K, V> {
@@ -21,6 +25,7 @@ impl<K, V> RbNode<K, V> {
             k,
             v,
             b: false,
+            _size: 1,
         }
     }
 }

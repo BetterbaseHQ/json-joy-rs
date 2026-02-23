@@ -103,6 +103,26 @@ impl Model {
         self.tick += 1;
     }
 
+    /// Recursively remove a node and its entire subtree from the index.
+    ///
+    /// Mirrors `Model._gcTree(value)` in the upstream TypeScript.
+    ///
+    /// System nodes (sid == SESSION::SYSTEM) are never GC'd.
+    /// We remove the node first, then recurse into its children — this
+    /// sidesteps borrow-checker issues since the child IDs are embedded in
+    /// the removed node value, not references into the index.
+    fn gc_tree(&mut self, ts: Ts) {
+        if ts.sid == SESSION::SYSTEM {
+            return;
+        }
+        let Some(node) = self.index.remove_node(&ts) else {
+            return;
+        };
+        for child_id in node.child_ids() {
+            self.gc_tree(child_id);
+        }
+    }
+
     /// Apply a single operation.
     ///
     /// Mirrors `Model.applyOperation` in the upstream TypeScript.
@@ -164,22 +184,30 @@ impl Model {
             Op::InsVal { obj, val, .. } => {
                 // The root register is addressed by ORIGIN (SESSION::SYSTEM, time 0).
                 if obj.sid == SESSION::SYSTEM && obj.time == ORIGIN.time {
-                    // Update the document root.
-                    self.root.set(*val);
+                    if let Some(old) = self.root.set(*val) {
+                        self.gc_tree(old);
+                    }
                 } else if let Some(CrdtNode::Val(node)) = self.index.get_mut_ts(obj) {
-                    node.set(*val);
+                    if let Some(old) = node.set(*val) {
+                        self.gc_tree(old);
+                    }
                 }
             }
 
             // Set key→value pairs in an `obj` map.
             Op::InsObj { obj, data, .. } => {
                 if let Some(CrdtNode::Obj(node)) = self.index.get_mut_ts(obj) {
+                    let mut to_gc = Vec::new();
                     for (key, val_id) in data {
-                        // Upstream: skip if node.id.time >= val_id.time
                         if node.id.time >= val_id.time {
                             continue;
                         }
-                        node.put(key, *val_id);
+                        if let Some(old) = node.put(key, *val_id) {
+                            to_gc.push(old);
+                        }
+                    }
+                    for old in to_gc {
+                        self.gc_tree(old);
                     }
                 }
             }
@@ -187,11 +215,17 @@ impl Model {
             // Set index→value pairs in a `vec` vector.
             Op::InsVec { obj, data, .. } => {
                 if let Some(CrdtNode::Vec(node)) = self.index.get_mut_ts(obj) {
+                    let mut to_gc = Vec::new();
                     for (idx, val_id) in data {
                         if node.id.time >= val_id.time {
                             continue;
                         }
-                        node.put(*idx as usize, *val_id);
+                        if let Some(old) = node.put(*idx as usize, *val_id) {
+                            to_gc.push(old);
+                        }
+                    }
+                    for old in to_gc {
+                        self.gc_tree(old);
                     }
                 }
             }
@@ -245,7 +279,9 @@ impl Model {
                 obj, after, val, ..
             } => {
                 if let Some(CrdtNode::Arr(node)) = self.index.get_mut_ts(obj) {
-                    node.upd(*after, *val);
+                    if let Some(old) = node.upd(*after, *val) {
+                        self.gc_tree(old);
+                    }
                 }
             }
 
@@ -253,7 +289,23 @@ impl Model {
             Op::Del { obj, what, .. } => match self.index.get_mut_ts(obj) {
                 Some(CrdtNode::Str(node)) => node.delete(what),
                 Some(CrdtNode::Bin(node)) => node.delete(what),
-                Some(CrdtNode::Arr(node)) => node.delete(what),
+                Some(CrdtNode::Arr(node)) => {
+                    // GC the data-node IDs before tombstoning the slots.
+                    // Mirrors upstream: for each span item, getById → _gcTree.
+                    let mut to_gc = Vec::new();
+                    for span in what.iter() {
+                        for j in 0..span.span {
+                            let slot_ts = Ts::new(span.sid, span.time + j);
+                            if let Some(data_ts) = node.get_by_id(slot_ts) {
+                                to_gc.push(data_ts);
+                            }
+                        }
+                    }
+                    node.delete(what);
+                    for old in to_gc {
+                        self.gc_tree(old);
+                    }
+                }
                 _ => {}
             },
 
@@ -584,5 +636,177 @@ mod tests {
             val: ts(s, 5),
         });
         assert_eq!(model.view(), json!([99]));
+    }
+
+    // ── GC tests ─────────────────────────────────────────────────────
+
+    #[test]
+    fn gc_insval_removes_old_root_value() {
+        let s = sid();
+        let mut model = Model::new(s);
+
+        // Set root to con(1)
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: ORIGIN,
+            val: ts(s, 1),
+        });
+        assert!(model.index.contains_ts(&ts(s, 1)));
+
+        // Replace root with con(2) — old con(1) should be GC'd
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(2)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: ORIGIN,
+            val: ts(s, 3),
+        });
+        assert_eq!(model.view(), json!(2));
+        // Old con node should be removed from index
+        assert!(
+            !model.index.contains_ts(&ts(s, 1)),
+            "GC should remove orphaned con node"
+        );
+        // New con node should still exist
+        assert!(model.index.contains_ts(&ts(s, 3)));
+    }
+
+    #[test]
+    fn gc_insobj_removes_old_value() {
+        let s = sid();
+        let mut model = Model::new(s);
+
+        // Create obj with key "x" → con(10)
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 3),
+            obj: ts(s, 1),
+            data: vec![("x".into(), ts(s, 2))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: ORIGIN,
+            val: ts(s, 1),
+        });
+        assert_eq!(model.view(), json!({"x": 10}));
+        assert!(model.index.contains_ts(&ts(s, 2)));
+
+        // Overwrite key "x" → con(20) — old con(10) should be GC'd
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 5),
+            val: ConValue::Val(PackValue::Integer(20)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 6),
+            obj: ts(s, 1),
+            data: vec![("x".into(), ts(s, 5))],
+        });
+        assert_eq!(model.view(), json!({"x": 20}));
+        assert!(
+            !model.index.contains_ts(&ts(s, 2)),
+            "GC should remove old obj value"
+        );
+        assert!(model.index.contains_ts(&ts(s, 5)));
+    }
+
+    #[test]
+    fn gc_updarr_removes_old_element_value() {
+        let s = sid();
+        let mut model = Model::new(s);
+
+        // Create arr [con(42)]
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(42)),
+        });
+        model.apply_operation(&Op::InsArr {
+            id: ts(s, 3),
+            obj: ts(s, 1),
+            after: ORIGIN,
+            data: vec![ts(s, 2)],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: ORIGIN,
+            val: ts(s, 1),
+        });
+        assert_eq!(model.view(), json!([42]));
+        assert!(model.index.contains_ts(&ts(s, 2)));
+
+        // UpdArr: replace element value → old con(42) should be GC'd
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 5),
+            val: ConValue::Val(PackValue::Integer(99)),
+        });
+        model.apply_operation(&Op::UpdArr {
+            id: ts(s, 6),
+            obj: ts(s, 1),
+            after: ts(s, 3),
+            val: ts(s, 5),
+        });
+        assert_eq!(model.view(), json!([99]));
+        assert!(
+            !model.index.contains_ts(&ts(s, 2)),
+            "GC should remove old arr element value"
+        );
+        assert!(model.index.contains_ts(&ts(s, 5)));
+    }
+
+    #[test]
+    fn gc_multilevel_removes_nested_tree() {
+        let s = sid();
+        let mut model = Model::new(s);
+
+        // Build root → obj → key "a" → con(1)
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 3),
+            obj: ts(s, 1),
+            data: vec![("a".into(), ts(s, 2))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: ORIGIN,
+            val: ts(s, 1),
+        });
+        assert_eq!(model.view(), json!({"a": 1}));
+        assert!(model.index.contains_ts(&ts(s, 1))); // obj
+        assert!(model.index.contains_ts(&ts(s, 2))); // con
+
+        // Replace root entirely with con(99) — both obj AND nested con should be GC'd
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 5),
+            val: ConValue::Val(PackValue::Integer(99)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: ORIGIN,
+            val: ts(s, 5),
+        });
+        assert_eq!(model.view(), json!(99));
+        assert!(
+            !model.index.contains_ts(&ts(s, 1)),
+            "GC should remove orphaned obj"
+        );
+        assert!(
+            !model.index.contains_ts(&ts(s, 2)),
+            "GC should remove nested con inside orphaned obj"
+        );
+        assert!(model.index.contains_ts(&ts(s, 5)));
     }
 }

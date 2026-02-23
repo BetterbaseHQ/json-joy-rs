@@ -28,12 +28,23 @@ pub trait ChunkData: Clone {
 }
 
 impl ChunkData for String {
+    /// Split at a UTF-16 code-unit offset.
+    ///
+    /// Upstream JavaScript uses UTF-16 code units for all string span
+    /// calculations (`string.length`).  Rust strings are UTF-8, so we
+    /// convert the UTF-16 offset to a byte position by scanning characters
+    /// and accumulating their UTF-16 widths.
     fn split_at_offset(&mut self, at: usize) -> Self {
-        let byte_pos = self
-            .char_indices()
-            .nth(at)
-            .map(|(i, _)| i)
-            .unwrap_or(self.len());
+        let mut utf16_count = 0usize;
+        let mut byte_pos = self.len(); // fallback: split at end
+        for (i, ch) in self.char_indices() {
+            if utf16_count >= at {
+                byte_pos = i;
+                break;
+            }
+            utf16_count += ch.len_utf16();
+        }
+        // If we consumed all chars without reaching `at`, split at end.
         self.split_off(byte_pos)
     }
     fn merge(&mut self, other: Self) {

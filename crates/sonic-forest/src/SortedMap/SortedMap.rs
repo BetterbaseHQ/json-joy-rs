@@ -30,6 +30,8 @@ where
     pub comparator: C,
     arena: Vec<RbNode<K, V>>,
     _length: usize,
+    /// When `true`, subtree sizes need recomputation before rank queries.
+    sizes_dirty: bool,
 }
 
 impl<K, V> SortedMap<K, V, fn(&K, &K) -> i32>
@@ -63,6 +65,7 @@ where
             comparator,
             arena: Vec::new(),
             _length: 0,
+            sizes_dirty: false,
         }
     }
 
@@ -98,17 +101,56 @@ where
         Some(curr)
     }
 
-    fn index_of(&self, node: u32) -> usize {
-        let mut pos = 0usize;
-        let mut curr = self.min;
-        while let Some(i) = curr {
-            if i == node {
-                return pos;
+    /// Compute the 0-based rank (sequential position) of `node` in O(log n)
+    /// using subtree sizes. Calls `ensure_sizes()` first if sizes are dirty.
+    fn index_of(&mut self, node: u32) -> usize {
+        self.ensure_sizes();
+        Self::rank_of(&self.arena, node)
+    }
+
+    /// Compute rank of `node` using `_size` fields. O(log n).
+    fn rank_of(arena: &[RbNode<K, V>], mut node: u32) -> usize {
+        let mut rank = arena[node as usize]
+            .l
+            .map(|l| arena[l as usize]._size as usize)
+            .unwrap_or(0);
+        while let Some(parent) = arena[node as usize].p {
+            if arena[parent as usize].r == Some(node) {
+                rank += 1; // count parent itself
+                rank += arena[parent as usize]
+                    .l
+                    .map(|l| arena[l as usize]._size as usize)
+                    .unwrap_or(0);
             }
-            pos += 1;
-            curr = next(&self.arena, i);
+            node = parent;
         }
-        self._length
+        rank
+    }
+
+    /// Recompute subtree sizes via post-order DFS if the dirty flag is set.
+    fn ensure_sizes(&mut self) {
+        if !self.sizes_dirty {
+            return;
+        }
+        if let Some(root) = self.root {
+            Self::recompute_subtree_sizes(&mut self.arena, root);
+        }
+        self.sizes_dirty = false;
+    }
+
+    /// Post-order DFS to set correct `_size` on every node in the subtree.
+    fn recompute_subtree_sizes(arena: &mut [RbNode<K, V>], node: u32) -> u32 {
+        let l = arena[node as usize].l;
+        let r = arena[node as usize].r;
+        let ls = l
+            .map(|l| Self::recompute_subtree_sizes(arena, l))
+            .unwrap_or(0);
+        let rs = r
+            .map(|r| Self::recompute_subtree_sizes(arena, r))
+            .unwrap_or(0);
+        let size = 1 + ls + rs;
+        arena[node as usize]._size = size;
+        size
     }
 
     fn lower_bound_node(&self, key: &K) -> Option<u32> {
@@ -187,11 +229,13 @@ where
         if self._length > 0 {
             self._length -= 1;
         }
+        self.sizes_dirty = true;
 
         if self.root.is_none() {
             self.min = None;
             self.max = None;
             self._length = 0;
+            self.sizes_dirty = false;
         } else {
             if self.min.is_none() {
                 self.min = first(&self.arena, self.root);
@@ -218,6 +262,7 @@ where
             self.min = self.root;
             self.max = self.root;
             self._length = 1;
+            // Single node: _size = 1, already correct.
             return self._length;
         }
 
@@ -235,6 +280,7 @@ where
             self.root = insert_right(&mut self.arena, Some(root), idx, max);
             self.max = Some(idx);
             self._length += 1;
+            self.sizes_dirty = true;
             return self._length;
         }
 
@@ -250,6 +296,7 @@ where
             self.root = insert_left(&mut self.arena, Some(root), idx, min);
             self.min = Some(idx);
             self._length += 1;
+            self.sizes_dirty = true;
             return self._length;
         }
 
@@ -268,6 +315,7 @@ where
                         let idx = (self.arena.len() - 1) as u32;
                         self.root = insert_right(&mut self.arena, self.root, idx, curr);
                         self._length += 1;
+                        self.sizes_dirty = true;
                         return self._length;
                     }
                 }
@@ -279,6 +327,7 @@ where
                         let idx = (self.arena.len() - 1) as u32;
                         self.root = insert_left(&mut self.arena, self.root, idx, curr);
                         self._length += 1;
+                        self.sizes_dirty = true;
                         return self._length;
                     }
                 }
@@ -321,8 +370,13 @@ where
             throw_iterator_access_error();
         }
 
-        let Some(idx) = self.nth_index(pos) else {
-            throw_iterator_access_error();
+        let idx = if let Some(node) = iter.node {
+            node
+        } else {
+            let Some(idx) = self.nth_index(pos) else {
+                throw_iterator_access_error();
+            };
+            idx
         };
 
         if self._length == 1 {
@@ -373,8 +427,13 @@ where
             throw_iterator_access_error();
         }
 
-        let Some(node) = self.nth_index(pos) else {
-            throw_iterator_access_error();
+        let node = if let Some(n) = iter.node {
+            n
+        } else {
+            let Some(n) = self.nth_index(pos) else {
+                throw_iterator_access_error();
+            };
+            n
         };
 
         let mut out = iter.copy();
@@ -478,51 +537,47 @@ where
         })
     }
 
-    pub fn lower_bound(&self, key: &K) -> OrderedMapIterator {
-        let pos = self
-            .lower_bound_node(key)
-            .map_or(self._length, |i| self.index_of(i));
-        OrderedMapIterator::new(pos, self._length, IteratorType::NORMAL)
+    pub fn lower_bound(&mut self, key: &K) -> OrderedMapIterator {
+        let node = self.lower_bound_node(key);
+        let pos = node.map_or(self._length, |i| self.index_of(i));
+        OrderedMapIterator::with_node(pos, self._length, IteratorType::NORMAL, node)
     }
 
     #[allow(non_snake_case)]
-    pub fn lowerBound(&self, key: &K) -> OrderedMapIterator {
+    pub fn lowerBound(&mut self, key: &K) -> OrderedMapIterator {
         self.lower_bound(key)
     }
 
-    pub fn upper_bound(&self, key: &K) -> OrderedMapIterator {
-        let pos = self
-            .upper_bound_node(key)
-            .map_or(self._length, |i| self.index_of(i));
-        OrderedMapIterator::new(pos, self._length, IteratorType::NORMAL)
+    pub fn upper_bound(&mut self, key: &K) -> OrderedMapIterator {
+        let node = self.upper_bound_node(key);
+        let pos = node.map_or(self._length, |i| self.index_of(i));
+        OrderedMapIterator::with_node(pos, self._length, IteratorType::NORMAL, node)
     }
 
     #[allow(non_snake_case)]
-    pub fn upperBound(&self, key: &K) -> OrderedMapIterator {
+    pub fn upperBound(&mut self, key: &K) -> OrderedMapIterator {
         self.upper_bound(key)
     }
 
-    pub fn reverse_lower_bound(&self, key: &K) -> OrderedMapIterator {
-        let pos = self
-            .reverse_lower_bound_node(key)
-            .map_or(self._length, |i| self.index_of(i));
-        OrderedMapIterator::new(pos, self._length, IteratorType::NORMAL)
+    pub fn reverse_lower_bound(&mut self, key: &K) -> OrderedMapIterator {
+        let node = self.reverse_lower_bound_node(key);
+        let pos = node.map_or(self._length, |i| self.index_of(i));
+        OrderedMapIterator::with_node(pos, self._length, IteratorType::NORMAL, node)
     }
 
     #[allow(non_snake_case)]
-    pub fn reverseLowerBound(&self, key: &K) -> OrderedMapIterator {
+    pub fn reverseLowerBound(&mut self, key: &K) -> OrderedMapIterator {
         self.reverse_lower_bound(key)
     }
 
-    pub fn reverse_upper_bound(&self, key: &K) -> OrderedMapIterator {
-        let pos = self
-            .reverse_upper_bound_node(key)
-            .map_or(self._length, |i| self.index_of(i));
-        OrderedMapIterator::new(pos, self._length, IteratorType::NORMAL)
+    pub fn reverse_upper_bound(&mut self, key: &K) -> OrderedMapIterator {
+        let node = self.reverse_upper_bound_node(key);
+        let pos = node.map_or(self._length, |i| self.index_of(i));
+        OrderedMapIterator::with_node(pos, self._length, IteratorType::NORMAL, node)
     }
 
     #[allow(non_snake_case)]
-    pub fn reverseUpperBound(&self, key: &K) -> OrderedMapIterator {
+    pub fn reverseUpperBound(&mut self, key: &K) -> OrderedMapIterator {
         self.reverse_upper_bound(key)
     }
 
@@ -541,6 +596,7 @@ where
         self.min = None;
         self.root = None;
         self.max = None;
+        self.sizes_dirty = false;
     }
 
     pub fn size(&self) -> usize {

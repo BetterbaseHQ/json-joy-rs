@@ -2332,4 +2332,59 @@ mod tests {
             ])
         );
     }
+
+    // ── CBOR safe integer boundary tests (via CborEncoderFast) ─────────
+
+    #[test]
+    fn cbor_encoder_fast_safe_integer_boundary() {
+        let max_safe: f64 = 9_007_199_254_740_991.0; // 2^53 - 1
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(max_safe);
+        let buf = enc.writer.flush();
+        // CBOR major type 0 uint, 8-byte payload: 0x1b
+        assert_eq!(
+            buf[0], 0x1b,
+            "MAX_SAFE_INTEGER should encode as CBOR uint64"
+        );
+    }
+
+    #[test]
+    fn cbor_encoder_fast_negative_safe_integer_boundary() {
+        let neg_max_safe: f64 = -9_007_199_254_740_991.0; // -(2^53 - 1)
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(neg_max_safe);
+        let buf = enc.writer.flush();
+        // CBOR major type 1 nint, 8-byte payload: 0x3b
+        assert_eq!(
+            buf[0], 0x3b,
+            "negative MAX_SAFE should encode as CBOR nint64"
+        );
+    }
+
+    #[test]
+    fn cbor_encoder_fast_above_safe_integer_encodes_as_float() {
+        let above_safe: f64 = 9_007_199_254_740_992.0; // 2^53
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(above_safe);
+        let buf = enc.writer.flush();
+        // CBOR float64: 0xfb
+        assert_eq!(buf[0], 0xfb, "above MAX_SAFE should encode as float64");
+    }
+
+    #[test]
+    fn cbor_encoder_fast_fractional_encodes_as_float() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(1.5);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0xfb, "fractional numbers should encode as float64");
+    }
+
+    #[test]
+    fn cbor_encoder_fast_zero_encodes_as_integer() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(0.0);
+        let buf = enc.writer.flush();
+        // CBOR uint 0: 0x00
+        assert_eq!(buf[0], 0x00, "zero should encode as CBOR uint 0");
+    }
 }

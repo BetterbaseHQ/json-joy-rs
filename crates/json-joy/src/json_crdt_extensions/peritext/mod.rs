@@ -620,18 +620,20 @@ mod tests {
 
     #[test]
     fn view_pos_emoji_unicode() {
-        // Emoji are single scalar values.
+        // Emoji (😀) is a single Unicode scalar but TWO UTF-16 code units.
+        // Span counts UTF-16 code units, matching upstream JS `string.length`.
         let (mut model, pt) = setup();
-        pt.ins_at(&mut model, 0, "a😀b"); // emoji is 4 bytes
+        pt.ins_at(&mut model, 0, "a😀b"); // emoji is 4 UTF-8 bytes, 2 UTF-16 units
         let str_node = match model.index.get(&TsKey::from(pt.str_id)) {
             Some(CrdtNode::Str(s)) => s.clone(),
             _ => panic!(),
         };
-        assert_eq!(str_node.size(), 3); // 3 chars: 'a', '😀', 'b'
+        assert_eq!(str_node.size(), 4); // 4 UTF-16 units: 'a'=1, '😀'=2, 'b'=1
         let emoji_id = str_node.find(1).unwrap();
         let before_emoji = Point::new(emoji_id, Anchor::Before);
         assert_eq!(before_emoji.view_pos(&str_node), 1);
         let after_emoji = Point::new(emoji_id, Anchor::After);
+        // emoji_id is the first UTF-16 code unit (offset 1); After = 1 + 1 = 2
         assert_eq!(after_emoji.view_pos(&str_node), 2);
     }
 
