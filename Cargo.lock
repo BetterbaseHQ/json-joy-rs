@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "json-expression"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-joy-json-pointer",
  "json-joy-util",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "base64",
  "indexmap",
@@ -388,22 +388,22 @@ dependencies = [
 
 [[package]]
 name = "json-joy-base64"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "rand 0.8.5",
 ]
 
 [[package]]
 name = "json-joy-buffers"
-version = "0.1.0"
+version = "0.18.0"
 
 [[package]]
 name = "json-joy-codegen"
-version = "0.1.0"
+version = "0.18.0"
 
 [[package]]
 name = "json-joy-ffi"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-joy",
  "json-joy-json-pack",
@@ -412,8 +412,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-joy-json-equal"
+version = "0.18.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "json-joy-json-pack"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-joy-base64",
  "json-joy-buffers",
@@ -423,7 +430,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy-json-path"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "regex",
  "serde_json",
@@ -432,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy-json-pointer"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "serde_json",
  "thiserror",
@@ -440,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy-json-random"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-joy-util",
  "rand 0.8.5",
@@ -449,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy-json-type"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-expression",
  "json-joy-buffers",
@@ -463,9 +470,10 @@ dependencies = [
 
 [[package]]
 name = "json-joy-util"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "json-joy-buffers",
+ "json-joy-json-equal",
  "proptest",
  "rand 0.8.5",
  "rand_xoshiro",
@@ -475,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "json-joy-wasm"
-version = "0.1.0"
+version = "0.18.0"
 dependencies = [
  "getrandom 0.2.17",
  "json-joy",
@@ -887,7 +895,7 @@ checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
 name = "sonic-forest"
-version = "0.1.0"
+version = "0.18.0"
 
 [[package]]
 name = "static_assertions"

@@ -12,7 +12,7 @@ Upstream source of truth:
 - `/Users/nchapman/Code/json-joy/packages`
 
 Pinned upstream baseline:
-- `json-joy@17.67.0`
+- `json-joy@18.0.0`
 
 ## Project stance
 
@@ -25,6 +25,7 @@ Pinned upstream baseline:
 - `base64` -> `crates/base64` (`json-joy-base64`)
 - `buffers` -> `crates/buffers` (`json-joy-buffers`)
 - `codegen` -> `crates/codegen` (`json-joy-codegen`)
+- `json-equal` -> `crates/json-equal` (`json-joy-json-equal`)
 - `json-expression` -> `crates/json-expression` (`json-expression`)
 - `json-joy` -> `crates/json-joy` (`json-joy`)
 - `json-pack` -> `crates/json-joy-json-pack` (`json-joy-json-pack`)

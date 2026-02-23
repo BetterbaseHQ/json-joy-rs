@@ -12,6 +12,8 @@
 //! ## What is skipped vs. the upstream TypeScript
 //!
 //! - Event emitters (`FanOut`, `MicrotaskBufferFanOut`, `MergeFanOut`, `onReset`, …)
+//! - Change listeners (`onSelfChange`, `onChildChange`, `onSubtreeChange`,
+//!   `onBeforeChange`) — JS-specific event patterns without a direct Rust equivalent
 //! - JS Proxy accessor (`.s` property)
 //! - `SyncStore<T>` interface
 //! - `.read()` observable method
@@ -154,6 +156,28 @@ impl<'a> ModelApi<'a> {
         find_path(self.model, start, path)
     }
 
+    // ── Diff / merge ──────────────────────────────────────────────────────
+
+    /// Compute a patch that makes `node_id` look like `dst`, and apply it.
+    ///
+    /// Mirrors `NodeApi.merge()` in the upstream TypeScript: diff + apply.
+    /// Returns the patch if changes were needed, or `None` if already equal.
+    pub fn merge(&mut self, node_id: Ts, dst: &Value) -> Option<Patch> {
+        let src_node = IndexExt::get(&self.model.index, &node_id)?.clone();
+        let patch = crate::json_crdt_diff::diff_node(
+            &src_node,
+            &self.model.index,
+            self.model.clock.sid,
+            self.model.clock.time,
+            dst,
+        )?;
+        self.model.apply_patch(&patch);
+        // Re-sync the builder clock so subsequent operations don't reuse
+        // timestamps that were already consumed by the diff patch.
+        self.builder = PatchBuilder::new(self.model.clock.sid, self.model.clock.time);
+        Some(patch)
+    }
+
     // ── Val editing ───────────────────────────────────────────────────────
 
     /// Set the value of a `val` LWW-register to a JSON scalar.
@@ -245,7 +269,8 @@ impl<'a> ModelApi<'a> {
             .iter()
             .map(|(idx, v)| {
                 let id = self.const_or_json(v)?;
-                Ok((*idx as u8, id))
+                let idx_u8 = u8::try_from(*idx).map_err(|_| ApiError::OutOfBounds)?;
+                Ok((idx_u8, id))
             })
             .collect::<Result<_, ApiError>>()?;
         self.builder.ins_vec(vec_id, pairs);
@@ -635,6 +660,24 @@ impl<'a> NodeView<'a> {
     pub fn find(&self, path: &[Value]) -> Result<NodeView<'a>, ApiError> {
         let id = find_path(self.model, self.id, path)?;
         Ok(NodeView {
+            id,
+            model: self.model,
+        })
+    }
+
+    /// Try to navigate to a child node, returning `None` on any error.
+    ///
+    /// Mirrors `NodeApi.select()` in the upstream TypeScript (the noThrow
+    /// pattern). When `leaf` is true, any wrapping `ValNode` at the target
+    /// is automatically unwrapped.
+    pub fn select(&self, path: &[Value], leaf: bool) -> Option<NodeView<'a>> {
+        let mut id = find_path(self.model, self.id, path).ok()?;
+        if leaf {
+            while let Some(CrdtNode::Val(v)) = IndexExt::get(&self.model.index, &id) {
+                id = v.val;
+            }
+        }
+        Some(NodeView {
             id,
             model: self.model,
         })
@@ -1397,5 +1440,83 @@ mod tests {
         // The patch has one op but the model is unchanged (still null).
         assert!(!patch.ops.is_empty());
         assert_eq!(model.view(), json!(null));
+    }
+
+    // ── select (noThrow) ────────────────────────────────────────────────────
+
+    #[test]
+    fn select_returns_node_on_valid_path() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set(&json!({"a": {"b": 99}})).unwrap();
+        }
+        let api = ModelApi::new(&mut model);
+        let nv = api.root_view().select(&[json!("a"), json!("b")], false);
+        assert!(nv.is_some());
+        assert_eq!(nv.unwrap().view(), json!(99));
+    }
+
+    #[test]
+    fn select_returns_none_on_invalid_path() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set(&json!({"a": 1})).unwrap();
+        }
+        let api = ModelApi::new(&mut model);
+        let nv = api.root_view().select(&[json!("missing")], false);
+        assert!(nv.is_none());
+    }
+
+    #[test]
+    fn select_leaf_unwraps_val_nodes() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set(&json!([42])).unwrap();
+        }
+        let api = ModelApi::new(&mut model);
+        // Without leaf=true, arr element is wrapped in val node
+        let nv = api.root_view().select(&[json!(0)], false);
+        assert!(nv.is_some());
+        assert!(nv.unwrap().as_val().is_some());
+        // With leaf=true, val is unwrapped to con
+        let nv = api.root_view().select(&[json!(0)], true);
+        assert!(nv.is_some());
+        assert!(nv.unwrap().as_con().is_some());
+    }
+
+    // ── merge ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn merge_applies_diff() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set(&json!({"a": 1})).unwrap();
+        }
+        let obj_id = model.root.val;
+        {
+            let mut api = ModelApi::new(&mut model);
+            let patch = api.merge(obj_id, &json!({"a": 1, "b": 2}));
+            assert!(patch.is_some());
+        }
+        assert_eq!(model.view()["b"], json!(2));
+    }
+
+    #[test]
+    fn merge_returns_none_when_already_equal() {
+        let mut model = Model::create();
+        {
+            let mut api = ModelApi::new(&mut model);
+            api.set(&json!({"a": 1})).unwrap();
+        }
+        let obj_id = model.root.val;
+        {
+            let mut api = ModelApi::new(&mut model);
+            let patch = api.merge(obj_id, &json!({"a": 1}));
+            assert!(patch.is_none());
+        }
     }
 }

@@ -4,13 +4,14 @@
 
 Rust implementation of the [json-joy](https://github.com/streamich/json-joy) CRDT, patch, diff, and codec library. Provides a complete port of core json-joy functionality with native bridges for WASM and Python.
 
-This project ports and adapts the upstream `json-joy` library by [streamich](https://github.com/streamich/json-joy), pinned against `json-joy@17.67.0` with 1,398 compatibility fixtures ensuring parity.
+This project ports and adapts the upstream `json-joy` library by [streamich](https://github.com/streamich/json-joy), pinned against `json-joy@18.0.0` with 1,398 compatibility fixtures ensuring parity.
 
 ## Crates
 
 | Crate | Description |
 |-------|-------------|
 | `json-joy` | Core CRDT document model, patch protocol, diff, extensions, JSON utilities |
+| `json-joy-json-equal` | Deep equality comparison for JSON values |
 | `json-joy-json-pack` | Binary serialization (CBOR, MessagePack, BSON, Avro, Ion, UBJSON, Bencode, and more) |
 | `json-joy-json-type` | Type system and schema framework |
 | `json-joy-json-path` | JSONPath (RFC 9535) evaluation |
@@ -53,6 +54,7 @@ See `tests/compat/PARITY_AUDIT.md` for the full parity tracking log.
 
 ```
 crates/
+  json-equal/               Deep equality comparison
   json-joy/                 Core library and parity target
   json-joy-json-pack/       Binary serialization formats
   json-joy-json-type/       Type system and schema
