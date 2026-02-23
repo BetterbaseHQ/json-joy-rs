@@ -211,3 +211,249 @@ pub fn decode(data: &[Value]) -> Patch {
 
     builder.flush()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::json_crdt_patch::codec::compact::encode;
+    use crate::json_crdt_patch::operations::{ConValue, Op};
+    use crate::json_crdt_patch::patch::Patch;
+    use crate::json_crdt_patch::patch_builder::PatchBuilder;
+    use json_joy_json_pack::PackValue;
+
+    fn roundtrip(patch: &Patch) -> Patch {
+        let encoded = encode::encode(patch);
+        decode(&encoded)
+    }
+
+    #[test]
+    fn roundtrip_new_con_val() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_val(PackValue::Integer(99));
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 1);
+        assert!(matches!(
+            &decoded.ops[0],
+            Op::NewCon {
+                val: ConValue::Val(PackValue::Integer(99)),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn roundtrip_new_con_ref() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_ref(ts(2, 5));
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(
+            &decoded.ops[0],
+            Op::NewCon {
+                val: ConValue::Ref(ref_id),
+                ..
+            } if ref_id.sid == 2 && ref_id.time == 5
+        ));
+    }
+
+    #[test]
+    fn roundtrip_new_con_undefined() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_val(PackValue::Undefined);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 1);
+    }
+
+    #[test]
+    fn roundtrip_all_creation_ops() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.val();
+        b.obj();
+        b.vec();
+        b.str_node();
+        b.bin();
+        b.arr();
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 6);
+        assert!(matches!(&decoded.ops[0], Op::NewVal { .. }));
+        assert!(matches!(&decoded.ops[1], Op::NewObj { .. }));
+        assert!(matches!(&decoded.ops[2], Op::NewVec { .. }));
+        assert!(matches!(&decoded.ops[3], Op::NewStr { .. }));
+        assert!(matches!(&decoded.ops[4], Op::NewBin { .. }));
+        assert!(matches!(&decoded.ops[5], Op::NewArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_ins_val() {
+        let mut b = PatchBuilder::new(1, 0);
+        let v = b.val();
+        let c = b.con_val(PackValue::Null);
+        b.set_val(v, c);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[2], Op::InsVal { .. }));
+    }
+
+    #[test]
+    fn roundtrip_ins_obj() {
+        let mut b = PatchBuilder::new(1, 0);
+        let obj = b.obj();
+        let c = b.con_val(PackValue::Bool(true));
+        b.ins_obj(obj, vec![("k".into(), c)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsObj { data, .. } = &decoded.ops[2] {
+            assert_eq!(data[0].0, "k");
+        } else {
+            panic!("expected InsObj");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_vec() {
+        let mut b = PatchBuilder::new(1, 0);
+        let v = b.vec();
+        let c = b.con_val(PackValue::Null);
+        b.ins_vec(v, vec![(0, c)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[2], Op::InsVec { .. }));
+    }
+
+    #[test]
+    fn roundtrip_ins_str() {
+        let mut b = PatchBuilder::new(1, 0);
+        let s = b.str_node();
+        b.ins_str(s, s, "test".into());
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsStr { data, .. } = &decoded.ops[1] {
+            assert_eq!(data, "test");
+        } else {
+            panic!("expected InsStr");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_bin() {
+        let mut b = PatchBuilder::new(1, 0);
+        let bin = b.bin();
+        b.ins_bin(bin, bin, vec![0xAB, 0xCD]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsBin { data, .. } = &decoded.ops[1] {
+            assert_eq!(data, &[0xAB, 0xCD]);
+        } else {
+            panic!("expected InsBin");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_arr() {
+        let mut b = PatchBuilder::new(1, 0);
+        let arr = b.arr();
+        let c = b.con_val(PackValue::Null);
+        b.ins_arr(arr, arr, vec![c]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[2], Op::InsArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_upd_arr() {
+        let mut b = PatchBuilder::new(1, 0);
+        let arr = b.arr();
+        let c1 = b.con_val(PackValue::Integer(1));
+        b.ins_arr(arr, arr, vec![c1]);
+        let c2 = b.con_val(PackValue::Integer(2));
+        b.upd_arr(arr, c1, c2);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[4], Op::UpdArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_del() {
+        let mut b = PatchBuilder::new(1, 0);
+        let s = b.str_node();
+        b.ins_str(s, s, "abc".into());
+        b.del(s, vec![tss(1, 1, 2)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::Del { what, .. } = &decoded.ops[2] {
+            assert_eq!(what[0].span, 2);
+        } else {
+            panic!("expected Del");
+        }
+    }
+
+    #[test]
+    fn roundtrip_del_cross_session() {
+        let mut b = PatchBuilder::new(1, 0);
+        let s = b.str_node();
+        b.ins_str(s, s, "abc".into());
+        b.del(s, vec![tss(2, 100, 3)]); // different session
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::Del { what, .. } = &decoded.ops[2] {
+            assert_eq!(what[0].sid, 2);
+            assert_eq!(what[0].time, 100);
+            assert_eq!(what[0].span, 3);
+        } else {
+            panic!("expected Del");
+        }
+    }
+
+    #[test]
+    fn roundtrip_nop() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.nop(7);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[0], Op::Nop { len: 7, .. }));
+    }
+
+    #[test]
+    fn roundtrip_with_meta() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_val(PackValue::Null);
+        let mut patch = b.flush();
+        patch.meta = Some(PackValue::Integer(123));
+        let decoded = roundtrip(&patch);
+        assert!(decoded.meta.is_some());
+    }
+
+    #[test]
+    fn roundtrip_server_session() {
+        let mut b = PatchBuilder::from_server_clock(ServerClockVector::new(10));
+        b.con_val(PackValue::Bool(false));
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 1);
+    }
+
+    #[test]
+    fn decode_skips_non_array_ops() {
+        let data = vec![
+            serde_json::json!([[1, 0]]),
+            serde_json::json!("not_an_array"),
+            serde_json::json!([1, 42]),
+        ];
+        let patch = decode(&data);
+        // "not_an_array" should be skipped, [1, 42] is NewVal with value 42
+        assert!(!patch.ops.is_empty());
+    }
+
+    #[test]
+    fn decode_skips_unknown_opcode() {
+        let data = vec![
+            serde_json::json!([[1, 0]]),
+            serde_json::json!([255]), // unknown opcode
+        ];
+        let patch = decode(&data);
+        assert_eq!(patch.ops.len(), 0);
+    }
+}

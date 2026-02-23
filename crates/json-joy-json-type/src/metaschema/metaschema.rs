@@ -465,3 +465,246 @@ pub fn module() -> ModuleSchema {
         ],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::validate::validate_schema;
+
+    #[test]
+    fn module_returns_expected_alias_count() {
+        let m = module();
+        assert_eq!(m.keys.len(), 21);
+    }
+
+    #[test]
+    fn module_first_alias_is_display() {
+        let m = module();
+        assert_eq!(m.keys[0].key, "Display");
+    }
+
+    #[test]
+    fn module_last_alias_is_schema() {
+        let m = module();
+        assert_eq!(m.keys.last().unwrap().key, "Schema");
+    }
+
+    #[test]
+    fn module_contains_expected_alias_names() {
+        let m = module();
+        let names: Vec<&str> = m.keys.iter().map(|a| a.key.as_str()).collect();
+        assert!(names.contains(&"Display"));
+        assert!(names.contains(&"SchemaExample"));
+        assert!(names.contains(&"SchemaBase"));
+        assert!(names.contains(&"AnySchema"));
+        assert!(names.contains(&"ConSchema"));
+        assert!(names.contains(&"BoolSchema"));
+        assert!(names.contains(&"NumSchema"));
+        assert!(names.contains(&"StrSchema"));
+        assert!(names.contains(&"BinSchema"));
+        assert!(names.contains(&"ArrSchema"));
+        assert!(names.contains(&"KeySchema"));
+        assert!(names.contains(&"ObjSchema"));
+        assert!(names.contains(&"MapSchema"));
+        assert!(names.contains(&"RefSchema"));
+        assert!(names.contains(&"OrSchema"));
+        assert!(names.contains(&"FnSchema"));
+        assert!(names.contains(&"FnRxSchema"));
+        assert!(names.contains(&"AliasSchema"));
+        assert!(names.contains(&"ModuleSchema"));
+        assert!(names.contains(&"JsonSchema"));
+        assert!(names.contains(&"Schema"));
+    }
+
+    #[test]
+    fn all_aliases_are_public() {
+        let m = module();
+        for alias in &m.keys {
+            assert_eq!(
+                alias.pub_,
+                Some(true),
+                "Alias {} should be public",
+                alias.key
+            );
+        }
+    }
+
+    #[test]
+    fn all_alias_values_are_valid_schemas() {
+        let m = module();
+        for alias in &m.keys {
+            let result = validate_schema(&alias.value);
+            assert!(
+                result.is_ok(),
+                "Alias {} has invalid schema: {:?}",
+                alias.key,
+                result
+            );
+        }
+    }
+
+    #[test]
+    fn module_schema_is_itself_valid() {
+        let m = module();
+        let schema = Schema::Module(m);
+        assert!(validate_schema(&schema).is_ok());
+    }
+
+    #[test]
+    fn display_alias_has_obj_with_optional_keys() {
+        let m = module();
+        let display_alias = m.keys.iter().find(|a| a.key == "Display").unwrap();
+        if let Schema::Obj(obj) = display_alias.value.as_ref() {
+            assert_eq!(obj.keys.len(), 3);
+            // All keys should be optional
+            for key in &obj.keys {
+                assert_eq!(key.optional, Some(true));
+            }
+        } else {
+            panic!("Display should be an Obj schema");
+        }
+    }
+
+    #[test]
+    fn schema_example_has_required_value_key() {
+        let m = module();
+        let example = m.keys.iter().find(|a| a.key == "SchemaExample").unwrap();
+        if let Schema::Obj(obj) = example.value.as_ref() {
+            let value_key = obj.keys.iter().find(|k| k.key == "value").unwrap();
+            // value should be required (optional is None)
+            assert!(value_key.optional.is_none());
+        } else {
+            panic!("SchemaExample should be an Obj schema");
+        }
+    }
+
+    #[test]
+    fn any_schema_def_has_kind_con() {
+        let m = module();
+        let any_def = m.keys.iter().find(|a| a.key == "AnySchema").unwrap();
+        if let Schema::Obj(obj) = any_def.value.as_ref() {
+            let kind_key = obj.keys.iter().find(|k| k.key == "kind").unwrap();
+            if let Schema::Con(con) = kind_key.value.as_ref() {
+                assert_eq!(con.value, json!("any"));
+            } else {
+                panic!("kind should be a Con schema");
+            }
+        } else {
+            panic!("AnySchema should be an Obj schema");
+        }
+    }
+
+    #[test]
+    fn schema_def_is_or_type() {
+        let m = module();
+        let schema_def = m.keys.iter().find(|a| a.key == "Schema").unwrap();
+        if let Schema::Or(or) = schema_def.value.as_ref() {
+            assert!(!or.types.is_empty());
+        } else {
+            panic!("Schema should be an Or schema");
+        }
+    }
+
+    #[test]
+    fn json_schema_def_is_or_type() {
+        let m = module();
+        let json_schema_def = m.keys.iter().find(|a| a.key == "JsonSchema").unwrap();
+        if let Schema::Or(or) = json_schema_def.value.as_ref() {
+            assert_eq!(or.types.len(), 9);
+        } else {
+            panic!("JsonSchema should be an Or schema");
+        }
+    }
+
+    // -- Helper function tests --
+
+    #[test]
+    fn helper_str_schema() {
+        assert_eq!(str_schema().kind(), "str");
+    }
+
+    #[test]
+    fn helper_any_schema() {
+        assert_eq!(any_schema().kind(), "any");
+    }
+
+    #[test]
+    fn helper_bool_schema() {
+        assert_eq!(bool_schema().kind(), "bool");
+    }
+
+    #[test]
+    fn helper_num_schema() {
+        assert_eq!(num_schema().kind(), "num");
+    }
+
+    #[test]
+    fn helper_con_schema() {
+        let s = con_schema(json!("test"));
+        if let Schema::Con(con) = &s {
+            assert_eq!(con.value, json!("test"));
+        } else {
+            panic!("Expected Con");
+        }
+    }
+
+    #[test]
+    fn helper_ref_schema() {
+        let s = ref_schema("Foo");
+        if let Schema::Ref(r) = &s {
+            assert_eq!(r.ref_, "Foo");
+        } else {
+            panic!("Expected Ref");
+        }
+    }
+
+    #[test]
+    fn helper_arr_schema() {
+        let s = arr_schema(str_schema());
+        assert_eq!(s.kind(), "arr");
+    }
+
+    #[test]
+    fn helper_map_schema() {
+        let s = map_schema(num_schema());
+        assert_eq!(s.kind(), "map");
+    }
+
+    #[test]
+    fn helper_or_schema() {
+        let s = or_schema(vec![str_schema(), num_schema()]);
+        if let Schema::Or(or) = &s {
+            assert_eq!(or.types.len(), 2);
+        } else {
+            panic!("Expected Or");
+        }
+    }
+
+    #[test]
+    fn helper_key_is_required() {
+        let k = key("name", str_schema());
+        assert_eq!(k.key, "name");
+        assert!(k.optional.is_none());
+    }
+
+    #[test]
+    fn helper_key_opt_is_optional() {
+        let k = key_opt("name", str_schema());
+        assert_eq!(k.key, "name");
+        assert_eq!(k.optional, Some(true));
+    }
+
+    #[test]
+    fn helper_obj_creates_obj_schema() {
+        let s = obj(vec![key("a", str_schema())]);
+        assert_eq!(s.kind(), "obj");
+    }
+
+    #[test]
+    fn helper_alias_creates_alias_schema() {
+        let a = alias("MyType", str_schema());
+        assert_eq!(a.key, "MyType");
+        assert_eq!(a.pub_, Some(true));
+        assert!(a.optional.is_none());
+    }
+}

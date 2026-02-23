@@ -258,4 +258,432 @@ mod tests {
             "del"
         );
     }
+
+    #[test]
+    fn op_name_all_variants() {
+        assert_eq!(Op::NewVal { id: ts(1, 0) }.name(), "new_val");
+        assert_eq!(Op::NewObj { id: ts(1, 0) }.name(), "new_obj");
+        assert_eq!(Op::NewVec { id: ts(1, 0) }.name(), "new_vec");
+        assert_eq!(Op::NewStr { id: ts(1, 0) }.name(), "new_str");
+        assert_eq!(Op::NewBin { id: ts(1, 0) }.name(), "new_bin");
+        assert_eq!(Op::NewArr { id: ts(1, 0) }.name(), "new_arr");
+        assert_eq!(
+            Op::InsVal {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                val: ts(1, 0)
+            }
+            .name(),
+            "ins_val"
+        );
+        assert_eq!(
+            Op::InsObj {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                data: vec![]
+            }
+            .name(),
+            "ins_obj"
+        );
+        assert_eq!(
+            Op::InsVec {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                data: vec![]
+            }
+            .name(),
+            "ins_vec"
+        );
+        assert_eq!(
+            Op::InsStr {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: String::new()
+            }
+            .name(),
+            "ins_str"
+        );
+        assert_eq!(
+            Op::InsBin {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: vec![]
+            }
+            .name(),
+            "ins_bin"
+        );
+        assert_eq!(
+            Op::InsArr {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: vec![]
+            }
+            .name(),
+            "ins_arr"
+        );
+        assert_eq!(
+            Op::UpdArr {
+                id: ts(1, 0),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                val: ts(1, 0)
+            }
+            .name(),
+            "upd_arr"
+        );
+        assert_eq!(
+            Op::Nop {
+                id: ts(1, 0),
+                len: 1
+            }
+            .name(),
+            "nop"
+        );
+    }
+
+    #[test]
+    fn id_returns_correct_ts() {
+        let op = Op::InsVal {
+            id: ts(5, 42),
+            obj: ts(1, 0),
+            val: ts(1, 1),
+        };
+        assert_eq!(op.id(), ts(5, 42));
+    }
+
+    #[test]
+    fn span_of_ins_bin() {
+        let op = Op::InsBin {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![1, 2, 3, 4],
+        };
+        assert_eq!(op.span(), 4);
+    }
+
+    #[test]
+    fn span_of_ins_arr() {
+        let op = Op::InsArr {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![ts(1, 1), ts(1, 2)],
+        };
+        assert_eq!(op.span(), 2);
+    }
+
+    #[test]
+    fn span_of_ins_str_utf16_surrogate() {
+        // Emoji uses 2 UTF-16 code units
+        let op = Op::InsStr {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: "a😀".into(),
+        };
+        // 'a' = 1 + emoji = 2 → 3
+        assert_eq!(op.span(), 3);
+    }
+
+    #[test]
+    fn display_new_obj() {
+        let op = Op::NewObj { id: ts(1, 5) };
+        let s = format!("{}", op);
+        assert!(s.contains("new_obj"));
+    }
+
+    #[test]
+    fn display_ins_val() {
+        let op = Op::InsVal {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            val: ts(1, 3),
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_val"));
+        assert!(s.contains("obj"));
+        assert!(s.contains("val"));
+    }
+
+    #[test]
+    fn display_ins_str() {
+        let op = Op::InsStr {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: "hi".into(),
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_str"));
+        assert!(s.contains("hi"));
+    }
+
+    #[test]
+    fn display_ins_bin() {
+        let op = Op::InsBin {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![0xAB],
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_bin"));
+    }
+
+    #[test]
+    fn display_del() {
+        use crate::json_crdt_patch::clock::Tss;
+        let op = Op::Del {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            what: vec![Tss::new(1, 2, 3)],
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("del"));
+    }
+
+    #[test]
+    fn display_nop_with_span() {
+        let op = Op::Nop {
+            id: ts(1, 5),
+            len: 10,
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("nop"));
+        assert!(s.contains("!10"));
+    }
+
+    #[test]
+    fn con_value_equality() {
+        let a = ConValue::Val(PackValue::Integer(42));
+        let b = ConValue::Val(PackValue::Integer(42));
+        assert_eq!(a, b);
+
+        let c = ConValue::Ref(ts(1, 5));
+        let d = ConValue::Ref(ts(1, 5));
+        assert_eq!(c, d);
+
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn con_value_ref_different_ts() {
+        let a = ConValue::Ref(ts(1, 5));
+        let b = ConValue::Ref(ts(1, 6));
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn con_value_val_different_types() {
+        let a = ConValue::Val(PackValue::Integer(1));
+        let b = ConValue::Val(PackValue::Str("hello".into()));
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn con_value_val_null() {
+        let a = ConValue::Val(PackValue::Null);
+        let b = ConValue::Val(PackValue::Null);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn con_value_val_bool() {
+        assert_eq!(
+            ConValue::Val(PackValue::Bool(true)),
+            ConValue::Val(PackValue::Bool(true))
+        );
+        assert_ne!(
+            ConValue::Val(PackValue::Bool(true)),
+            ConValue::Val(PackValue::Bool(false))
+        );
+    }
+
+    #[test]
+    fn id_of_all_creation_ops() {
+        let cases: Vec<Op> = vec![
+            Op::NewCon {
+                id: ts(1, 10),
+                val: ConValue::Val(PackValue::Null),
+            },
+            Op::NewVal { id: ts(1, 10) },
+            Op::NewObj { id: ts(1, 10) },
+            Op::NewVec { id: ts(1, 10) },
+            Op::NewStr { id: ts(1, 10) },
+            Op::NewBin { id: ts(1, 10) },
+            Op::NewArr { id: ts(1, 10) },
+        ];
+        for op in &cases {
+            assert_eq!(op.id(), ts(1, 10), "id mismatch for {}", op.name());
+        }
+    }
+
+    #[test]
+    fn id_of_all_mutation_ops() {
+        let cases: Vec<Op> = vec![
+            Op::InsVal {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                val: ts(1, 1),
+            },
+            Op::InsObj {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                data: vec![],
+            },
+            Op::InsVec {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                data: vec![],
+            },
+            Op::InsStr {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: String::new(),
+            },
+            Op::InsBin {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: vec![],
+            },
+            Op::InsArr {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                data: vec![],
+            },
+            Op::UpdArr {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                after: ts(1, 0),
+                val: ts(1, 1),
+            },
+            Op::Del {
+                id: ts(2, 7),
+                obj: ts(1, 0),
+                what: vec![],
+            },
+            Op::Nop {
+                id: ts(2, 7),
+                len: 1,
+            },
+        ];
+        for op in &cases {
+            assert_eq!(op.id(), ts(2, 7), "id mismatch for {}", op.name());
+        }
+    }
+
+    #[test]
+    fn span_of_empty_ins_str() {
+        let op = Op::InsStr {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: String::new(),
+        };
+        assert_eq!(op.span(), 0);
+    }
+
+    #[test]
+    fn span_of_empty_ins_bin() {
+        let op = Op::InsBin {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![],
+        };
+        assert_eq!(op.span(), 0);
+    }
+
+    #[test]
+    fn span_of_empty_ins_arr() {
+        let op = Op::InsArr {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![],
+        };
+        assert_eq!(op.span(), 0);
+    }
+
+    #[test]
+    fn display_ins_obj() {
+        let op = Op::InsObj {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            data: vec![("key".into(), ts(1, 3))],
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_obj"));
+    }
+
+    #[test]
+    fn display_ins_vec() {
+        let op = Op::InsVec {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            data: vec![(0, ts(1, 3))],
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_vec"));
+    }
+
+    #[test]
+    fn display_ins_arr() {
+        let op = Op::InsArr {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: vec![ts(1, 3)],
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("ins_arr"));
+    }
+
+    #[test]
+    fn display_upd_arr() {
+        let op = Op::UpdArr {
+            id: ts(1, 5),
+            obj: ts(1, 0),
+            after: ts(1, 3),
+            val: ts(1, 4),
+        };
+        let s = format!("{}", op);
+        assert!(s.contains("upd_arr"));
+    }
+
+    #[test]
+    fn op_clone() {
+        let op = Op::InsStr {
+            id: ts(1, 0),
+            obj: ts(1, 0),
+            after: ts(1, 0),
+            data: "hello".into(),
+        };
+        let cloned = op.clone();
+        assert_eq!(op, cloned);
+    }
+
+    #[test]
+    fn op_debug() {
+        let op = Op::NewCon {
+            id: ts(1, 0),
+            val: ConValue::Val(PackValue::Null),
+        };
+        let debug = format!("{:?}", op);
+        assert!(debug.contains("NewCon"));
+    }
+
+    #[test]
+    fn con_value_ref_clone() {
+        let val = ConValue::Ref(ts(5, 10));
+        let cloned = val.clone();
+        assert_eq!(val, cloned);
+    }
 }

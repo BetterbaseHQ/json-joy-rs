@@ -271,4 +271,361 @@ mod tests {
         let composed = compose(&op1, &op2);
         assert!(composed.is_empty());
     }
+
+    // ── BinaryComponent src_len / dst_len ───────────────────────────────
+
+    #[test]
+    fn src_len_retain() {
+        assert_eq!(BinaryComponent::Retain(5).src_len(), 5);
+    }
+
+    #[test]
+    fn src_len_delete() {
+        assert_eq!(BinaryComponent::Delete(3).src_len(), 3);
+    }
+
+    #[test]
+    fn src_len_insert() {
+        assert_eq!(BinaryComponent::Insert(vec![1, 2, 3]).src_len(), 0);
+    }
+
+    #[test]
+    fn dst_len_retain() {
+        assert_eq!(BinaryComponent::Retain(5).dst_len(), 5);
+    }
+
+    #[test]
+    fn dst_len_delete() {
+        assert_eq!(BinaryComponent::Delete(3).dst_len(), 0);
+    }
+
+    #[test]
+    fn dst_len_insert() {
+        assert_eq!(BinaryComponent::Insert(vec![1, 2, 3]).dst_len(), 3);
+    }
+
+    // ── apply edge cases ────────────────────────────────────────────────
+
+    #[test]
+    fn apply_empty_op() {
+        assert_eq!(apply(&[1, 2, 3], &vec![]), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn apply_empty_data() {
+        let op = vec![BinaryComponent::Insert(vec![1, 2])];
+        assert_eq!(apply(&[], &op), vec![1, 2]);
+    }
+
+    #[test]
+    fn apply_retain_only() {
+        let op = vec![BinaryComponent::Retain(3)];
+        assert_eq!(apply(&[1, 2, 3, 4], &op), vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn apply_complex_sequence() {
+        let op = vec![
+            BinaryComponent::Retain(1),
+            BinaryComponent::Delete(2),
+            BinaryComponent::Insert(vec![99]),
+        ];
+        assert_eq!(apply(&[1, 2, 3, 4, 5], &op), vec![1, 99, 4, 5]);
+    }
+
+    // ── trim ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn trim_removes_trailing_retains() {
+        let mut op = vec![BinaryComponent::Insert(vec![1]), BinaryComponent::Retain(5)];
+        trim(&mut op);
+        assert_eq!(op, vec![BinaryComponent::Insert(vec![1])]);
+    }
+
+    #[test]
+    fn trim_does_not_remove_non_retain() {
+        let mut op = vec![BinaryComponent::Insert(vec![1]), BinaryComponent::Delete(2)];
+        trim(&mut op);
+        assert_eq!(
+            op,
+            vec![BinaryComponent::Insert(vec![1]), BinaryComponent::Delete(2)]
+        );
+    }
+
+    #[test]
+    fn trim_removes_multiple_trailing_retains() {
+        let mut op = vec![
+            BinaryComponent::Delete(1),
+            BinaryComponent::Retain(2),
+            BinaryComponent::Retain(3),
+        ];
+        trim(&mut op);
+        assert_eq!(op, vec![BinaryComponent::Delete(1)]);
+    }
+
+    // ── normalize ───────────────────────────────────────────────────────
+
+    #[test]
+    fn normalize_removes_zero_components() {
+        let op = vec![
+            BinaryComponent::Retain(0),
+            BinaryComponent::Delete(0),
+            BinaryComponent::Insert(vec![]),
+            BinaryComponent::Insert(vec![1]),
+        ];
+        assert_eq!(normalize(op), vec![BinaryComponent::Insert(vec![1])]);
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_retains() {
+        let op = vec![
+            BinaryComponent::Retain(2),
+            BinaryComponent::Retain(3),
+            BinaryComponent::Delete(1),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![BinaryComponent::Retain(5), BinaryComponent::Delete(1)]
+        );
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_deletes() {
+        let op = vec![
+            BinaryComponent::Delete(2),
+            BinaryComponent::Delete(3),
+            BinaryComponent::Insert(vec![1]),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![BinaryComponent::Delete(5), BinaryComponent::Insert(vec![1])]
+        );
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_inserts() {
+        let op = vec![
+            BinaryComponent::Insert(vec![1, 2]),
+            BinaryComponent::Insert(vec![3]),
+        ];
+        assert_eq!(normalize(op), vec![BinaryComponent::Insert(vec![1, 2, 3])]);
+    }
+
+    #[test]
+    fn normalize_strips_trailing_retain() {
+        let op = vec![BinaryComponent::Insert(vec![1]), BinaryComponent::Retain(5)];
+        assert_eq!(normalize(op), vec![BinaryComponent::Insert(vec![1])]);
+    }
+
+    // ── compose ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn compose_identity() {
+        let op1: BinaryOp = vec![];
+        let op2: BinaryOp = vec![];
+        assert!(compose(&op1, &op2).is_empty());
+    }
+
+    #[test]
+    fn compose_retain_retain() {
+        let op1 = vec![BinaryComponent::Retain(3)];
+        let op2 = vec![BinaryComponent::Retain(3)];
+        assert!(compose(&op1, &op2).is_empty());
+    }
+
+    #[test]
+    fn compose_retain_delete() {
+        let op1 = vec![BinaryComponent::Retain(5)];
+        let op2 = vec![BinaryComponent::Delete(3)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![BinaryComponent::Delete(3)]);
+    }
+
+    #[test]
+    fn compose_insert_retain() {
+        let op1 = vec![BinaryComponent::Insert(vec![1, 2, 3])];
+        let op2 = vec![BinaryComponent::Retain(3)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![BinaryComponent::Insert(vec![1, 2, 3])]);
+    }
+
+    #[test]
+    fn compose_insert_partial_retain() {
+        let op1 = vec![BinaryComponent::Insert(vec![1, 2, 3, 4, 5])];
+        let op2 = vec![BinaryComponent::Retain(3), BinaryComponent::Delete(2)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![BinaryComponent::Insert(vec![1, 2, 3])]);
+    }
+
+    #[test]
+    fn compose_insert_partial_delete() {
+        let op1 = vec![BinaryComponent::Insert(vec![1, 2, 3, 4, 5])];
+        let op2 = vec![BinaryComponent::Delete(3)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![BinaryComponent::Insert(vec![4, 5])]);
+    }
+
+    #[test]
+    fn compose_delete_passes_through() {
+        let op1 = vec![BinaryComponent::Delete(3)];
+        let op2 = vec![BinaryComponent::Insert(vec![99])];
+        let composed = compose(&op1, &op2);
+        let data = &[1, 2, 3, 4, 5];
+        let sequential = apply(&apply(data, &op1), &op2);
+        let direct = apply(data, &composed);
+        assert_eq!(sequential, direct);
+    }
+
+    #[test]
+    fn compose_verifies_apply_equivalence() {
+        let data = &[1, 2, 3, 4, 5];
+        let op1 = vec![
+            BinaryComponent::Retain(2),
+            BinaryComponent::Delete(1),
+            BinaryComponent::Insert(vec![99]),
+        ];
+        let op2 = vec![
+            BinaryComponent::Retain(3),
+            BinaryComponent::Insert(vec![88]),
+        ];
+        let sequential = apply(&apply(data, &op1), &op2);
+        let composed = compose(&op1, &op2);
+        let direct = apply(data, &composed);
+        assert_eq!(sequential, direct);
+    }
+
+    // ── transform ───────────────────────────────────────────────────────
+
+    #[test]
+    fn transform_identity() {
+        let op: BinaryOp = vec![];
+        let against: BinaryOp = vec![];
+        assert!(transform(&op, &against, true).is_empty());
+    }
+
+    #[test]
+    fn transform_insert_left_wins() {
+        let op = vec![BinaryComponent::Insert(vec![1])];
+        let against = vec![BinaryComponent::Insert(vec![2])];
+        let t = transform(&op, &against, true);
+        // Left wins: retain over against's insert comes first, then our insert
+        assert_eq!(
+            t,
+            vec![BinaryComponent::Retain(1), BinaryComponent::Insert(vec![1]),]
+        );
+    }
+
+    #[test]
+    fn transform_insert_right_wins() {
+        let op = vec![BinaryComponent::Insert(vec![1])];
+        let against = vec![BinaryComponent::Insert(vec![2])];
+        let t = transform(&op, &against, false);
+        // Right wins: retain over against's insert, then insert
+        assert_eq!(
+            t,
+            vec![BinaryComponent::Retain(1), BinaryComponent::Insert(vec![1]),]
+        );
+    }
+
+    #[test]
+    fn transform_retain_vs_retain() {
+        let op = vec![BinaryComponent::Retain(5)];
+        let against = vec![BinaryComponent::Retain(5)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty()); // trailing retains stripped
+    }
+
+    #[test]
+    fn transform_retain_vs_delete() {
+        let op = vec![BinaryComponent::Retain(5)];
+        let against = vec![BinaryComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        // Against deleted 3, so our retain of 5 -> retain of 2 (trailing, stripped)
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_vs_retain() {
+        let op = vec![BinaryComponent::Delete(3)];
+        let against = vec![BinaryComponent::Retain(5)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![BinaryComponent::Delete(3)]);
+    }
+
+    #[test]
+    fn transform_delete_vs_delete() {
+        let op = vec![BinaryComponent::Delete(3)];
+        let against = vec![BinaryComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_partial_vs_delete() {
+        let op = vec![BinaryComponent::Delete(5)];
+        let against = vec![BinaryComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![BinaryComponent::Delete(2)]);
+    }
+
+    #[test]
+    fn transform_op_remaining_after_against_exhausted() {
+        let op = vec![
+            BinaryComponent::Retain(2),
+            BinaryComponent::Insert(vec![99]),
+        ];
+        let against: BinaryOp = vec![];
+        let t = transform(&op, &against, true);
+        assert_eq!(
+            t,
+            vec![
+                BinaryComponent::Retain(2),
+                BinaryComponent::Insert(vec![99]),
+            ]
+        );
+    }
+
+    #[test]
+    fn transform_convergence() {
+        let data = &[1, 2, 3, 4, 5];
+        let op_a = vec![
+            BinaryComponent::Retain(5),
+            BinaryComponent::Insert(vec![6, 7]),
+        ];
+        let op_b = vec![
+            BinaryComponent::Delete(1),
+            BinaryComponent::Insert(vec![10]),
+        ];
+        let t_a = transform(&op_a, &op_b, true);
+        let t_b = transform(&op_b, &op_a, false);
+        let result_a = apply(&apply(data, &op_b), &t_a);
+        let result_b = apply(&apply(data, &op_a), &t_b);
+        assert_eq!(result_a, result_b);
+    }
+
+    #[test]
+    fn transform_retain_vs_delete_partial() {
+        // op retains 3, against deletes 5 -> retain is fully absorbed
+        let op = vec![BinaryComponent::Retain(3)];
+        let against = vec![BinaryComponent::Delete(5)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_vs_retain_partial() {
+        // op deletes 5, against retains 3 -> delete 3, then remainder
+        let op = vec![BinaryComponent::Delete(5)];
+        let against = vec![BinaryComponent::Retain(3)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![BinaryComponent::Delete(5)]);
+    }
+
+    #[test]
+    fn transform_delete_vs_delete_partial_ag_larger() {
+        let op = vec![BinaryComponent::Delete(3)];
+        let against = vec![BinaryComponent::Delete(5)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
 }

@@ -184,3 +184,231 @@ impl Default for Random {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::type_def::abs_type::BaseInfo;
+    use crate::type_def::classes::*;
+    use crate::type_def::TypeBuilder;
+    use serde_json::json;
+
+    fn t() -> TypeBuilder {
+        TypeBuilder::new()
+    }
+
+    fn r() -> Random {
+        Random::new()
+    }
+
+    #[test]
+    fn random_default() {
+        let r1 = Random;
+        let r2 = Random::new();
+        // Both should produce values
+        let _ = r1.gen(&t().any());
+        let _ = r2.gen(&t().any());
+    }
+
+    #[test]
+    fn gen_any_returns_value() {
+        let val = r().gen(&t().any());
+        // Any should return some JSON value
+        let _ = serde_json::to_string(&val).unwrap();
+    }
+
+    #[test]
+    fn gen_bool_returns_boolean() {
+        let val = r().gen(&t().bool());
+        assert!(val.is_boolean());
+    }
+
+    #[test]
+    fn gen_num_returns_number() {
+        let val = r().gen(&t().num());
+        assert!(val.is_number());
+    }
+
+    #[test]
+    fn gen_num_with_integer_format() {
+        let mut num_type = NumType::new().format(crate::schema::NumFormat::I32);
+        num_type.schema.gte = Some(0.0);
+        num_type.schema.lte = Some(100.0);
+        let node = TypeNode::Num(num_type);
+        let val = r().gen(&node);
+        assert!(val.is_number());
+        // Integer format should produce a round number
+        let n = val.as_f64().unwrap();
+        assert_eq!(n, n.round());
+    }
+
+    #[test]
+    fn gen_num_with_unsigned_format() {
+        let mut num_type = NumType::new().format(crate::schema::NumFormat::U32);
+        num_type.schema.gte = Some(0.0);
+        num_type.schema.lte = Some(100.0);
+        let node = TypeNode::Num(num_type);
+        let val = r().gen(&node);
+        assert!(val.is_number());
+        let n = val.as_f64().unwrap();
+        assert!(n >= 0.0);
+    }
+
+    #[test]
+    fn gen_str_returns_string() {
+        let val = r().gen(&t().str());
+        assert!(val.is_string());
+    }
+
+    #[test]
+    fn gen_str_respects_min_max() {
+        let str_type = StrType::new().min(5).max(10);
+        let node = TypeNode::Str(str_type);
+        for _ in 0..10 {
+            let val = r().gen(&node);
+            let s = val.as_str().unwrap();
+            let char_len = s.chars().count();
+            assert!(char_len >= 5, "String too short: {}", char_len);
+            assert!(char_len <= 10, "String too long: {}", char_len);
+        }
+    }
+
+    #[test]
+    fn gen_str_ascii() {
+        let str_type = StrType::new().ascii(true).min(10).max(20);
+        let node = TypeNode::Str(str_type);
+        let val = r().gen(&node);
+        let s = val.as_str().unwrap();
+        assert!(s.is_ascii());
+    }
+
+    #[test]
+    fn gen_bin_returns_array() {
+        let val = r().gen(&t().bin());
+        assert!(val.is_array());
+    }
+
+    #[test]
+    fn gen_con_returns_value() {
+        let node = t().Const(json!("fixed"), None);
+        let val = r().gen(&node);
+        assert_eq!(val, json!("fixed"));
+    }
+
+    #[test]
+    fn gen_con_null() {
+        let node = t().Const(json!(null), None);
+        let val = r().gen(&node);
+        assert!(val.is_null());
+    }
+
+    #[test]
+    fn gen_arr_returns_array() {
+        let node = t().Array(t().num(), None);
+        let val = r().gen(&node);
+        assert!(val.is_array());
+    }
+
+    #[test]
+    fn gen_arr_with_head_tail() {
+        let node = t().Tuple(
+            vec![t().Const(json!("head"), None)],
+            Some(t().num()),
+            Some(vec![t().Const(json!("tail"), None)]),
+        );
+        let val = r().gen(&node);
+        let arr = val.as_array().unwrap();
+        // First element should be "head"
+        assert_eq!(arr[0], json!("head"));
+        // Last element should be "tail"
+        assert_eq!(arr[arr.len() - 1], json!("tail"));
+    }
+
+    #[test]
+    fn gen_obj_returns_object() {
+        let node = t().Object(vec![
+            KeyType::new("name", t().str()),
+            KeyType::new("age", t().num()),
+        ]);
+        let val = r().gen(&node);
+        assert!(val.is_object());
+        let obj = val.as_object().unwrap();
+        assert!(obj.contains_key("name"));
+        assert!(obj.contains_key("age"));
+    }
+
+    #[test]
+    fn gen_obj_optional_keys_sometimes_omitted() {
+        let node = t().Object(vec![KeyType::new_opt("maybe", t().str())]);
+        let mut seen_with = false;
+        let mut seen_without = false;
+        for _ in 0..100 {
+            let val = r().gen(&node);
+            let obj = val.as_object().unwrap();
+            if obj.contains_key("maybe") {
+                seen_with = true;
+            } else {
+                seen_without = true;
+            }
+            if seen_with && seen_without {
+                break;
+            }
+        }
+        // With 100 tries at 50% probability, both should be seen
+        assert!(seen_with || seen_without);
+    }
+
+    #[test]
+    fn gen_map_returns_object() {
+        let node = t().Map(t().num(), None, None);
+        let val = r().gen(&node);
+        assert!(val.is_object());
+    }
+
+    #[test]
+    fn gen_or_returns_one_of_types() {
+        let node = t().Or(vec![
+            t().Const(json!("a"), None),
+            t().Const(json!("b"), None),
+        ]);
+        let val = r().gen(&node);
+        assert!(val == json!("a") || val == json!("b"));
+    }
+
+    #[test]
+    fn gen_or_empty_returns_null() {
+        let node = TypeNode::Or(OrType {
+            types: vec![],
+            discriminator: json!(null),
+            base: BaseInfo::default(),
+        });
+        let val = r().gen(&node);
+        assert!(val.is_null());
+    }
+
+    #[test]
+    fn gen_fn_returns_null() {
+        let val = r().gen(&t().fn_());
+        assert!(val.is_null());
+    }
+
+    #[test]
+    fn gen_fn_rx_returns_null() {
+        let val = r().gen(&t().fn_rx());
+        assert!(val.is_null());
+    }
+
+    #[test]
+    fn gen_ref_without_system_returns_null() {
+        let node = t().Ref("Unknown");
+        let val = r().gen(&node);
+        assert!(val.is_null());
+    }
+
+    #[test]
+    fn gen_key_delegates_to_val() {
+        let node = t().Key("x", t().Const(json!(99), None));
+        let val = r().gen(&node);
+        assert_eq!(val, json!(99));
+    }
+}

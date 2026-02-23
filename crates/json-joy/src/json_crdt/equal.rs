@@ -433,4 +433,876 @@ mod tests {
         let b = CrdtNode::Obj(nb);
         assert!(!cmp_node(&a, &b));
     }
+
+    // ── cmp: Val node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_val_both_resolve_same_content() {
+        let mut index = BTreeMap::default();
+        // Two Val nodes pointing to different Ts but both resolve to same Con value.
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 10),
+            ConValue::Val(PackValue::Integer(99)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 20),
+            ConValue::Val(PackValue::Integer(99)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+        index.insert(TsKey::from(ts(sid(), 20)), con_b);
+
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 10);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 2));
+        vb.val = ts(sid(), 20);
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_val_both_resolve_different_content() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 10),
+            ConValue::Val(PackValue::Integer(1)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 20),
+            ConValue::Val(PackValue::Integer(2)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+        index.insert(TsKey::from(ts(sid(), 20)), con_b);
+
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 10);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 2));
+        vb.val = ts(sid(), 20);
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_val_one_missing_from_index() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(ts(sid(), 10), ConValue::Val(PackValue::Null)));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 10);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 2));
+        vb.val = ts(sid(), 99); // not in index
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_val_both_missing_from_index() {
+        let index = BTreeMap::default();
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 50);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 2));
+        vb.val = ts(sid(), 60);
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        // Both missing → true
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Str node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_str_same_content() {
+        let index = BTreeMap::default();
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "hello".into());
+        let mut sb = StrNode::new(ts(sid(), 2));
+        sb.ins(ts(sid(), 2), ts(sid(), 20), "hello".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_str_different_content() {
+        let index = BTreeMap::default();
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "hello".into());
+        let mut sb = StrNode::new(ts(sid(), 2));
+        sb.ins(ts(sid(), 2), ts(sid(), 20), "world".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_str_no_content_same_length() {
+        let index = BTreeMap::default();
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "abc".into());
+        let mut sb = StrNode::new(ts(sid(), 2));
+        sb.ins(ts(sid(), 2), ts(sid(), 20), "xyz".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        // compare_content=false, same type → true
+        assert!(cmp(&a, &b, false, &index));
+    }
+
+    // ── cmp: Bin node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_bin_same_data() {
+        let index = BTreeMap::default();
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let mut bb = BinNode::new(ts(sid(), 2));
+        bb.ins(ts(sid(), 2), ts(sid(), 20), vec![1, 2, 3]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_bin_different_data() {
+        let index = BTreeMap::default();
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let mut bb = BinNode::new(ts(sid(), 2));
+        bb.ins(ts(sid(), 2), ts(sid(), 20), vec![4, 5, 6]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_bin_no_content() {
+        let index = BTreeMap::default();
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2]);
+        let mut bb = BinNode::new(ts(sid(), 2));
+        bb.ins(ts(sid(), 2), ts(sid(), 20), vec![9, 8]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(cmp(&a, &b, false, &index));
+    }
+
+    // ── cmp: Obj node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_obj_same_keys_same_values() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 10),
+            ConValue::Val(PackValue::Integer(42)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 20),
+            ConValue::Val(PackValue::Integer(42)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+        index.insert(TsKey::from(ts(sid(), 20)), con_b);
+
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("key", ts(sid(), 10));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("key", ts(sid(), 20));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_obj_different_key_count() {
+        let index = BTreeMap::default();
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("x", ts(sid(), 10));
+        let ob = ObjNode::new(ts(sid(), 2));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_obj_missing_key_in_b() {
+        let index = BTreeMap::default();
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("x", ts(sid(), 10));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("y", ts(sid(), 20));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_obj_value_one_missing_from_index() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(ts(sid(), 10), ConValue::Val(PackValue::Null)));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+        // ts(sid(), 20) is NOT in the index
+
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("k", ts(sid(), 10));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("k", ts(sid(), 20));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Vec node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_vec_same_elements() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 10),
+            ConValue::Val(PackValue::Integer(1)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 20),
+            ConValue::Val(PackValue::Integer(1)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 10)), con_a);
+        index.insert(TsKey::from(ts(sid(), 20)), con_b);
+
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.put(0, ts(sid(), 20));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_vec_different_lengths() {
+        let mut index = BTreeMap::default();
+        let con = CrdtNode::Con(ConNode::new(ts(sid(), 10), ConValue::Val(PackValue::Null)));
+        index.insert(TsKey::from(ts(sid(), 10)), con);
+
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_vec_none_elements_equal() {
+        let index = BTreeMap::default();
+        // Both have 1 element slot but it's None
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.elements.push(None);
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.elements.push(None);
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_vec_one_none_one_some() {
+        let index = BTreeMap::default();
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.elements.push(None);
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.elements.push(Some(ts(sid(), 10)));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Arr node tests ─────────────────────────────────────────────
+
+    #[test]
+    fn cmp_arr_empty_equal() {
+        let index = BTreeMap::default();
+        let a = CrdtNode::Arr(super::super::nodes::ArrNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Arr(super::super::nodes::ArrNode::new(ts(sid(), 2)));
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_arr_different_length() {
+        let mut index = BTreeMap::default();
+        let con = CrdtNode::Con(ConNode::new(ts(sid(), 50), ConValue::Val(PackValue::Null)));
+        index.insert(TsKey::from(ts(sid(), 50)), con);
+
+        let mut arr_a = super::super::nodes::ArrNode::new(ts(sid(), 1));
+        arr_a.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let arr_b = super::super::nodes::ArrNode::new(ts(sid(), 2));
+        let a = CrdtNode::Arr(arr_a);
+        let b = CrdtNode::Arr(arr_b);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_arr_same_length_no_content() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 50),
+            ConValue::Val(PackValue::Integer(1)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 60),
+            ConValue::Val(PackValue::Integer(2)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 50)), con_a);
+        index.insert(TsKey::from(ts(sid(), 60)), con_b);
+
+        let mut arr_a = super::super::nodes::ArrNode::new(ts(sid(), 1));
+        arr_a.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut arr_b = super::super::nodes::ArrNode::new(ts(sid(), 2));
+        arr_b.ins(ts(sid(), 2), ts(sid(), 20), vec![ts(sid(), 60)]);
+        let a = CrdtNode::Arr(arr_a);
+        let b = CrdtNode::Arr(arr_b);
+        // same length, compare_content=false → true
+        assert!(cmp(&a, &b, false, &index));
+    }
+
+    #[test]
+    fn cmp_arr_same_length_different_content() {
+        let mut index = BTreeMap::default();
+        let con_a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 50),
+            ConValue::Val(PackValue::Integer(1)),
+        ));
+        let con_b = CrdtNode::Con(ConNode::new(
+            ts(sid(), 60),
+            ConValue::Val(PackValue::Integer(2)),
+        ));
+        index.insert(TsKey::from(ts(sid(), 50)), con_a);
+        index.insert(TsKey::from(ts(sid(), 60)), con_b);
+
+        let mut arr_a = super::super::nodes::ArrNode::new(ts(sid(), 1));
+        arr_a.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut arr_b = super::super::nodes::ArrNode::new(ts(sid(), 2));
+        arr_b.ins(ts(sid(), 2), ts(sid(), 20), vec![ts(sid(), 60)]);
+        let a = CrdtNode::Arr(arr_a);
+        let b = CrdtNode::Arr(arr_b);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: pointer identity ───────────────────────────────────────────
+
+    #[test]
+    fn cmp_same_pointer_returns_true() {
+        let index = BTreeMap::default();
+        let a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 1),
+            ConValue::Val(PackValue::Integer(42)),
+        ));
+        assert!(cmp(&a, &a, true, &index));
+    }
+
+    // ── cmp_node: Val ───────────────────────────────────────────────────
+
+    #[test]
+    fn cmp_node_val_same_id_same_val() {
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 10);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 1));
+        vb.val = ts(sid(), 10);
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_val_same_id_different_val() {
+        let mut va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        va.val = ts(sid(), 10);
+        let mut vb = super::super::nodes::ValNode::new(ts(sid(), 1));
+        vb.val = ts(sid(), 20);
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_val_different_id() {
+        let va = super::super::nodes::ValNode::new(ts(sid(), 1));
+        let vb = super::super::nodes::ValNode::new(ts(sid(), 2));
+        let a = CrdtNode::Val(va);
+        let b = CrdtNode::Val(vb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp_node: Vec ───────────────────────────────────────────────────
+
+    #[test]
+    fn cmp_node_vec_same() {
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 1));
+        vb.put(0, ts(sid(), 10));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_vec_different_length() {
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let vb = super::super::nodes::VecNode::new(ts(sid(), 1));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_vec_different_element_ts() {
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 1));
+        vb.put(0, ts(sid(), 20));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_vec_none_vs_some() {
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.elements.push(None);
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 1));
+        vb.put(0, ts(sid(), 10));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp_node: Obj ───────────────────────────────────────────────────
+
+    #[test]
+    fn cmp_node_obj_different_id() {
+        let na = ObjNode::new(ts(sid(), 1));
+        let nb = ObjNode::new(ts(sid(), 2));
+        let a = CrdtNode::Obj(na);
+        let b = CrdtNode::Obj(nb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_obj_different_key_count() {
+        let mut na = ObjNode::new(ts(sid(), 1));
+        na.put("x", ts(sid(), 10));
+        let nb = ObjNode::new(ts(sid(), 1));
+        let a = CrdtNode::Obj(na);
+        let b = CrdtNode::Obj(nb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_obj_different_key_names() {
+        let mut na = ObjNode::new(ts(sid(), 1));
+        na.put("x", ts(sid(), 10));
+        let mut nb = ObjNode::new(ts(sid(), 1));
+        nb.put("y", ts(sid(), 10));
+        let a = CrdtNode::Obj(na);
+        let b = CrdtNode::Obj(nb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp_node: pointer identity ──────────────────────────────────────
+
+    #[test]
+    fn cmp_node_same_pointer_returns_true() {
+        let a = CrdtNode::Con(ConNode::new(
+            ts(sid(), 1),
+            ConValue::Val(PackValue::Integer(42)),
+        ));
+        assert!(cmp_node(&a, &a));
+    }
+
+    // ── cmp_node: Bin ───────────────────────────────────────────────────
+
+    #[test]
+    fn cmp_node_bin_same_empty() {
+        let a = CrdtNode::Bin(BinNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Bin(BinNode::new(ts(sid(), 1)));
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_bin_different_id() {
+        let a = CrdtNode::Bin(BinNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Bin(BinNode::new(ts(sid(), 2)));
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_bin_same_with_data() {
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let mut bb = BinNode::new(ts(sid(), 1));
+        bb.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_bin_different_chunk_id() {
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2]);
+        let mut bb = BinNode::new(ts(sid(), 1));
+        bb.ins(ts(sid(), 1), ts(sid(), 20), vec![1, 2]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_bin_different_length() {
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2]);
+        let mut bb = BinNode::new(ts(sid(), 1));
+        bb.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp_node: Arr ───────────────────────────────────────────────────
+
+    #[test]
+    fn cmp_node_arr_same_empty() {
+        let a = CrdtNode::Arr(ArrNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Arr(ArrNode::new(ts(sid(), 1)));
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_arr_different_id() {
+        let a = CrdtNode::Arr(ArrNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Arr(ArrNode::new(ts(sid(), 2)));
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_arr_same_with_data() {
+        let mut aa = ArrNode::new(ts(sid(), 1));
+        aa.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut ab = ArrNode::new(ts(sid(), 1));
+        ab.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let a = CrdtNode::Arr(aa);
+        let b = CrdtNode::Arr(ab);
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_arr_different_chunk_id() {
+        let mut aa = ArrNode::new(ts(sid(), 1));
+        aa.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut ab = ArrNode::new(ts(sid(), 1));
+        ab.ins(ts(sid(), 1), ts(sid(), 20), vec![ts(sid(), 50)]);
+        let a = CrdtNode::Arr(aa);
+        let b = CrdtNode::Arr(ab);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_arr_different_size() {
+        let mut aa = ArrNode::new(ts(sid(), 1));
+        aa.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let ab = ArrNode::new(ts(sid(), 1));
+        let a = CrdtNode::Arr(aa);
+        let b = CrdtNode::Arr(ab);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp_node: Str with content ──────────────────────────────────────
+
+    #[test]
+    fn cmp_node_str_same_with_data() {
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "hello".into());
+        let mut sb = StrNode::new(ts(sid(), 1));
+        sb.ins(ts(sid(), 1), ts(sid(), 10), "hello".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_str_different_chunk_id() {
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "abc".into());
+        let mut sb = StrNode::new(ts(sid(), 1));
+        sb.ins(ts(sid(), 1), ts(sid(), 20), "abc".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_str_different_size() {
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "ab".into());
+        let mut sb = StrNode::new(ts(sid(), 1));
+        sb.ins(ts(sid(), 1), ts(sid(), 10), "abc".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(!cmp_node(&a, &b));
+    }
+
+    #[test]
+    fn cmp_node_str_different_id() {
+        let a = CrdtNode::Str(StrNode::new(ts(sid(), 1)));
+        let b = CrdtNode::Str(StrNode::new(ts(sid(), 2)));
+        assert!(!cmp_node(&a, &b));
+    }
+
+    // ── cmp: Obj with both values missing from index ────────────────────
+
+    #[test]
+    fn cmp_obj_values_both_missing_from_index() {
+        let index = BTreeMap::default();
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("k", ts(sid(), 10));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("k", ts(sid(), 20));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        // Both values missing from index → (None, None) → true
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Obj with multiple keys ─────────────────────────────────────
+
+    #[test]
+    fn cmp_obj_multiple_keys_same_values() {
+        let mut index = BTreeMap::default();
+        index.insert(
+            TsKey::from(ts(sid(), 10)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 10),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 20)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 20),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 30)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 30),
+                ConValue::Val(PackValue::Str("x".into())),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 40)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 40),
+                ConValue::Val(PackValue::Str("x".into())),
+            )),
+        );
+
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("a", ts(sid(), 10));
+        oa.put("b", ts(sid(), 30));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("a", ts(sid(), 20));
+        ob.put("b", ts(sid(), 40));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_obj_multiple_keys_one_different() {
+        let mut index = BTreeMap::default();
+        index.insert(
+            TsKey::from(ts(sid(), 10)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 10),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 20)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 20),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 30)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 30),
+                ConValue::Val(PackValue::Str("x".into())),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 40)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 40),
+                ConValue::Val(PackValue::Str("y".into())),
+            )),
+        );
+
+        let mut oa = ObjNode::new(ts(sid(), 1));
+        oa.put("a", ts(sid(), 10));
+        oa.put("b", ts(sid(), 30));
+        let mut ob = ObjNode::new(ts(sid(), 2));
+        ob.put("a", ts(sid(), 20));
+        ob.put("b", ts(sid(), 40));
+        let a = CrdtNode::Obj(oa);
+        let b = CrdtNode::Obj(ob);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Vec with different content values ──────────────────────────
+
+    #[test]
+    fn cmp_vec_same_length_different_values() {
+        let mut index = BTreeMap::default();
+        index.insert(
+            TsKey::from(ts(sid(), 10)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 10),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 20)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 20),
+                ConValue::Val(PackValue::Integer(2)),
+            )),
+        );
+
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.put(0, ts(sid(), 20));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    #[test]
+    fn cmp_vec_no_content_ignores_values() {
+        let mut index = BTreeMap::default();
+        index.insert(
+            TsKey::from(ts(sid(), 10)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 10),
+                ConValue::Val(PackValue::Integer(1)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 20)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 20),
+                ConValue::Val(PackValue::Integer(2)),
+            )),
+        );
+
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.put(0, ts(sid(), 20));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        assert!(cmp(&a, &b, false, &index));
+    }
+
+    // ── cmp: Vec element both missing from index ────────────────────────
+
+    #[test]
+    fn cmp_vec_elements_both_missing_from_index() {
+        let index = BTreeMap::default();
+        let mut va = super::super::nodes::VecNode::new(ts(sid(), 1));
+        va.put(0, ts(sid(), 10));
+        let mut vb = super::super::nodes::VecNode::new(ts(sid(), 2));
+        vb.put(0, ts(sid(), 20));
+        let a = CrdtNode::Vec(va);
+        let b = CrdtNode::Vec(vb);
+        // Both elements missing from index → (None, None) → true
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Arr with same content ──────────────────────────────────────
+
+    #[test]
+    fn cmp_arr_same_content() {
+        let mut index = BTreeMap::default();
+        index.insert(
+            TsKey::from(ts(sid(), 50)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 50),
+                ConValue::Val(PackValue::Integer(42)),
+            )),
+        );
+        index.insert(
+            TsKey::from(ts(sid(), 60)),
+            CrdtNode::Con(ConNode::new(
+                ts(sid(), 60),
+                ConValue::Val(PackValue::Integer(42)),
+            )),
+        );
+
+        let mut arr_a = ArrNode::new(ts(sid(), 1));
+        arr_a.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut arr_b = ArrNode::new(ts(sid(), 2));
+        arr_b.ins(ts(sid(), 2), ts(sid(), 20), vec![ts(sid(), 60)]);
+        let a = CrdtNode::Arr(arr_a);
+        let b = CrdtNode::Arr(arr_b);
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Arr with both elements missing from index ──────────────────
+
+    #[test]
+    fn cmp_arr_elements_both_missing_from_index() {
+        let index = BTreeMap::default();
+
+        let mut arr_a = ArrNode::new(ts(sid(), 1));
+        arr_a.ins(ts(sid(), 1), ts(sid(), 10), vec![ts(sid(), 50)]);
+        let mut arr_b = ArrNode::new(ts(sid(), 2));
+        arr_b.ins(ts(sid(), 2), ts(sid(), 20), vec![ts(sid(), 60)]);
+        let a = CrdtNode::Arr(arr_a);
+        let b = CrdtNode::Arr(arr_b);
+        // Both elements missing → (None, None) → true
+        assert!(cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Bin different length ───────────────────────────────────────
+
+    #[test]
+    fn cmp_bin_different_length() {
+        let index = BTreeMap::default();
+        let mut ba = BinNode::new(ts(sid(), 1));
+        ba.ins(ts(sid(), 1), ts(sid(), 10), vec![1, 2, 3]);
+        let mut bb = BinNode::new(ts(sid(), 2));
+        bb.ins(ts(sid(), 2), ts(sid(), 20), vec![1, 2]);
+        let a = CrdtNode::Bin(ba);
+        let b = CrdtNode::Bin(bb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
+
+    // ── cmp: Str different length ───────────────────────────────────────
+
+    #[test]
+    fn cmp_str_different_length() {
+        let index = BTreeMap::default();
+        let mut sa = StrNode::new(ts(sid(), 1));
+        sa.ins(ts(sid(), 1), ts(sid(), 10), "hello".into());
+        let mut sb = StrNode::new(ts(sid(), 2));
+        sb.ins(ts(sid(), 2), ts(sid(), 20), "hi".into());
+        let a = CrdtNode::Str(sa);
+        let b = CrdtNode::Str(sb);
+        assert!(!cmp(&a, &b, true, &index));
+    }
 }

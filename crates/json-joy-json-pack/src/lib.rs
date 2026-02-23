@@ -2387,4 +2387,2822 @@ mod tests {
         // CBOR uint 0: 0x00
         assert_eq!(buf[0], 0x00, "zero should encode as CBOR uint 0");
     }
+
+    // ── CborEncoderFast: write_str ──────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_write_str_empty() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_str("");
+        let buf = enc.writer.flush();
+        // Empty text string: 0x60 (major 3, length 0)
+        assert_eq!(buf, &[0x60]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_str_short() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_str("hi");
+        let buf = enc.writer.flush();
+        // 0x62 = major 3, length 2
+        assert_eq!(buf[0], 0x62);
+        assert_eq!(&buf[1..], b"hi");
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_str_23_chars() {
+        let mut enc = CborEncoderFast::new();
+        let s = "a".repeat(23);
+        enc.write_str(&s);
+        let buf = enc.writer.flush();
+        // 23 ASCII chars → max_size = 23*4 = 92, which is > 23 so uses 0x78 header
+        assert_eq!(buf[0], 0x78);
+        assert_eq!(buf[1], 23);
+        assert_eq!(&buf[2..], s.as_bytes());
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_str_multibyte_utf8() {
+        let mut enc = CborEncoderFast::new();
+        // "€" is 3 bytes in UTF-8, 1 char → max_size = 4, actual = 3
+        enc.write_str("€");
+        let buf = enc.writer.flush();
+        // max_size=4 <= 23 → short header
+        assert_eq!(buf[0], 0x60 | 3); // 0x63
+        assert_eq!(&buf[1..], "€".as_bytes());
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_str_medium() {
+        let mut enc = CborEncoderFast::new();
+        let s = "x".repeat(100);
+        enc.write_str(&s);
+        let buf = enc.writer.flush();
+        // 100 ASCII chars → max_size = 400 > 255 → 0x79 header (u16 length)
+        assert_eq!(buf[0], 0x79);
+        let len = u16::from_be_bytes([buf[1], buf[2]]);
+        assert_eq!(len, 100);
+        assert_eq!(&buf[3..], s.as_bytes());
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_str_long() {
+        let mut enc = CborEncoderFast::new();
+        // Need char_count * 4 > 0xffff, so char_count > 16383
+        let s = "a".repeat(16384);
+        enc.write_str(&s);
+        let buf = enc.writer.flush();
+        // max_size = 16384 * 4 = 65536 > 0xffff → 0x7a header (u32 length)
+        assert_eq!(buf[0], 0x7a);
+        let len = u32::from_be_bytes([buf[1], buf[2], buf[3], buf[4]]);
+        assert_eq!(len, 16384);
+    }
+
+    // ── CborEncoderFast: write_u_integer branches ───────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_u_integer_tiny() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_u_integer(0);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x00]);
+
+        enc.writer.reset();
+        enc.write_u_integer(23);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x17]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_u_integer_u8() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_u_integer(24);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x18, 24]);
+
+        enc.writer.reset();
+        enc.write_u_integer(255);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x18, 0xff]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_u_integer_u16() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_u_integer(256);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x19);
+        assert_eq!(u16::from_be_bytes([buf[1], buf[2]]), 256);
+
+        enc.writer.reset();
+        enc.write_u_integer(0xffff);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x19);
+        assert_eq!(u16::from_be_bytes([buf[1], buf[2]]), 0xffff);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_u_integer_u32() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_u_integer(0x10000);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x1a);
+        assert_eq!(
+            u32::from_be_bytes([buf[1], buf[2], buf[3], buf[4]]),
+            0x10000
+        );
+
+        enc.writer.reset();
+        enc.write_u_integer(0xffffffff);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x1a);
+        assert_eq!(
+            u32::from_be_bytes([buf[1], buf[2], buf[3], buf[4]]),
+            0xffffffff
+        );
+    }
+
+    #[test]
+    fn cbor_encoder_fast_u_integer_u64() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_u_integer(0x100000000);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x1b);
+        assert_eq!(
+            u64::from_be_bytes(buf[1..9].try_into().unwrap()),
+            0x100000000
+        );
+    }
+
+    // ── CborEncoderFast: encode_nint branches ───────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_nint_tiny() {
+        let mut enc = CborEncoderFast::new();
+        enc.encode_nint(-1); // uint = 0 → single byte 0x20
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x20]);
+
+        enc.writer.reset();
+        enc.encode_nint(-24); // uint = 23 → 0x37
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x37]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_nint_u8() {
+        let mut enc = CborEncoderFast::new();
+        enc.encode_nint(-25); // uint = 24 → 0x38, 24
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x38, 24]);
+
+        enc.writer.reset();
+        enc.encode_nint(-256); // uint = 255 → 0x38, 0xff
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x38, 0xff]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_nint_u16() {
+        let mut enc = CborEncoderFast::new();
+        enc.encode_nint(-257); // uint = 256
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x39);
+        assert_eq!(u16::from_be_bytes([buf[1], buf[2]]), 256);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_nint_u32() {
+        let mut enc = CborEncoderFast::new();
+        enc.encode_nint(-65537); // uint = 65536
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x3a);
+        assert_eq!(u32::from_be_bytes([buf[1], buf[2], buf[3], buf[4]]), 65536);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_nint_u64() {
+        let mut enc = CborEncoderFast::new();
+        enc.encode_nint(i64::MIN); // uint = i64::MAX as u64
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x3b);
+        assert_eq!(
+            u64::from_be_bytes(buf[1..9].try_into().unwrap()),
+            i64::MAX as u64
+        );
+    }
+
+    // ── CborEncoderFast: write_number (integer vs float dispatch) ───────
+
+    #[test]
+    fn cbor_encoder_fast_write_number_positive_integer() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(42.0);
+        let buf = enc.writer.flush();
+        // 42 > 23, so uses 0x18 (u8 uint) format
+        assert_eq!(buf, &[0x18, 42]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_number_negative_integer() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_number(-10.0);
+        let buf = enc.writer.flush();
+        // nint: uint = 9, so 0x20 | 9 = 0x29
+        assert_eq!(buf, &[0x29]);
+    }
+
+    // ── CborEncoderFast: write_arr / write_obj ──────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_write_empty_array() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_arr(&[]);
+        let buf = enc.writer.flush();
+        // Empty array: 0x80
+        assert_eq!(buf, &[0x80]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_array_with_elements() {
+        let mut enc = CborEncoderFast::new();
+        let arr = vec![PackValue::Integer(1), PackValue::Bool(true)];
+        enc.write_arr(&arr);
+        let buf = enc.writer.flush();
+        // 0x82 = array(2), 0x01 = uint(1), 0xf5 = true
+        assert_eq!(buf, &[0x82, 0x01, 0xf5]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_empty_object() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_obj_pairs(&[]);
+        let buf = enc.writer.flush();
+        // Empty map: 0xa0
+        assert_eq!(buf, &[0xa0]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_object_with_pairs() {
+        let mut enc = CborEncoderFast::new();
+        let pairs = vec![("a".to_string(), PackValue::Integer(1))];
+        enc.write_obj_pairs(&pairs);
+        let buf = enc.writer.flush();
+        // 0xa1 = map(1), 0x61 = text(1), 'a', 0x01 = uint(1)
+        assert_eq!(buf, &[0xa1, 0x61, b'a', 0x01]);
+    }
+
+    // ── CborEncoderFast: write_bin ──────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_write_bin_empty() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_bin(&[]);
+        let buf = enc.writer.flush();
+        // Empty byte string: 0x40
+        assert_eq!(buf, &[0x40]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_bin_small() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_bin(&[0xDE, 0xAD]);
+        let buf = enc.writer.flush();
+        // 0x42 = bytes(2), then payload
+        assert_eq!(buf, &[0x42, 0xDE, 0xAD]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_bin_medium() {
+        let mut enc = CborEncoderFast::new();
+        let data = vec![0xAB; 100];
+        enc.write_bin(&data);
+        let buf = enc.writer.flush();
+        // length=100 > 23 → 0x58, length as u8
+        assert_eq!(buf[0], 0x58);
+        assert_eq!(buf[1], 100);
+        assert_eq!(&buf[2..], &data[..]);
+    }
+
+    // ── CborEncoderFast: write_tag ──────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_write_tag_small() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_tag(1, &PackValue::Integer(42));
+        let buf = enc.writer.flush();
+        // tag(1) = 0xc1, then uint(42) = 0x18, 42
+        assert_eq!(buf, &[0xc1, 0x18, 42]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_tag_u8() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_tag(100, &PackValue::Null);
+        let buf = enc.writer.flush();
+        // 0xd8 = tag, one-byte follow, 100, then 0xf6 = null
+        assert_eq!(buf, &[0xd8, 100, 0xf6]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_tag_u16() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_tag(1000, &PackValue::Null);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0xd9);
+        assert_eq!(u16::from_be_bytes([buf[1], buf[2]]), 1000);
+        assert_eq!(buf[3], 0xf6);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_tag_u32() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_tag(100_000, &PackValue::Null);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0xda);
+        assert_eq!(
+            u32::from_be_bytes([buf[1], buf[2], buf[3], buf[4]]),
+            100_000
+        );
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_tag_u64() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_tag(0x100000000, &PackValue::Null);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0xdb);
+        assert_eq!(
+            u64::from_be_bytes(buf[1..9].try_into().unwrap()),
+            0x100000000
+        );
+    }
+
+    // ── CborEncoderFast: bigint ─────────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_big_int_positive_small() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_big_int(42);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x18, 42]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_big_int_negative_small() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_big_int(-1);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0x20]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_big_uint_overflow_clamps() {
+        let mut enc = CborEncoderFast::new();
+        // Value larger than u64::MAX → clamped to u64::MAX
+        enc.write_big_uint(u128::MAX);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x1b);
+        assert_eq!(u64::from_be_bytes(buf[1..9].try_into().unwrap()), u64::MAX);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_big_sint_below_i64_min() {
+        let mut enc = CborEncoderFast::new();
+        let val = i64::MIN as i128 - 1;
+        enc.write_big_sint(val);
+        let buf = enc.writer.flush();
+        assert_eq!(buf[0], 0x3b);
+        let uint = (-1i128 - val) as u64;
+        assert_eq!(u64::from_be_bytes(buf[1..9].try_into().unwrap()), uint);
+    }
+
+    // ── CborEncoderFast: write_any (PackValue dispatch) ─────────────────
+
+    #[test]
+    fn cbor_encoder_fast_write_any_null_and_undefined() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_any(&PackValue::Null);
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0xf6]);
+
+        enc.writer.reset();
+        enc.write_any(&PackValue::Undefined);
+        let buf = enc.writer.flush();
+        // Fast encoder maps Undefined → null
+        assert_eq!(buf, &[0xf6]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_any_bool() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_any(&PackValue::Bool(true));
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0xf5]);
+
+        enc.writer.reset();
+        enc.write_any(&PackValue::Bool(false));
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0xf4]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_encode_convenience() {
+        let mut enc = CborEncoderFast::new();
+        let buf = enc.encode(&PackValue::Integer(5));
+        assert_eq!(buf, &[0x05]);
+        // encode resets and produces fresh output
+        let buf = enc.encode(&PackValue::Bool(true));
+        assert_eq!(buf, &[0xf5]);
+    }
+
+    // ── CborEncoderFast: encode_json ────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_encode_json_all_types() {
+        let mut enc = CborEncoderFast::new();
+        let val = json!({"key": [1, -2, true, null, "hi"]});
+        let buf = enc.encode_json(&val);
+        // Decode back as JSON and compare
+        let dec = CborDecoder::new();
+        let decoded = dec.decode_json(&buf).unwrap();
+        assert_eq!(decoded, val);
+    }
+
+    // ── CborEncoderFast: streaming helpers ──────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_streaming_markers() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_start_arr();
+        enc.write_u_integer(1);
+        enc.write_u_integer(2);
+        enc.write_end_arr();
+        let buf = enc.writer.flush();
+        // 0x9f = indefinite array start, 0x01, 0x02, 0xff = break
+        assert_eq!(buf, &[0x9f, 0x01, 0x02, 0xff]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_streaming_obj() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_start_obj();
+        enc.write_str("k");
+        enc.write_u_integer(1);
+        enc.write_end_obj();
+        let buf = enc.writer.flush();
+        // 0xbf = indefinite map, key "k", value 1, 0xff = break
+        assert_eq!(buf, &[0xbf, 0x61, b'k', 0x01, 0xff]);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_write_cbor_self_describe_tag() {
+        let mut enc = CborEncoderFast::new();
+        enc.write_cbor();
+        let buf = enc.writer.flush();
+        assert_eq!(buf, &[0xd9, 0xd9, 0xf7]);
+    }
+
+    // ── CborEncoderStable: sorted keys ──────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_stable_sorts_keys_by_length_then_lex() {
+        let mut enc = CborEncoderStable::new();
+        let obj = PackValue::Object(vec![
+            ("bb".into(), PackValue::Integer(2)),
+            ("a".into(), PackValue::Integer(1)),
+            ("ccc".into(), PackValue::Integer(3)),
+        ]);
+        let buf = enc.encode(&obj);
+        let dec = CborDecoder::new();
+        let decoded = dec.decode(&buf).unwrap();
+        // Keys should be sorted: "a" (len 1) < "bb" (len 2) < "ccc" (len 3)
+        if let PackValue::Object(pairs) = decoded {
+            let keys: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).collect();
+            assert_eq!(keys, vec!["a", "bb", "ccc"]);
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_stable_sorts_same_length_keys_lex() {
+        let mut enc = CborEncoderStable::new();
+        let obj = PackValue::Object(vec![
+            ("zz".into(), PackValue::Integer(1)),
+            ("aa".into(), PackValue::Integer(2)),
+            ("mm".into(), PackValue::Integer(3)),
+        ]);
+        let buf = enc.encode(&obj);
+        let dec = CborDecoder::new();
+        let decoded = dec.decode(&buf).unwrap();
+        if let PackValue::Object(pairs) = decoded {
+            let keys: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).collect();
+            assert_eq!(keys, vec!["aa", "mm", "zz"]);
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_stable_deterministic_output() {
+        let mut enc = CborEncoderStable::new();
+        let obj = PackValue::Object(vec![
+            ("z".into(), PackValue::Integer(1)),
+            ("a".into(), PackValue::Integer(2)),
+        ]);
+        let buf1 = enc.encode(&obj);
+        let buf2 = enc.encode(&obj);
+        assert_eq!(buf1, buf2, "stable encoder must produce identical bytes");
+    }
+
+    // ── CborEncoderStable: float32 optimization ─────────────────────────
+
+    #[test]
+    fn cbor_encoder_stable_float32_when_lossless() {
+        let mut enc_stable = CborEncoderStable::new();
+        let mut enc_fast = CborEncoderFast::new();
+
+        // 1.5 is exactly representable as f32
+        let buf_stable = enc_stable.encode(&PackValue::Float(1.5));
+        let buf_fast = enc_fast.encode(&PackValue::Float(1.5));
+
+        // Stable uses f32 (0xfa), fast always uses f64 (0xfb)
+        assert_eq!(buf_stable[0], 0xfa, "stable should use f32 for 1.5");
+        assert_eq!(buf_fast[0], 0xfb, "fast should use f64 for 1.5");
+    }
+
+    #[test]
+    fn cbor_encoder_stable_float64_when_needed() {
+        let mut enc = CborEncoderStable::new();
+        let buf = enc.encode(&PackValue::Float(TEST_F64_3_14159));
+        // pi-ish value needs f64
+        assert_eq!(buf[0], 0xfb);
+    }
+
+    // ── CborEncoderStable: write_str uses exact header ──────────────────
+
+    #[test]
+    fn cbor_encoder_stable_write_str_exact_header() {
+        let mut enc = CborEncoderStable::new();
+        // "€€€€€€" (6 chars, 18 bytes) — Stable uses exact byte length,
+        // so 18 <= 23 → short header 0x60|18 = 0x72
+        let s = "€€€€€€";
+        let buf = enc.encode(&PackValue::Str(s.into()));
+        assert_eq!(
+            buf[0],
+            0x60 | 18,
+            "stable should use exact byte length header"
+        );
+    }
+
+    // ── CborEncoder (full): basic types ─────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_full_undefined() {
+        let mut enc = CborEncoder::new();
+        let buf = enc.encode(&PackValue::Undefined);
+        // Full encoder writes 0xf7 for undefined (not null)
+        assert_eq!(buf, &[0xf7]);
+    }
+
+    #[test]
+    fn cbor_encoder_full_float32_optimization() {
+        let mut enc = CborEncoder::new();
+        let buf = enc.encode(&PackValue::Float(1.0));
+        // 1.0 fits in f32 → 0xfa prefix
+        assert_eq!(buf[0], 0xfa);
+    }
+
+    #[test]
+    fn cbor_encoder_full_bin() {
+        let mut enc = CborEncoder::new();
+        let data = vec![1u8, 2, 3, 4, 5];
+        let buf = enc.encode(&PackValue::Bytes(data.clone()));
+        // 0x45 = bytes(5)
+        assert_eq!(buf[0], 0x45);
+        assert_eq!(&buf[1..], &data[..]);
+    }
+
+    #[test]
+    fn cbor_encoder_full_bigint_positive() {
+        let mut enc = CborEncoder::new();
+        let buf = enc.encode(&PackValue::BigInt(1000));
+        // 1000 fits in u64 → regular uint encoding
+        assert_eq!(buf[0], 0x19); // u16 header
+        assert_eq!(u16::from_be_bytes([buf[1], buf[2]]), 1000);
+    }
+
+    #[test]
+    fn cbor_encoder_full_bigint_negative() {
+        let mut enc = CborEncoder::new();
+        let buf = enc.encode(&PackValue::BigInt(-100));
+        // nint: uint = 99
+        assert_eq!(buf[0], 0x38); // u8 nint
+        assert_eq!(buf[1], 99);
+    }
+
+    #[test]
+    fn cbor_encoder_full_bigint_overflow() {
+        let mut enc = CborEncoder::new();
+        let buf = enc.encode(&PackValue::BigInt(u64::MAX as i128 + 1));
+        // Overflows u64 → clamps to u64::MAX
+        assert_eq!(buf[0], 0x1b);
+        assert_eq!(u64::from_be_bytes(buf[1..9].try_into().unwrap()), u64::MAX);
+    }
+
+    #[test]
+    fn cbor_encoder_full_bigint_below_i64_min() {
+        let mut enc = CborEncoder::new();
+        let val = i64::MIN as i128 - 1;
+        let buf = enc.encode(&PackValue::BigInt(val));
+        assert_eq!(buf[0], 0x3b);
+        let uint = (-1i128 - val) as u64;
+        assert_eq!(u64::from_be_bytes(buf[1..9].try_into().unwrap()), uint);
+    }
+
+    #[test]
+    fn cbor_encoder_full_extension() {
+        use super::JsonPackExtension;
+        let mut enc = CborEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            42,
+            PackValue::Str("cid".into()),
+        )));
+        let buf = enc.encode(&ext);
+        let dec = CborDecoder::new();
+        let decoded = dec.decode(&buf).unwrap();
+        if let PackValue::Extension(e) = decoded {
+            assert_eq!(e.tag, 42);
+            assert_eq!(*e.val, PackValue::Str("cid".into()));
+        } else {
+            panic!("expected Extension, got {decoded:?}");
+        }
+    }
+
+    // ── CborEncoderDag ──────────────────────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_dag_nan_becomes_null() {
+        let mut enc = CborEncoderDag::new();
+        let buf = enc.encode(&PackValue::Float(f64::NAN));
+        assert_eq!(buf, &[0xf6], "DAG encoder should write null for NaN");
+    }
+
+    #[test]
+    fn cbor_encoder_dag_infinity_becomes_null() {
+        let mut enc = CborEncoderDag::new();
+        let buf = enc.encode(&PackValue::Float(f64::INFINITY));
+        assert_eq!(buf, &[0xf6], "DAG encoder should write null for Infinity");
+
+        let buf = enc.encode(&PackValue::Float(f64::NEG_INFINITY));
+        assert_eq!(buf, &[0xf6], "DAG encoder should write null for -Infinity");
+    }
+
+    #[test]
+    fn cbor_encoder_dag_finite_float_is_f64() {
+        let mut enc = CborEncoderDag::new();
+        let buf = enc.encode(&PackValue::Float(TEST_F64_3_14));
+        // DAG encoder always uses f64 for finite floats
+        assert_eq!(buf[0], 0xfb);
+    }
+
+    #[test]
+    fn cbor_encoder_dag_tag_42_preserved() {
+        use super::JsonPackExtension;
+        let mut enc = CborEncoderDag::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            42,
+            PackValue::Bytes(vec![1, 2, 3]),
+        )));
+        let buf = enc.encode(&ext);
+        let dec = CborDecoderDag::new();
+        let decoded = dec.decode(&buf).unwrap();
+        if let PackValue::Extension(e) = decoded {
+            assert_eq!(e.tag, 42);
+        } else {
+            panic!("expected Extension for tag 42, got {decoded:?}");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_dag_non_42_tag_unwrapped() {
+        use super::JsonPackExtension;
+        let mut enc = CborEncoderDag::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(99, PackValue::Integer(7))));
+        let buf = enc.encode(&ext);
+        let dec = CborDecoderDag::new();
+        let decoded = dec.decode(&buf).unwrap();
+        // Tag 99 is unwrapped, so we just get the value
+        assert_eq!(decoded, PackValue::Integer(7));
+    }
+
+    #[test]
+    fn cbor_encoder_dag_sorts_object_keys() {
+        let mut enc = CborEncoderDag::new();
+        let obj = PackValue::Object(vec![
+            ("zz".into(), PackValue::Integer(1)),
+            ("a".into(), PackValue::Integer(2)),
+        ]);
+        let buf = enc.encode(&obj);
+        let dec = CborDecoderDag::new();
+        let decoded = dec.decode(&buf).unwrap();
+        if let PackValue::Object(pairs) = decoded {
+            let keys: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).collect();
+            assert_eq!(keys, vec!["a", "zz"]);
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    // ── Roundtrip tests: encode → decode ────────────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_roundtrip_all_types() {
+        let mut enc = CborEncoderFast::new();
+        let dec = CborDecoder::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Bool(false),
+            PackValue::Integer(0),
+            PackValue::Integer(-1),
+            PackValue::Integer(1000),
+            PackValue::Integer(-1000),
+            // Note: UInteger values decode as UInteger only when > i64::MAX.
+            // Small UInteger values decode as Integer, so we test encoding separately.
+            PackValue::UInteger(u64::MAX),
+            PackValue::Float(TEST_F64_2_71828),
+            PackValue::Str("".into()),
+            PackValue::Str("hello".into()),
+            PackValue::Str("a".repeat(300)),
+            PackValue::Bytes(vec![]),
+            PackValue::Bytes(vec![0xDE, 0xAD, 0xBE, 0xEF]),
+            PackValue::Array(vec![]),
+            PackValue::Array(vec![PackValue::Integer(1), PackValue::Str("x".into())]),
+            PackValue::Object(vec![]),
+            PackValue::Object(vec![("k".into(), PackValue::Bool(true))]),
+        ];
+        for v in &values {
+            let buf = enc.encode(v);
+            let decoded = dec.decode(&buf).unwrap();
+            assert_eq!(&decoded, v, "roundtrip failed for {v:?}");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_stable_roundtrip() {
+        let mut enc = CborEncoderStable::new();
+        let dec = CborDecoder::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Integer(42),
+            PackValue::Integer(-100),
+            PackValue::Float(1.5),
+            PackValue::Str("test".into()),
+            PackValue::Bytes(vec![1, 2, 3]),
+            PackValue::Array(vec![PackValue::Integer(1)]),
+        ];
+        for v in &values {
+            let buf = enc.encode(v);
+            let decoded = dec.decode(&buf).unwrap();
+            assert_eq!(&decoded, v, "stable roundtrip failed for {v:?}");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_full_roundtrip() {
+        let mut enc = CborEncoder::new();
+        let dec = CborDecoder::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Undefined,
+            PackValue::Bool(true),
+            PackValue::Integer(0),
+            PackValue::Integer(-1),
+            PackValue::UInteger(u64::MAX),
+            PackValue::Float(TEST_F64_2_71828),
+            PackValue::Str("".into()),
+            PackValue::Str("x".repeat(1000)),
+            PackValue::Bytes(vec![0; 50]),
+            PackValue::Array(vec![PackValue::Null, PackValue::Bool(false)]),
+            PackValue::Object(vec![("key".into(), PackValue::Str("val".into()))]),
+            // BigInt values that fit in i64 decode as Integer, not BigInt.
+            // Test large BigInt separately; here we test values that roundtrip exactly.
+        ];
+        for v in &values {
+            let buf = enc.encode(v);
+            let decoded = dec.decode(&buf).unwrap();
+            assert_eq!(&decoded, v, "full encoder roundtrip failed for {v:?}");
+        }
+    }
+
+    #[test]
+    fn cbor_encoder_dag_roundtrip() {
+        let mut enc = CborEncoderDag::new();
+        let dec = CborDecoderDag::new();
+        let values = vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+            PackValue::Integer(99),
+            PackValue::Str("dag".into()),
+            PackValue::Bytes(vec![1, 2]),
+            PackValue::Array(vec![PackValue::Integer(1)]),
+            PackValue::Object(vec![("k".into(), PackValue::Integer(1))]),
+        ];
+        for v in &values {
+            let buf = enc.encode(v);
+            let decoded = dec.decode(&buf).unwrap();
+            assert_eq!(decoded, *v, "dag roundtrip failed for {v:?}");
+        }
+    }
+
+    // ── CborEncoderFast: arr_hdr size branches ──────────────────────────
+
+    #[test]
+    fn cbor_encoder_fast_arr_hdr_u8() {
+        let mut enc = CborEncoderFast::new();
+        let items: Vec<PackValue> = (0..24).map(PackValue::Integer).collect();
+        let buf = enc.encode(&PackValue::Array(items));
+        // 24 items → 0x98 header (array, 1-byte length)
+        assert_eq!(buf[0], 0x98);
+        assert_eq!(buf[1], 24);
+    }
+
+    #[test]
+    fn cbor_encoder_fast_obj_hdr_u8() {
+        let mut enc = CborEncoderFast::new();
+        let pairs: Vec<(String, PackValue)> = (0..24)
+            .map(|i| (format!("{i:02}"), PackValue::Integer(i)))
+            .collect();
+        let buf = enc.encode(&PackValue::Object(pairs));
+        // 24 pairs → 0xb8 header (map, 1-byte length)
+        assert_eq!(buf[0], 0xb8);
+        assert_eq!(buf[1], 24);
+    }
+
+    // ── Standalone functions ────────────────────────────────────────────
+
+    #[test]
+    fn write_cbor_uint_major_all_sizes() {
+        // Tiny
+        let mut out = Vec::new();
+        write_cbor_uint_major(&mut out, 0, 5);
+        assert_eq!(out, &[0x05]);
+
+        // u8
+        let mut out = Vec::new();
+        write_cbor_uint_major(&mut out, 0, 200);
+        assert_eq!(out, &[0x18, 200]);
+
+        // u16
+        let mut out = Vec::new();
+        write_cbor_uint_major(&mut out, 0, 1000);
+        assert_eq!(out[0], 0x19);
+
+        // u32
+        let mut out = Vec::new();
+        write_cbor_uint_major(&mut out, 0, 100_000);
+        assert_eq!(out[0], 0x1a);
+
+        // u64
+        let mut out = Vec::new();
+        write_cbor_uint_major(&mut out, 0, 0x100000000);
+        assert_eq!(out[0], 0x1b);
+    }
+
+    #[test]
+    fn write_cbor_signed_positive_and_negative() {
+        let mut out = Vec::new();
+        write_cbor_signed(&mut out, 10);
+        assert_eq!(out, &[0x0a]); // major 0, value 10
+
+        let mut out = Vec::new();
+        write_cbor_signed(&mut out, -10);
+        // major 1, encoded value 9
+        assert_eq!(out, &[0x29]);
+    }
+
+    #[test]
+    fn encode_json_to_cbor_bytes_and_decode_roundtrip() {
+        let value = json!({"nested": [1, null, true, "str", -5]});
+        let bytes = encode_json_to_cbor_bytes(&value).unwrap();
+        let decoded = decode_json_from_cbor_bytes(&bytes).unwrap();
+        assert_eq!(decoded, value);
+    }
+
+    // ================================================================
+    // Coverage-fill: MsgPack to_json converter — all type branches
+    // ================================================================
+
+    #[test]
+    fn msgpack_to_json_negative_fixint() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let bytes = enc.encode(&PackValue::Integer(-5));
+        let json = conv.convert(&bytes);
+        assert_eq!(json, "-5");
+    }
+
+    #[test]
+    fn msgpack_to_json_positive_fixint() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let bytes = enc.encode(&PackValue::Integer(42));
+        let json = conv.convert(&bytes);
+        assert_eq!(json, "42");
+    }
+
+    #[test]
+    fn msgpack_to_json_bool_null() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        assert_eq!(conv.convert(&enc.encode(&PackValue::Null)), "null");
+        assert_eq!(conv.convert(&enc.encode(&PackValue::Bool(true))), "true");
+        assert_eq!(conv.convert(&enc.encode(&PackValue::Bool(false))), "false");
+    }
+
+    #[test]
+    fn msgpack_to_json_float() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let bytes = enc.encode(&PackValue::Float(1.5));
+        let json = conv.convert(&bytes);
+        assert_eq!(json, "1.5");
+    }
+
+    #[test]
+    fn msgpack_to_json_string() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let bytes = enc.encode(&PackValue::Str("hello \"world\"".into()));
+        let json = conv.convert(&bytes);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, serde_json::json!("hello \"world\""));
+    }
+
+    #[test]
+    fn msgpack_to_json_binary() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let bytes = enc.encode(&PackValue::Bytes(vec![1, 2, 3]));
+        let json = conv.convert(&bytes);
+        assert!(json.contains("data:application/octet-stream;base64,"));
+    }
+
+    #[test]
+    fn msgpack_to_json_array() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let arr = PackValue::Array(vec![
+            PackValue::Integer(1),
+            PackValue::Bool(true),
+            PackValue::Null,
+        ]);
+        let bytes = enc.encode(&arr);
+        let json = conv.convert(&bytes);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, serde_json::json!([1, true, null]));
+    }
+
+    #[test]
+    fn msgpack_to_json_nested_object() {
+        use super::msgpack::{MsgPackEncoderFast, MsgPackToJsonConverter};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut conv = MsgPackToJsonConverter::new();
+        let obj = PackValue::Object(vec![
+            ("arr".into(), PackValue::Array(vec![PackValue::Integer(1)])),
+            (
+                "obj".into(),
+                PackValue::Object(vec![("k".into(), PackValue::Str("v".into()))]),
+            ),
+        ]);
+        let bytes = enc.encode(&obj);
+        let json = conv.convert(&bytes);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["arr"], serde_json::json!([1]));
+        assert_eq!(parsed["obj"]["k"], serde_json::json!("v"));
+    }
+
+    #[test]
+    fn msgpack_to_json_empty_input() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        assert_eq!(conv.convert(&[]), "null");
+    }
+
+    #[test]
+    fn msgpack_to_json_undefined() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xc1 = undefined/never-used -> null in JSON
+        assert_eq!(conv.convert(&[0xc1]), "null");
+    }
+
+    #[test]
+    fn msgpack_to_json_uint8() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xcc = uint8, followed by 200
+        assert_eq!(conv.convert(&[0xcc, 200]), "200");
+    }
+
+    #[test]
+    fn msgpack_to_json_uint16() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xcd = uint16
+        let bytes = [0xcd, 0x01, 0x00]; // 256
+        assert_eq!(conv.convert(&bytes), "256");
+    }
+
+    #[test]
+    fn msgpack_to_json_uint32() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xce = uint32
+        let bytes = [0xce, 0x00, 0x01, 0x00, 0x00]; // 65536
+        assert_eq!(conv.convert(&bytes), "65536");
+    }
+
+    #[test]
+    fn msgpack_to_json_uint64() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xcf = uint64 (hi32:lo32)
+        let bytes = [0xcf, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]; // 4294967296
+        assert_eq!(conv.convert(&bytes), "4294967296");
+    }
+
+    #[test]
+    fn msgpack_to_json_int8() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd0 = int8, -100
+        let bytes = [0xd0, (-100i8) as u8];
+        assert_eq!(conv.convert(&bytes), "-100");
+    }
+
+    #[test]
+    fn msgpack_to_json_int16() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd1 = int16
+        let val: i16 = -1000;
+        let be = val.to_be_bytes();
+        let bytes = [0xd1, be[0], be[1]];
+        assert_eq!(conv.convert(&bytes), "-1000");
+    }
+
+    #[test]
+    fn msgpack_to_json_int32() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd2 = int32
+        let val: i32 = -100000;
+        let be = val.to_be_bytes();
+        let bytes = [0xd2, be[0], be[1], be[2], be[3]];
+        assert_eq!(conv.convert(&bytes), "-100000");
+    }
+
+    #[test]
+    fn msgpack_to_json_int64() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd3 = int64 (hi_i32:lo_u32), value = -1
+        let bytes = [0xd3, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+        assert_eq!(conv.convert(&bytes), "-1");
+    }
+
+    #[test]
+    fn msgpack_to_json_float32() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xca = float32
+        let val: f32 = 1.5;
+        let be = val.to_be_bytes();
+        let bytes = [0xca, be[0], be[1], be[2], be[3]];
+        let json = conv.convert(&bytes);
+        assert_eq!(json, "1.5");
+    }
+
+    #[test]
+    fn msgpack_to_json_str8() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd9 = str8, length=5, "hello"
+        let bytes = [0xd9, 5, b'h', b'e', b'l', b'l', b'o'];
+        assert_eq!(conv.convert(&bytes), "\"hello\"");
+    }
+
+    #[test]
+    fn msgpack_to_json_bin16() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xc5 = bin16
+        let bytes = [0xc5, 0x00, 0x02, 0xAA, 0xBB];
+        let json = conv.convert(&bytes);
+        assert!(json.contains("data:application/octet-stream;base64,"));
+    }
+
+    #[test]
+    fn msgpack_to_json_ext_fixext1() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xd4 = fixext1 (1 byte of ext data + 1 byte type)
+        let bytes = [0xd4, 0x01, 0xFF]; // type=1, data=[0xFF]
+        let json = conv.convert(&bytes);
+        assert!(json.contains("data:application/octet-stream;base64,"));
+    }
+
+    #[test]
+    fn msgpack_to_json_ext8() {
+        use super::msgpack::MsgPackToJsonConverter;
+        let mut conv = MsgPackToJsonConverter::new();
+        // 0xc7 = ext8, length=2, type=5, data=[0x01, 0x02]
+        let bytes = [0xc7, 0x02, 0x05, 0x01, 0x02];
+        let json = conv.convert(&bytes);
+        assert!(json.contains("data:application/octet-stream;base64,"));
+    }
+
+    // ================================================================
+    // Coverage-fill: MsgPack decoder — skip, validate, find, read_level
+    // ================================================================
+
+    #[test]
+    fn msgpack_decoder_skip_any_primitives() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        // Skip a positive fixint
+        let bytes = enc.encode(&PackValue::Integer(42));
+        dec.reset(&bytes);
+        assert_eq!(dec.skip_any().unwrap(), 1);
+        // Skip a null
+        let bytes = enc.encode(&PackValue::Null);
+        dec.reset(&bytes);
+        assert_eq!(dec.skip_any().unwrap(), 1);
+        // Skip a float64
+        let bytes = enc.encode(&PackValue::Float(1.5));
+        dec.reset(&bytes);
+        assert_eq!(dec.skip_any().unwrap(), 9); // 1 byte header + 8 bytes
+                                                // Skip a string
+        let bytes = enc.encode(&PackValue::Str("abc".into()));
+        dec.reset(&bytes);
+        assert_eq!(dec.skip_any().unwrap(), 4); // 1 byte fixstr header + 3 bytes
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_any_array_and_map() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let arr = PackValue::Array(vec![PackValue::Integer(1), PackValue::Integer(2)]);
+        let bytes = enc.encode(&arr);
+        dec.reset(&bytes);
+        let skipped = dec.skip_any().unwrap();
+        assert_eq!(skipped, bytes.len());
+
+        let obj = PackValue::Object(vec![("a".into(), PackValue::Integer(1))]);
+        let bytes = enc.encode(&obj);
+        dec.reset(&bytes);
+        let skipped = dec.skip_any().unwrap();
+        assert_eq!(skipped, bytes.len());
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_any_eof_error() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        dec.reset(&[]);
+        assert!(dec.skip_any().is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_validate_correct() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let bytes = enc.encode(&PackValue::Integer(42));
+        assert!(dec.validate(&bytes, 0, bytes.len()).is_ok());
+    }
+
+    #[test]
+    fn msgpack_decoder_validate_wrong_size() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let bytes = enc.encode(&PackValue::Integer(42));
+        assert!(dec.validate(&bytes, 0, bytes.len() + 1).is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_find_key_found() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let obj = PackValue::Object(vec![
+            ("alpha".into(), PackValue::Integer(1)),
+            ("beta".into(), PackValue::Integer(2)),
+        ]);
+        let bytes = enc.encode(&obj);
+        dec.reset(&bytes);
+        dec.find_key("beta").unwrap();
+        let val = dec.read_any().unwrap();
+        assert_eq!(val, PackValue::Integer(2));
+    }
+
+    #[test]
+    fn msgpack_decoder_find_key_not_found() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let obj = PackValue::Object(vec![("alpha".into(), PackValue::Integer(1))]);
+        let bytes = enc.encode(&obj);
+        dec.reset(&bytes);
+        assert!(dec.find_key("gamma").is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_find_index() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let arr = PackValue::Array(vec![
+            PackValue::Integer(10),
+            PackValue::Integer(20),
+            PackValue::Integer(30),
+        ]);
+        let bytes = enc.encode(&arr);
+        dec.reset(&bytes);
+        dec.find_index(2).unwrap();
+        let val = dec.read_any().unwrap();
+        assert_eq!(val, PackValue::Integer(30));
+    }
+
+    #[test]
+    fn msgpack_decoder_find_index_out_of_bounds() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let arr = PackValue::Array(vec![PackValue::Integer(10)]);
+        let bytes = enc.encode(&arr);
+        dec.reset(&bytes);
+        assert!(dec.find_index(5).is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_find_path() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast, MsgPackPathSegment};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let nested = PackValue::Object(vec![(
+            "items".into(),
+            PackValue::Array(vec![PackValue::Str("a".into()), PackValue::Str("b".into())]),
+        )]);
+        let bytes = enc.encode(&nested);
+        dec.reset(&bytes);
+        dec.find_path(&[
+            MsgPackPathSegment::Key("items"),
+            MsgPackPathSegment::Index(1),
+        ])
+        .unwrap();
+        let val = dec.read_any().unwrap();
+        assert_eq!(val, PackValue::Str("b".into()));
+    }
+
+    #[test]
+    fn msgpack_decoder_read_level() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        let inner_arr = PackValue::Array(vec![PackValue::Integer(1)]);
+        let inner_bytes = enc.encode(&inner_arr);
+        let outer = PackValue::Object(vec![
+            ("x".into(), PackValue::Integer(42)),
+            ("nested".into(), inner_arr),
+        ]);
+        let bytes = enc.encode(&outer);
+        let result = dec.read_level(&bytes).unwrap();
+        if let PackValue::Object(pairs) = result {
+            assert_eq!(pairs[0].0, "x");
+            assert_eq!(pairs[0].1, PackValue::Integer(42));
+            assert_eq!(pairs[1].0, "nested");
+            // Nested array should be a Blob
+            assert!(
+                matches!(&pairs[1].1, PackValue::Blob(b) if b.val == inner_bytes),
+                "nested should be Blob"
+            );
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    #[test]
+    fn msgpack_decoder_read_obj_hdr() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // fixmap with 3 entries: 0x83
+        dec.reset(&[0x83]);
+        assert_eq!(dec.read_obj_hdr().unwrap(), 3);
+        // not a map
+        dec.reset(&[0x92]); // fixarray
+        assert!(dec.read_obj_hdr().is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_read_arr_hdr() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // fixarray with 5 entries: 0x95
+        dec.reset(&[0x95]);
+        assert_eq!(dec.read_arr_hdr().unwrap(), 5);
+        // not an array
+        dec.reset(&[0x82]); // fixmap
+        assert!(dec.read_arr_hdr().is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_read_str_hdr() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // fixstr with length 5: 0xa5
+        dec.reset(&[0xa5]);
+        assert_eq!(dec.read_str_hdr().unwrap(), 5);
+        // not a string
+        dec.reset(&[0xc0]); // null
+        assert!(dec.read_str_hdr().is_err());
+    }
+
+    // ================================================================
+    // Coverage-fill: MsgPack decoder_fast — additional type branches
+    // ================================================================
+
+    #[test]
+    fn msgpack_decoder_fast_undefined() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        assert_eq!(dec.decode(&[0xc1]).unwrap(), PackValue::Undefined);
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_uint64() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // 0xcf = uint64, value = 2^32 = 4294967296
+        let bytes = [0xcf, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00];
+        let v = dec.decode(&bytes).unwrap();
+        assert_eq!(v, PackValue::UInteger(4294967296));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_int64() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // 0xd3 = int64, value = -1 (0xffffffffffffffff)
+        let bytes = [0xd3, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+        let v = dec.decode(&bytes).unwrap();
+        assert_eq!(v, PackValue::Integer(-1));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_int8() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // 0xd0 = int8, -100
+        let bytes = [0xd0, (-100i8) as u8];
+        assert_eq!(dec.decode(&bytes).unwrap(), PackValue::Integer(-100));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_int16() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        let val: i16 = -1000;
+        let be = val.to_be_bytes();
+        let bytes = [0xd1, be[0], be[1]];
+        assert_eq!(dec.decode(&bytes).unwrap(), PackValue::Integer(-1000));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_int32() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        let val: i32 = -100000;
+        let be = val.to_be_bytes();
+        let bytes = [0xd2, be[0], be[1], be[2], be[3]];
+        assert_eq!(dec.decode(&bytes).unwrap(), PackValue::Integer(-100000));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_float32() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        let val: f32 = 1.5;
+        let be = val.to_be_bytes();
+        let bytes = [0xca, be[0], be[1], be[2], be[3]];
+        if let PackValue::Float(f) = dec.decode(&bytes).unwrap() {
+            assert!((f - 1.5).abs() < 1e-6);
+        } else {
+            panic!("expected Float");
+        }
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_ext_types() {
+        use super::msgpack::{MsgPackDecoderFast, MsgPackEncoderFast};
+        use crate::JsonPackExtension;
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoderFast::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            42,
+            PackValue::Bytes(vec![1, 2, 3, 4]),
+        )));
+        let bytes = enc.encode(&ext);
+        let decoded = dec.decode(&bytes).unwrap();
+        if let PackValue::Extension(e) = decoded {
+            assert_eq!(e.tag, 42);
+            assert_eq!(*e.val, PackValue::Bytes(vec![1, 2, 3, 4]));
+        } else {
+            panic!("expected Extension");
+        }
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_bin16() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // 0xc5 = bin16, length=3
+        let bytes = [0xc5, 0x00, 0x03, 0xAA, 0xBB, 0xCC];
+        assert_eq!(
+            dec.decode(&bytes).unwrap(),
+            PackValue::Bytes(vec![0xAA, 0xBB, 0xCC])
+        );
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_proto_key_rejected() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // Build a map with __proto__ key manually
+        let key = b"__proto__";
+        let mut bytes = vec![0x81]; // fixmap 1 entry
+        bytes.push(0xa0 | key.len() as u8); // fixstr header
+        bytes.extend_from_slice(key);
+        bytes.push(0x01); // value: positive fixint 1
+        assert!(dec.decode(&bytes).is_err());
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_str8_str16() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // str8: 0xd9
+        let mut bytes = vec![0xd9, 5];
+        bytes.extend_from_slice(b"hello");
+        assert_eq!(dec.decode(&bytes).unwrap(), PackValue::Str("hello".into()));
+        // str16: 0xda
+        let mut bytes = vec![0xda, 0x00, 0x03];
+        bytes.extend_from_slice(b"abc");
+        assert_eq!(dec.decode(&bytes).unwrap(), PackValue::Str("abc".into()));
+    }
+
+    #[test]
+    fn msgpack_decoder_fast_read_key_str8() {
+        use super::msgpack::MsgPackDecoderFast;
+        let mut dec = MsgPackDecoderFast::new();
+        // str8 key: 0xd9
+        let mut bytes = vec![0xd9, 3];
+        bytes.extend_from_slice(b"abc");
+        dec.data = bytes;
+        dec.x = 0;
+        assert_eq!(dec.read_key().unwrap(), "abc");
+    }
+
+    // ================================================================
+    // Coverage-fill: MsgPack decoder — skip various binary/ext/int types
+    // ================================================================
+
+    #[test]
+    fn msgpack_decoder_skip_binary_types() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        // bin8 (0xc4)
+        let bytes = enc.encode(&PackValue::Bytes(vec![1, 2, 3]));
+        dec.reset(&bytes);
+        let n = dec.skip_any().unwrap();
+        assert_eq!(n, bytes.len());
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_ext_types() {
+        use super::msgpack::{MsgPackDecoder, MsgPackEncoderFast};
+        use crate::JsonPackExtension;
+        let mut enc = MsgPackEncoderFast::new();
+        let mut dec = MsgPackDecoder::new();
+        // fixext4 (0xd6)
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            1,
+            PackValue::Bytes(vec![1, 2, 3, 4]),
+        )));
+        let bytes = enc.encode(&ext);
+        dec.reset(&bytes);
+        let n = dec.skip_any().unwrap();
+        assert_eq!(n, bytes.len());
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_int_types() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // int8 (0xd0)
+        dec.reset(&[0xd0, 0x80]);
+        assert_eq!(dec.skip_any().unwrap(), 2);
+        // int16 (0xd1)
+        dec.reset(&[0xd1, 0x80, 0x00]);
+        assert_eq!(dec.skip_any().unwrap(), 3);
+        // int32 (0xd2)
+        dec.reset(&[0xd2, 0x80, 0x00, 0x00, 0x00]);
+        assert_eq!(dec.skip_any().unwrap(), 5);
+        // int64 (0xd3)
+        dec.reset(&[0xd3, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert_eq!(dec.skip_any().unwrap(), 9);
+        // uint8 (0xcc)
+        dec.reset(&[0xcc, 0xFF]);
+        assert_eq!(dec.skip_any().unwrap(), 2);
+        // uint64 (0xcf)
+        dec.reset(&[0xcf, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert_eq!(dec.skip_any().unwrap(), 9);
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_float_types() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // float32 (0xca)
+        dec.reset(&[0xca, 0, 0, 0, 0]);
+        assert_eq!(dec.skip_any().unwrap(), 5);
+        // float64 (0xcb)
+        dec.reset(&[0xcb, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(dec.skip_any().unwrap(), 9);
+    }
+
+    #[test]
+    fn msgpack_decoder_skip_fixext_sizes() {
+        use super::msgpack::MsgPackDecoder;
+        let mut dec = MsgPackDecoder::new();
+        // fixext1 (0xd4): 1 type byte + 1 data byte
+        dec.reset(&[0xd4, 0x01, 0xFF]);
+        assert_eq!(dec.skip_any().unwrap(), 3);
+        // fixext2 (0xd5): 1 type byte + 2 data bytes
+        dec.reset(&[0xd5, 0x01, 0xFF, 0xFF]);
+        assert_eq!(dec.skip_any().unwrap(), 4);
+        // fixext4 (0xd6)
+        dec.reset(&[0xd6, 0x01, 0, 0, 0, 0]);
+        assert_eq!(dec.skip_any().unwrap(), 6);
+        // fixext8 (0xd7)
+        dec.reset(&[0xd7, 0x01, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(dec.skip_any().unwrap(), 10);
+        // fixext16 (0xd8)
+        let mut data = vec![0xd8, 0x01];
+        data.extend_from_slice(&[0u8; 16]);
+        dec.reset(&data);
+        assert_eq!(dec.skip_any().unwrap(), 18);
+    }
+
+    // ================================================================
+    // Coverage-fill: JSON encoder — additional branches
+    // ================================================================
+
+    #[test]
+    fn json_encoder_encode_json() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        let val = serde_json::json!({"a": [1, 2], "b": "x"});
+        let bytes = enc.encode_json(&val);
+        let s = std::str::from_utf8(&bytes).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(s).unwrap();
+        assert_eq!(parsed, val);
+    }
+
+    #[test]
+    fn json_encoder_encode_json_empty_object() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        let val = serde_json::json!({});
+        let bytes = enc.encode_json(&val);
+        assert_eq!(&bytes, b"{}");
+    }
+
+    #[test]
+    fn json_encoder_nan_and_infinity() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        // NaN -> "null"
+        let out = enc.encode(&PackValue::Float(f64::NAN));
+        assert_eq!(&out, b"null");
+        // +Infinity -> "1e308"
+        let out = enc.encode(&PackValue::Float(f64::INFINITY));
+        assert_eq!(&out, b"1e308");
+        // -Infinity -> "-1e308"
+        let out = enc.encode(&PackValue::Float(f64::NEG_INFINITY));
+        assert_eq!(&out, b"-1e308");
+    }
+
+    #[test]
+    fn json_encoder_uinteger() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        let out = enc.encode(&PackValue::UInteger(999));
+        assert_eq!(&out, b"999");
+    }
+
+    #[test]
+    fn json_encoder_big_int() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        let out = enc.encode(&PackValue::BigInt(123456789012345));
+        assert_eq!(&out, b"123456789012345");
+    }
+
+    #[test]
+    fn json_encoder_extension_and_blob_as_null() {
+        use super::json::JsonEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = JsonEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(1, PackValue::Null)));
+        assert_eq!(enc.encode(&ext), b"null");
+        let blob = PackValue::Blob(crate::JsonPackValue::new(vec![1, 2, 3]));
+        assert_eq!(enc.encode(&blob), b"null");
+    }
+
+    #[test]
+    fn json_encoder_str_with_special_chars() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        // String with quotes and backslash
+        let out = enc.encode(&PackValue::Str("he said \"hi\" \\ there".into()));
+        let s = std::str::from_utf8(&out).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(s).unwrap();
+        assert_eq!(parsed, serde_json::json!("he said \"hi\" \\ there"));
+    }
+
+    #[test]
+    fn json_encoder_str_with_unicode() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        // Long string (>256 bytes) triggers fallback path
+        let long_str = "a".repeat(300);
+        let out = enc.encode(&PackValue::Str(long_str.clone()));
+        let s = std::str::from_utf8(&out).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(s).unwrap();
+        assert_eq!(parsed.as_str().unwrap(), long_str);
+    }
+
+    #[test]
+    fn json_encoder_empty_array_and_object() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Array(vec![])), b"[]");
+        assert_eq!(enc.encode(&PackValue::Object(vec![])), b"{}");
+    }
+
+    #[test]
+    fn json_encoder_ascii_str() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        enc.writer.reset();
+        enc.write_ascii_str("hello \"world\"");
+        let out = enc.writer.flush();
+        let s = std::str::from_utf8(&out).unwrap();
+        assert_eq!(s, "\"hello \\\"world\\\"\"");
+    }
+
+    #[test]
+    fn json_encoder_streaming_api() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        enc.writer.reset();
+        enc.write_start_arr();
+        enc.write_any(&PackValue::Integer(1));
+        enc.write_arr_separator();
+        enc.write_any(&PackValue::Integer(2));
+        enc.write_end_arr();
+        let out = enc.writer.flush();
+        assert_eq!(&out, b"[1,2]");
+    }
+
+    #[test]
+    fn json_encoder_streaming_obj() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        enc.writer.reset();
+        enc.write_start_obj();
+        enc.write_str("k");
+        enc.write_obj_key_separator();
+        enc.write_any(&PackValue::Integer(1));
+        enc.write_end_obj();
+        let out = enc.writer.flush();
+        assert_eq!(&out, b"{\"k\":1}");
+    }
+
+    #[test]
+    fn json_encoder_write_number() {
+        use super::json::JsonEncoder;
+        let mut enc = JsonEncoder::new();
+        enc.writer.reset();
+        enc.write_number(42.0);
+        let out = enc.writer.flush();
+        assert_eq!(&out, b"42");
+        enc.writer.reset();
+        enc.write_number(1.5);
+        let out = enc.writer.flush();
+        assert_eq!(&out, b"1.5");
+    }
+
+    // ================================================================
+    // Coverage-fill: RESP encoder — extensions, errors, streaming, commands
+    // ================================================================
+
+    #[test]
+    fn resp_encode_object() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let obj = PackValue::Object(vec![("key".into(), PackValue::Integer(1))]);
+        let out = enc.encode(&obj);
+        assert_eq!(out, b"%1\r\n+key\r\n:1\r\n");
+    }
+
+    #[test]
+    fn resp_encode_float() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::Float(1.5));
+        assert_eq!(out, b",1.5\r\n");
+    }
+
+    #[test]
+    fn resp_encode_float_special() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Float(f64::INFINITY)), b",inf\r\n");
+        assert_eq!(
+            enc.encode(&PackValue::Float(f64::NEG_INFINITY)),
+            b",-inf\r\n"
+        );
+        assert_eq!(enc.encode(&PackValue::Float(f64::NAN)), b",nan\r\n");
+    }
+
+    #[test]
+    fn resp_encode_big_int() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::BigInt(123456789));
+        assert_eq!(out, b"(123456789\r\n");
+    }
+
+    #[test]
+    fn resp_encode_undefined_as_null() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        assert_eq!(enc.encode(&PackValue::Undefined), b"_\r\n");
+    }
+
+    #[test]
+    fn resp_encode_long_string_as_verbatim() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let long = "a".repeat(100);
+        let out = enc.encode(&PackValue::Str(long));
+        // Long strings should use verbatim format (=)
+        assert!(out.starts_with(b"="));
+    }
+
+    #[test]
+    fn resp_encode_string_with_crlf_as_verbatim() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode(&PackValue::Str("line1\r\nline2".into()));
+        assert!(out.starts_with(b"="));
+    }
+
+    #[test]
+    fn resp_encode_null_str_and_null_arr() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_null_str();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"$-1\r\n");
+        enc.write_null_arr();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"*-1\r\n");
+    }
+
+    #[test]
+    fn resp_encode_err_simple() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_simple_err("ERR bad");
+        let out = enc.writer.flush();
+        assert_eq!(out, b"-ERR bad\r\n");
+    }
+
+    #[test]
+    fn resp_encode_err_bulk() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_bulk_err("ERR bulk error");
+        let out = enc.writer.flush();
+        assert_eq!(out, b"!14\r\nERR bulk error\r\n");
+    }
+
+    #[test]
+    fn resp_encode_err_auto_selects_format() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        // Short error -> simple
+        enc.write_err("ERR short");
+        let out = enc.writer.flush();
+        assert_eq!(out, b"-ERR short\r\n");
+        // Long error -> bulk
+        let long_err = "E".repeat(100);
+        enc.write_err(&long_err);
+        let out = enc.writer.flush();
+        assert!(out.starts_with(b"!"));
+    }
+
+    #[test]
+    fn resp_encode_set() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_set(&[PackValue::Integer(1), PackValue::Integer(2)]);
+        let out = enc.writer.flush();
+        assert_eq!(out, b"~2\r\n:1\r\n:2\r\n");
+    }
+
+    #[test]
+    fn resp_encode_push_extension() {
+        use super::resp::RespEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            1, // RESP_EXTENSION_PUSH
+            PackValue::Array(vec![PackValue::Str("msg".into())]),
+        )));
+        let out = enc.encode(&ext);
+        assert!(out.starts_with(b">"));
+    }
+
+    #[test]
+    fn resp_encode_attr_extension() {
+        use super::resp::RespEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            2, // RESP_EXTENSION_ATTRIBUTES
+            PackValue::Object(vec![("ttl".into(), PackValue::Integer(3600))]),
+        )));
+        let out = enc.encode(&ext);
+        assert!(out.starts_with(b"|"));
+    }
+
+    #[test]
+    fn resp_encode_verbatim_extension() {
+        use super::resp::RespEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            3, // RESP_EXTENSION_VERBATIM_STRING
+            PackValue::Str("hello".into()),
+        )));
+        let out = enc.encode(&ext);
+        assert!(out.starts_with(b"="));
+    }
+
+    #[test]
+    fn resp_encode_extension_unknown_tag() {
+        use super::resp::RespEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            99, // unknown tag
+            PackValue::Null,
+        )));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"_\r\n");
+    }
+
+    #[test]
+    fn resp_encode_extension_wrong_inner_type() {
+        use super::resp::RespEncoder;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoder::new();
+        // Push extension with non-array inner -> null
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(1, PackValue::Integer(42))));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"_\r\n");
+    }
+
+    #[test]
+    fn resp_encode_cmd() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        let out = enc.encode_cmd(&["SET", "key", "value"]);
+        assert_eq!(out, b"*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n");
+    }
+
+    #[test]
+    fn resp_encode_streaming_str() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_start_str();
+        enc.write_str_chunk("hello");
+        enc.write_str_chunk(" world");
+        enc.write_end_str();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"$?\r\n;5\r\nhello\r\n;6\r\n world\r\n;0\r\n");
+    }
+
+    #[test]
+    fn resp_encode_streaming_arr() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_start_arr();
+        enc.write_arr_chunk(&PackValue::Integer(1));
+        enc.write_arr_chunk(&PackValue::Integer(2));
+        enc.write_end_arr();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"*?\r\n:1\r\n:2\r\n.\r\n");
+    }
+
+    #[test]
+    fn resp_encode_streaming_obj() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_start_obj();
+        enc.write_obj_chunk("key", &PackValue::Integer(1));
+        enc.write_end_obj();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"%?\r\n+key\r\n:1\r\n.\r\n");
+    }
+
+    #[test]
+    fn resp_encode_streaming_bin() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_start_bin();
+        enc.write_bin_chunk(b"data");
+        enc.write_end_bin();
+        let out = enc.writer.flush();
+        assert_eq!(out, b"$?\r\n;4\r\ndata\r\n;0\r\n");
+    }
+
+    #[test]
+    fn resp_encode_write_length_multi_digit() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        // Two-digit length (10-99)
+        enc.write_arr_hdr(42);
+        let out = enc.writer.flush();
+        assert_eq!(out, b"*42\r\n");
+        // Three-digit length (100+)
+        enc.write_arr_hdr(123);
+        let out = enc.writer.flush();
+        assert_eq!(out, b"*123\r\n");
+    }
+
+    #[test]
+    fn resp_encode_ascii_str_with_crlf() {
+        use super::resp::RespEncoder;
+        let mut enc = RespEncoder::new();
+        enc.write_ascii_str("no newlines");
+        let out = enc.writer.flush();
+        assert_eq!(out, b"+no newlines\r\n");
+        // With CRLF -> bulk string
+        enc.write_ascii_str("line1\r\nline2");
+        let out = enc.writer.flush();
+        assert_eq!(out, b"$12\r\nline1\r\nline2\r\n");
+    }
+
+    // ================================================================
+    // Coverage-fill: RESP legacy encoder
+    // ================================================================
+
+    #[test]
+    fn resp_legacy_encode_null() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let out = enc.encode(&PackValue::Null);
+        assert_eq!(out, b"*-1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_bool() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        assert_eq!(enc.encode(&PackValue::Bool(true)), b"+TRUE\r\n");
+        assert_eq!(enc.encode(&PackValue::Bool(false)), b"+FALSE\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_integer() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        assert_eq!(enc.encode(&PackValue::Integer(42)), b":42\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_float() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        // Non-integer float -> simple string
+        let out = enc.encode(&PackValue::Float(1.5));
+        assert_eq!(out, b"+1.5\r\n");
+        // Integer float -> integer encoding
+        let out = enc.encode(&PackValue::Float(42.0));
+        assert_eq!(out, b":42\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_string() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let out = enc.encode(&PackValue::Str("hello".into()));
+        assert_eq!(out, b"+hello\r\n");
+        // Long string -> bulk
+        let long = "x".repeat(100);
+        let out = enc.encode(&PackValue::Str(long));
+        assert!(out.starts_with(b"$100\r\n"));
+    }
+
+    #[test]
+    fn resp_legacy_encode_binary() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let out = enc.encode(&PackValue::Bytes(b"bin".to_vec()));
+        assert_eq!(out, b"$3\r\nbin\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_array_with_null() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let arr = PackValue::Array(vec![PackValue::Integer(1), PackValue::Null]);
+        let out = enc.encode(&arr);
+        assert_eq!(out, b"*2\r\n:1\r\n$-1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_object() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let obj = PackValue::Object(vec![("key".into(), PackValue::Integer(1))]);
+        let out = enc.encode(&obj);
+        // Object as flat array of key-value pairs
+        assert_eq!(out, b"*2\r\n+key\r\n:1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_object_with_null_value() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let obj = PackValue::Object(vec![("key".into(), PackValue::Null)]);
+        let out = enc.encode(&obj);
+        assert_eq!(out, b"*2\r\n+key\r\n$-1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_big_int() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let out = enc.encode(&PackValue::BigInt(42));
+        assert_eq!(out, b"+42\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_u_integer() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        let out = enc.encode(&PackValue::UInteger(42));
+        assert_eq!(out, b":42\r\n");
+        // Very large u64 that overflows i64
+        let out = enc.encode(&PackValue::UInteger(u64::MAX));
+        let s = std::str::from_utf8(&out).unwrap();
+        assert!(s.starts_with('+'));
+    }
+
+    #[test]
+    fn resp_legacy_encode_undefined() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        assert_eq!(enc.encode(&PackValue::Undefined), b"*-1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_push_extension() {
+        use super::resp::RespEncoderLegacy;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoderLegacy::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            1, // RESP_EXTENSION_PUSH
+            PackValue::Array(vec![PackValue::Integer(1)]),
+        )));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"*1\r\n:1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_verbatim_extension() {
+        use super::resp::RespEncoderLegacy;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoderLegacy::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            3, // RESP_EXTENSION_VERBATIM_STRING
+            PackValue::Str("msg".into()),
+        )));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"+msg\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_attr_extension() {
+        use super::resp::RespEncoderLegacy;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoderLegacy::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(
+            2, // RESP_EXTENSION_ATTRIBUTES
+            PackValue::Object(vec![("k".into(), PackValue::Integer(1))]),
+        )));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"*2\r\n+k\r\n:1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_unknown_extension() {
+        use super::resp::RespEncoderLegacy;
+        use crate::JsonPackExtension;
+        let mut enc = RespEncoderLegacy::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(99, PackValue::Null)));
+        let out = enc.encode(&ext);
+        assert_eq!(out, b"*-1\r\n");
+    }
+
+    #[test]
+    fn resp_legacy_encode_err() {
+        use super::resp::RespEncoderLegacy;
+        let mut enc = RespEncoderLegacy::new();
+        enc.write_err("ERR short");
+        let out = enc.flush();
+        assert_eq!(out, b"-ERR short\r\n");
+        // Long error with CRLF -> bulk str
+        enc.write_err("line1\r\nline2");
+        let out = enc.flush();
+        assert_eq!(out, b"$12\r\nline1\r\nline2\r\n");
+    }
+
+    // ================================================================
+    // Coverage-fill: Avro encoder — write_any for all PackValue types
+    // ================================================================
+
+    #[test]
+    fn avro_encoder_write_any_primitives() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        // Null produces zero bytes
+        enc.write_any(&PackValue::Null);
+        assert!(enc.writer.flush().is_empty());
+        // Bool
+        enc.write_any(&PackValue::Bool(true));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert!(dec.read_boolean().unwrap());
+        // Integer (i32 range)
+        enc.write_any(&PackValue::Integer(42));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_int().unwrap(), 42);
+        // Integer (outside i32 range -> long)
+        enc.write_any(&PackValue::Integer(i64::MAX));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_long().unwrap(), i64::MAX);
+    }
+
+    #[test]
+    fn avro_encoder_write_any_uinteger() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        // UInteger in i32 range -> int
+        enc.write_any(&PackValue::UInteger(100));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_int().unwrap(), 100);
+        // UInteger outside i32 range -> long
+        enc.write_any(&PackValue::UInteger(u64::MAX / 2));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        let val = dec.read_long().unwrap();
+        assert_eq!(val, (u64::MAX / 2) as i64);
+    }
+
+    #[test]
+    fn avro_encoder_write_any_float() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_any(&PackValue::Float(TEST_F64_3_14));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        let v = dec.read_double().unwrap();
+        assert!((v - TEST_F64_3_14).abs() < 1e-10);
+    }
+
+    #[test]
+    fn avro_encoder_write_any_string_and_bytes() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_any(&PackValue::Str("test".into()));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_str().unwrap(), "test");
+
+        enc.write_any(&PackValue::Bytes(vec![0xDE, 0xAD]));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_bytes().unwrap(), vec![0xDE, 0xAD]);
+    }
+
+    #[test]
+    fn avro_encoder_write_any_array_and_object() {
+        use super::avro::AvroEncoder;
+        let mut enc = AvroEncoder::new();
+        // Array: varint(count) + items + varint(0)
+        enc.write_any(&PackValue::Array(vec![
+            PackValue::Integer(1),
+            PackValue::Integer(2),
+        ]));
+        let bytes = enc.writer.flush();
+        assert!(!bytes.is_empty());
+        // Last byte should be 0 (array end marker)
+        assert_eq!(bytes[bytes.len() - 1], 0);
+
+        // Object
+        enc.write_any(&PackValue::Object(vec![(
+            "k".into(),
+            PackValue::Integer(1),
+        )]));
+        let bytes = enc.writer.flush();
+        assert!(!bytes.is_empty());
+        assert_eq!(bytes[bytes.len() - 1], 0);
+    }
+
+    #[test]
+    fn avro_encoder_write_any_big_int() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        enc.write_any(&PackValue::BigInt(42));
+        let bytes = enc.writer.flush();
+        dec.reset(&bytes);
+        assert_eq!(dec.read_long().unwrap(), 42);
+    }
+
+    #[test]
+    fn avro_encoder_encode_helpers() {
+        use super::avro::AvroEncoder;
+        let mut enc = AvroEncoder::new();
+        // encode_null
+        assert!(enc.encode_null().is_empty());
+        // encode_boolean
+        assert_eq!(enc.encode_boolean(true), vec![1]);
+        assert_eq!(enc.encode_boolean(false), vec![0]);
+        // encode_int
+        let bytes = enc.encode_int(42);
+        assert!(!bytes.is_empty());
+        // encode_long
+        let bytes = enc.encode_long(-1);
+        assert!(!bytes.is_empty());
+        // encode_float
+        let bytes = enc.encode_float(1.5);
+        assert_eq!(bytes.len(), 4);
+        // encode_double
+        let bytes = enc.encode_double(1.5);
+        assert_eq!(bytes.len(), 8);
+        // encode_bytes
+        let bytes = enc.encode_bytes(&[1, 2, 3]);
+        assert!(!bytes.is_empty());
+        // encode_str
+        let bytes = enc.encode_str("hello");
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_encoder_float_roundtrip() {
+        use super::avro::{AvroDecoder, AvroEncoder};
+        let mut enc = AvroEncoder::new();
+        let mut dec = AvroDecoder::new();
+        let val: f32 = 1.5;
+        enc.write_float(val);
+        let bytes = enc.writer.flush();
+        // Float is 4 bytes LE
+        assert_eq!(bytes.len(), 4);
+        dec.reset(&bytes);
+        let decoded = dec.read_float().unwrap();
+        assert!((decoded - 1.5).abs() < 1e-6);
+    }
+
+    // ================================================================
+    // Coverage-fill: Avro schema encoder
+    // ================================================================
+
+    #[test]
+    fn avro_schema_encoder_primitives() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        // Null
+        let bytes = enc.encode(&AvroValue::Null, &AvroSchema::Null).unwrap();
+        assert!(bytes.is_empty());
+        // Boolean
+        let bytes = enc
+            .encode(&AvroValue::Bool(true), &AvroSchema::Boolean)
+            .unwrap();
+        assert_eq!(bytes, vec![1]);
+        // Int
+        let bytes = enc.encode(&AvroValue::Int(42), &AvroSchema::Int).unwrap();
+        assert!(!bytes.is_empty());
+        // Long
+        let bytes = enc
+            .encode(&AvroValue::Long(100), &AvroSchema::Long)
+            .unwrap();
+        assert!(!bytes.is_empty());
+        // Float
+        let bytes = enc
+            .encode(&AvroValue::Float(1.5), &AvroSchema::Float)
+            .unwrap();
+        assert_eq!(bytes.len(), 4);
+        // Double
+        let bytes = enc
+            .encode(&AvroValue::Double(1.5), &AvroSchema::Double)
+            .unwrap();
+        assert_eq!(bytes.len(), 8);
+        // Bytes
+        let bytes = enc
+            .encode(&AvroValue::Bytes(vec![1, 2]), &AvroSchema::Bytes)
+            .unwrap();
+        assert!(!bytes.is_empty());
+        // String
+        let bytes = enc
+            .encode(&AvroValue::Str("hi".into()), &AvroSchema::String)
+            .unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_record() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroField, AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Record {
+            name: "Person".into(),
+            namespace: None,
+            fields: vec![
+                AvroField {
+                    name: "name".into(),
+                    type_: AvroSchema::String,
+                    default: None,
+                    doc: None,
+                    aliases: vec![],
+                },
+                AvroField {
+                    name: "age".into(),
+                    type_: AvroSchema::Int,
+                    default: None,
+                    doc: None,
+                    aliases: vec![],
+                },
+            ],
+            aliases: vec![],
+            doc: None,
+        };
+        let value = AvroValue::Record(vec![
+            ("name".into(), AvroValue::Str("Alice".into())),
+            ("age".into(), AvroValue::Int(30)),
+        ]);
+        let bytes = enc.encode(&value, &schema).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_enum() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Enum {
+            name: "Color".into(),
+            namespace: None,
+            symbols: vec!["RED".into(), "GREEN".into(), "BLUE".into()],
+            default: None,
+            aliases: vec![],
+        };
+        let bytes = enc
+            .encode(&AvroValue::Enum("GREEN".into()), &schema)
+            .unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_array() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Array {
+            items: Box::new(AvroSchema::Int),
+        };
+        let value = AvroValue::Array(vec![AvroValue::Int(1), AvroValue::Int(2)]);
+        let bytes = enc.encode(&value, &schema).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_map() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Map {
+            values: Box::new(AvroSchema::Int),
+        };
+        let value = AvroValue::Map(vec![("key".into(), AvroValue::Int(42))]);
+        let bytes = enc.encode(&value, &schema).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_fixed() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Fixed {
+            name: "Hash".into(),
+            namespace: None,
+            size: 4,
+            aliases: vec![],
+        };
+        let bytes = enc
+            .encode(&AvroValue::Fixed(vec![1, 2, 3, 4]), &schema)
+            .unwrap();
+        assert_eq!(bytes, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn avro_schema_encoder_fixed_size_mismatch() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Fixed {
+            name: "Hash".into(),
+            namespace: None,
+            size: 4,
+            aliases: vec![],
+        };
+        let result = enc.encode(&AvroValue::Fixed(vec![1, 2]), &schema);
+        // Validator catches the mismatch before the encoder reaches FixedSizeMismatch
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn avro_schema_encoder_union() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Union(vec![AvroSchema::Null, AvroSchema::Int]);
+        // Explicit union index
+        let bytes = enc
+            .encode(
+                &AvroValue::Union {
+                    index: 1,
+                    value: Box::new(AvroValue::Int(42)),
+                },
+                &schema,
+            )
+            .unwrap();
+        assert!(!bytes.is_empty());
+        // Auto-matched union
+        let bytes = enc.encode(&AvroValue::Null, &schema).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn avro_schema_encoder_type_promotions() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        // Int schema, Long value (fits in i32)
+        let bytes = enc.encode(&AvroValue::Long(42), &AvroSchema::Int).unwrap();
+        assert!(!bytes.is_empty());
+        // Long schema, Int value
+        let bytes = enc.encode(&AvroValue::Int(42), &AvroSchema::Long).unwrap();
+        assert!(!bytes.is_empty());
+        // Float schema, Int value
+        let bytes = enc.encode(&AvroValue::Int(42), &AvroSchema::Float).unwrap();
+        assert_eq!(bytes.len(), 4);
+        // Float schema, Long value
+        let bytes = enc
+            .encode(&AvroValue::Long(42), &AvroSchema::Float)
+            .unwrap();
+        assert_eq!(bytes.len(), 4);
+        // Float schema, Double value
+        let bytes = enc
+            .encode(&AvroValue::Double(1.5), &AvroSchema::Float)
+            .unwrap();
+        assert_eq!(bytes.len(), 4);
+        // Double schema, Float value
+        let bytes = enc
+            .encode(&AvroValue::Float(1.5), &AvroSchema::Double)
+            .unwrap();
+        assert_eq!(bytes.len(), 8);
+        // Double schema, Int value
+        let bytes = enc
+            .encode(&AvroValue::Int(42), &AvroSchema::Double)
+            .unwrap();
+        assert_eq!(bytes.len(), 8);
+        // Double schema, Long value
+        let bytes = enc
+            .encode(&AvroValue::Long(42), &AvroSchema::Double)
+            .unwrap();
+        assert_eq!(bytes.len(), 8);
+    }
+
+    #[test]
+    fn avro_schema_encoder_type_mismatch() {
+        use super::avro::schema_encoder::{AvroEncodeError, AvroSchemaEncoder};
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let result = enc.encode(&AvroValue::Str("x".into()), &AvroSchema::Int);
+        assert!(matches!(result, Err(AvroEncodeError::ValueDoesNotConform)));
+    }
+
+    #[test]
+    fn avro_schema_encoder_enum_symbol_not_found() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Enum {
+            name: "Color".into(),
+            namespace: None,
+            symbols: vec!["RED".into()],
+            default: None,
+            aliases: vec![],
+        };
+        let result = enc.encode(&AvroValue::Enum("PURPLE".into()), &schema);
+        // Validator catches the invalid symbol before the encoder
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn avro_schema_encoder_record_with_default() {
+        use super::avro::schema_encoder::AvroSchemaEncoder;
+        use super::avro::types::{AvroField, AvroSchema, AvroValue};
+        let mut enc = AvroSchemaEncoder::new();
+        let schema = AvroSchema::Record {
+            name: "Test".into(),
+            namespace: None,
+            fields: vec![AvroField {
+                name: "x".into(),
+                type_: AvroSchema::Int,
+                default: Some(AvroValue::Int(99)),
+                doc: None,
+                aliases: vec![],
+            }],
+            aliases: vec![],
+            doc: None,
+        };
+        // Empty record -> default applies
+        let bytes = enc.encode(&AvroValue::Record(vec![]), &schema).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
+    // ================================================================
+    // Coverage-fill: Bencode encoder — additional branches
+    // ================================================================
+
+    #[test]
+    fn bencode_encode_undefined() {
+        let mut enc = BencodeEncoder::new();
+        let out = enc.encode(&PackValue::Undefined);
+        assert_eq!(&out, b"u");
+    }
+
+    #[test]
+    fn bencode_encode_float_rounds() {
+        let mut enc = BencodeEncoder::new();
+        let out = enc.encode(&PackValue::Float(3.7));
+        assert_eq!(&out, b"i4e"); // rounds to 4
+    }
+
+    #[test]
+    fn bencode_encode_u_integer() {
+        let mut enc = BencodeEncoder::new();
+        let out = enc.encode(&PackValue::UInteger(999));
+        assert_eq!(&out, b"i999e");
+    }
+
+    #[test]
+    fn bencode_encode_big_int() {
+        let mut enc = BencodeEncoder::new();
+        let out = enc.encode(&PackValue::BigInt(123456789012345));
+        assert_eq!(&out, b"i123456789012345e");
+    }
+
+    #[test]
+    fn bencode_encode_binary() {
+        let mut enc = BencodeEncoder::new();
+        let out = enc.encode(&PackValue::Bytes(vec![0xDE, 0xAD]));
+        assert_eq!(&out[0..2], b"2:");
+        assert_eq!(&out[2..], &[0xDE, 0xAD]);
+    }
+
+    #[test]
+    fn bencode_encode_list() {
+        let mut enc = BencodeEncoder::new();
+        let arr = PackValue::Array(vec![PackValue::Integer(1), PackValue::Integer(2)]);
+        let out = enc.encode(&arr);
+        assert_eq!(&out, b"li1ei2ee");
+    }
+
+    #[test]
+    fn bencode_encode_nested_structures() {
+        let mut enc = BencodeEncoder::new();
+        let val = PackValue::Object(vec![(
+            "list".into(),
+            PackValue::Array(vec![PackValue::Str("x".into())]),
+        )]);
+        let out = enc.encode(&val);
+        assert_eq!(&out, b"d4:listl1:xee");
+    }
+
+    #[test]
+    fn bencode_encode_extension_as_null() {
+        use crate::JsonPackExtension;
+        let mut enc = BencodeEncoder::new();
+        let ext = PackValue::Extension(Box::new(JsonPackExtension::new(1, PackValue::Null)));
+        assert_eq!(enc.encode(&ext), b"n");
+    }
+
+    #[test]
+    fn bencode_encode_json() {
+        let mut enc = BencodeEncoder::new();
+        let val = serde_json::json!({"a": [1, 2], "b": "hello"});
+        let out = enc.encode_json(&val);
+        // Dict keys should be sorted ("a" before "b")
+        let s = std::str::from_utf8(&out).unwrap();
+        assert!(s.starts_with('d'));
+        assert!(s.ends_with('e'));
+        assert!(s.contains("1:a"));
+        assert!(s.contains("1:b"));
+    }
+
+    #[test]
+    fn bencode_encode_json_null_and_bool() {
+        let mut enc = BencodeEncoder::new();
+        assert_eq!(&enc.encode_json(&serde_json::json!(null)), b"n");
+        assert_eq!(&enc.encode_json(&serde_json::json!(true)), b"t");
+        assert_eq!(&enc.encode_json(&serde_json::json!(false)), b"f");
+    }
+
+    #[test]
+    fn bencode_decode_integer() {
+        let dec = BencodeDecoder::new();
+        assert_eq!(dec.decode(b"i42e").unwrap(), PackValue::Integer(42));
+        assert_eq!(dec.decode(b"i-7e").unwrap(), PackValue::Integer(-7));
+        assert_eq!(dec.decode(b"i0e").unwrap(), PackValue::Integer(0));
+    }
+
+    #[test]
+    fn bencode_decode_list() {
+        let dec = BencodeDecoder::new();
+        let result = dec.decode(b"li1ei2ee").unwrap();
+        assert_eq!(
+            result,
+            PackValue::Array(vec![PackValue::Integer(1), PackValue::Integer(2)])
+        );
+    }
+
+    #[test]
+    fn bencode_decode_dict() {
+        let dec = BencodeDecoder::new();
+        let result = dec.decode(b"d1:ai1e1:bi2ee").unwrap();
+        if let PackValue::Object(pairs) = result {
+            assert_eq!(pairs.len(), 2);
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    #[test]
+    fn bencode_decode_nested() {
+        let dec = BencodeDecoder::new();
+        let result = dec.decode(b"d4:listli1eee").unwrap();
+        if let PackValue::Object(pairs) = result {
+            assert_eq!(pairs[0].0, "list");
+            assert!(matches!(pairs[0].1, PackValue::Array(_)));
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    #[test]
+    fn bencode_roundtrip_complex() {
+        let mut enc = BencodeEncoder::new();
+        let dec = BencodeDecoder::new();
+        let val = PackValue::Object(vec![
+            ("a".into(), PackValue::Integer(1)),
+            ("b".into(), PackValue::Str("hello".into())),
+        ]);
+        let encoded = enc.encode(&val);
+        let decoded = dec.decode(&encoded).unwrap();
+        if let PackValue::Object(pairs) = decoded {
+            assert_eq!(pairs.len(), 2);
+            // Bencode sorts keys
+            assert_eq!(pairs[0].0, "a");
+            assert_eq!(pairs[0].1, PackValue::Integer(1));
+            assert_eq!(pairs[1].0, "b");
+            // Strings come back as Bytes in bencode
+            assert!(matches!(&pairs[1].1, PackValue::Bytes(b) if b == b"hello"));
+        } else {
+            panic!("expected Object");
+        }
+    }
+
+    // ================================================================
+    // Coverage-fill: RM encoder — start_record/end_record, fragment
+    // ================================================================
+
+    #[test]
+    fn rm_encoder_start_end_record() {
+        use super::rm::RmRecordEncoder;
+        let mut enc = RmRecordEncoder::new();
+        let pos = enc.start_record();
+        enc.writer.buf(b"payload");
+        enc.end_record(pos);
+        let out = enc.writer.flush();
+        // Should have a 4-byte header + "payload" (7 bytes)
+        assert_eq!(out.len(), 4 + 7);
+        // fin bit should be set
+        assert_eq!(out[0] & 0x80, 0x80);
+        let len = u32::from_be_bytes([out[0] & 0x7f, out[1], out[2], out[3]]);
+        assert_eq!(len, 7);
+        assert_eq!(&out[4..], b"payload");
+    }
+
+    #[test]
+    fn rm_encoder_write_fragment() {
+        use super::rm::RmRecordEncoder;
+        let mut enc = RmRecordEncoder::new();
+        let record = b"hello world";
+        enc.write_fragment(record, 0, 5, false);
+        enc.write_fragment(record, 5, 6, true);
+        let out = enc.writer.flush();
+        // Two headers (4 bytes each) + 11 bytes data
+        assert_eq!(out.len(), 8 + 11);
+        // First fragment: fin=0
+        assert_eq!(out[0] & 0x80, 0x00);
+        // Second fragment: fin=1
+        assert_eq!(out[4 + 5] & 0x80, 0x80);
+    }
+
+    #[test]
+    fn rm_encoder_empty_record() {
+        use super::rm::RmRecordEncoder;
+        let mut enc = RmRecordEncoder::new();
+        let out = enc.encode_record(b"");
+        assert_eq!(out.len(), 4);
+        let val = u32::from_be_bytes([out[0], out[1], out[2], out[3]]);
+        assert_eq!(val, 0x8000_0000); // fin=1, length=0
+    }
+
+    #[test]
+    fn rm_decoder_multiple_records() {
+        use super::rm::{RmRecordDecoder, RmRecordEncoder};
+        let mut enc = RmRecordEncoder::new();
+        let mut dec = RmRecordDecoder::new();
+        let frame1 = enc.encode_record(b"one");
+        let frame2 = enc.encode_record(b"two");
+        dec.push(&frame1);
+        dec.push(&frame2);
+        assert_eq!(dec.read_record().unwrap(), b"one");
+        assert_eq!(dec.read_record().unwrap(), b"two");
+    }
 }

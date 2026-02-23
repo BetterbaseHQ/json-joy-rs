@@ -96,3 +96,129 @@ impl fmt::Display for EjsonDecodeError {
 }
 
 impl std::error::Error for EjsonDecodeError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- EjsonEncodeError ---
+
+    #[test]
+    fn test_encode_error_display_invalid_date() {
+        let err = EjsonEncodeError::InvalidDate;
+        assert_eq!(err.to_string(), "Invalid Date");
+    }
+
+    #[test]
+    fn test_encode_error_debug() {
+        let err = EjsonEncodeError::InvalidDate;
+        assert_eq!(format!("{err:?}"), "InvalidDate");
+    }
+
+    #[test]
+    fn test_encode_error_clone_eq() {
+        let err1 = EjsonEncodeError::InvalidDate;
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_encode_error_is_std_error() {
+        let err: Box<dyn std::error::Error> = Box::new(EjsonEncodeError::InvalidDate);
+        assert_eq!(err.to_string(), "Invalid Date");
+    }
+
+    // --- EjsonDecodeError ---
+
+    #[test]
+    fn test_decode_error_display_invalid_json() {
+        let err = EjsonDecodeError::InvalidJson(42);
+        assert_eq!(err.to_string(), "Invalid JSON at position 42");
+    }
+
+    #[test]
+    fn test_decode_error_display_invalid_utf8() {
+        assert_eq!(EjsonDecodeError::InvalidUtf8.to_string(), "Invalid UTF-8");
+    }
+
+    #[test]
+    fn test_decode_error_display_all_variants() {
+        let cases: Vec<(EjsonDecodeError, &str)> = vec![
+            (
+                EjsonDecodeError::InvalidJson(0),
+                "Invalid JSON at position 0",
+            ),
+            (EjsonDecodeError::InvalidUtf8, "Invalid UTF-8"),
+            (EjsonDecodeError::InvalidObjectId, "Invalid ObjectId format"),
+            (EjsonDecodeError::InvalidInt32, "Invalid Int32 format"),
+            (EjsonDecodeError::InvalidInt64, "Invalid Int64 format"),
+            (EjsonDecodeError::InvalidDouble, "Invalid Double format"),
+            (
+                EjsonDecodeError::InvalidDecimal128,
+                "Invalid Decimal128 format",
+            ),
+            (EjsonDecodeError::InvalidBinary, "Invalid Binary format"),
+            (EjsonDecodeError::InvalidUuid, "Invalid UUID format"),
+            (EjsonDecodeError::InvalidCode, "Invalid Code format"),
+            (
+                EjsonDecodeError::InvalidCodeWithScope,
+                "Invalid CodeWScope format",
+            ),
+            (EjsonDecodeError::InvalidSymbol, "Invalid Symbol format"),
+            (
+                EjsonDecodeError::InvalidTimestamp,
+                "Invalid Timestamp format",
+            ),
+            (
+                EjsonDecodeError::InvalidRegularExpression,
+                "Invalid RegularExpression format",
+            ),
+            (
+                EjsonDecodeError::InvalidDbPointer,
+                "Invalid DBPointer format",
+            ),
+            (EjsonDecodeError::InvalidDate, "Invalid Date format"),
+            (EjsonDecodeError::InvalidMinKey, "Invalid MinKey format"),
+            (EjsonDecodeError::InvalidMaxKey, "Invalid MaxKey format"),
+            (
+                EjsonDecodeError::InvalidUndefined,
+                "Invalid Undefined format",
+            ),
+            (
+                EjsonDecodeError::ExtraKeys("$oid"),
+                "Invalid $oid format: extra keys not allowed",
+            ),
+        ];
+        for (err, expected) in cases {
+            assert_eq!(err.to_string(), expected, "mismatch for {err:?}");
+        }
+    }
+
+    #[test]
+    fn test_decode_error_clone_eq() {
+        let err1 = EjsonDecodeError::InvalidBinary;
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_decode_error_ne() {
+        assert_ne!(
+            EjsonDecodeError::InvalidBinary,
+            EjsonDecodeError::InvalidUuid
+        );
+    }
+
+    #[test]
+    fn test_decode_error_is_std_error() {
+        let err: Box<dyn std::error::Error> = Box::new(EjsonDecodeError::InvalidJson(10));
+        assert_eq!(err.to_string(), "Invalid JSON at position 10");
+    }
+
+    #[test]
+    fn test_decode_error_extra_keys_display() {
+        let err = EjsonDecodeError::ExtraKeys("$date");
+        assert!(err.to_string().contains("extra keys not allowed"));
+        assert!(err.to_string().contains("$date"));
+    }
+}

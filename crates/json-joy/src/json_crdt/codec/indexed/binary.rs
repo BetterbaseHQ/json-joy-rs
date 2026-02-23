@@ -740,4 +740,480 @@ mod tests {
         let decoded = decode(&fields).expect("decode");
         assert_eq!(decoded.view(), view);
     }
+
+    // ── Additional roundtrip tests ────────────────────────────────────
+
+    #[test]
+    fn roundtrip_obj_with_multiple_keys() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("hello".into())),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![("num".into(), ts(s, 2)), ("str".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_vec() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(20)),
+        });
+        model.apply_operation(&Op::InsVec {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![(0, ts(s, 2)), (1, ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_bin() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsBin {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![0xDE, 0xAD, 0xBE, 0xEF],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_arr() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Str("a".into())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("b".into())),
+        });
+        model.apply_operation(&Op::InsArr {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![ts(s, 2), ts(s, 3)],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_con_ref() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "target".to_string(),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 8),
+            val: ConValue::Ref(ts(s, 1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 9),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 8),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_con_bool_and_null() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Null),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Bool(true)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![("nil".into(), ts(s, 2)), ("flag".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_multibyte_string() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "Hello \u{1F600} \u{00E9}".to_string(),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 15),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_nested_obj() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewObj { id: ts(s, 2) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(7)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 2),
+            data: vec![("x".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![("inner".into(), ts(s, 2))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    // ── Decode error paths ────────────────────────────────────────────
+
+    #[test]
+    fn decode_rejects_missing_clock() {
+        let fields = IndexedFields::new();
+        let err = decode(&fields).expect_err("should reject missing clock");
+        assert!(matches!(err, DecodeError::MissingClock));
+    }
+
+    #[test]
+    fn decode_rejects_invalid_clock_table() {
+        let mut fields = IndexedFields::new();
+        // Clock table with n=0
+        let mut w = CrdtWriter::new();
+        w.vu57(0);
+        fields.insert("c".to_string(), w.flush());
+        let err = decode(&fields).expect_err("should reject empty clock table");
+        assert!(matches!(err, DecodeError::InvalidClockTable));
+    }
+
+    #[test]
+    fn decode_rejects_invalid_field_name() {
+        let s = sid();
+        let model = Model::new(s);
+        let mut fields = encode(&model);
+        // Insert a field with an invalid name (no underscore)
+        fields.insert("badname".to_string(), vec![0]);
+        let err = decode(&fields).expect_err("should reject bad field name");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    // ── Additional coverage tests ───────────────────────────────────
+
+    #[test]
+    fn roundtrip_con_undefined() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Undefined),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_con_float() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Float(1.5)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_str() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_bin() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_arr() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_vec() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_obj() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_val_wrapping_val() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(99)),
+        });
+        model.apply_operation(&Op::NewVal { id: ts(s, 2) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 3),
+            obj: ts(s, 2),
+            val: ts(s, 1),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 2),
+        });
+
+        let view = model.view();
+        let fields = encode(&model);
+        let decoded = decode(&fields).expect("decode");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn decode_rejects_invalid_base36_field() {
+        let s = sid();
+        let model = Model::new(s);
+        let mut fields = encode(&model);
+        fields.insert("0_!!!".to_string(), vec![0]);
+        let err = decode(&fields).expect_err("should reject invalid base36");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_out_of_range_session_index() {
+        let s = sid();
+        let model = Model::new(s);
+        let mut fields = encode(&model);
+        // Session index 999 is beyond what's in the clock table
+        fields.insert("rr_1".to_string(), vec![0]);
+        let err = decode(&fields).expect_err("should reject out-of-range session index");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn base36_edge_cases() {
+        assert_eq!(to_base36(0), "0");
+        assert_eq!(to_base36(35), "z");
+        assert_eq!(to_base36(36), "10");
+        assert_eq!(from_base36("0"), Some(0));
+        assert_eq!(from_base36("z"), Some(35));
+        assert_eq!(from_base36("10"), Some(36));
+        assert_eq!(from_base36(""), Some(0)); // empty string
+    }
+
+    #[test]
+    fn decode_error_display() {
+        assert_eq!(DecodeError::MissingClock.to_string(), "missing clock field");
+        assert_eq!(
+            DecodeError::InvalidClockTable.to_string(),
+            "invalid clock table"
+        );
+        let err = DecodeError::Format("test".into());
+        assert_eq!(err.to_string(), "format error: test");
+    }
+
+    #[test]
+    fn encode_has_clock_and_root_fields() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let fields = encode(&model);
+        assert!(fields.contains_key("c"), "must have clock field");
+        assert!(fields.contains_key("r"), "must have root field");
+        // Should also have node fields beyond c and r
+        assert!(fields.len() > 2, "must have node fields beyond c and r");
+    }
 }

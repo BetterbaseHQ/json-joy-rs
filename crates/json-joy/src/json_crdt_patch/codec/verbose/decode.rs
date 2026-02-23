@@ -208,3 +208,262 @@ pub fn decode(data: &Value) -> Patch {
     }
     patch
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::json_crdt_patch::codec::verbose::encode;
+    use crate::json_crdt_patch::operations::{ConValue, Op};
+    use crate::json_crdt_patch::patch::Patch;
+    use crate::json_crdt_patch::patch_builder::PatchBuilder;
+    use json_joy_json_pack::PackValue;
+    use serde_json::json;
+
+    /// Helper: build a patch, encode to verbose JSON, decode back, assert ops match.
+    fn roundtrip(patch: &Patch) -> Patch {
+        let encoded = encode::encode(patch);
+        decode(&encoded)
+    }
+
+    #[test]
+    fn roundtrip_new_con_val() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_val(PackValue::Integer(42));
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 1);
+        assert!(matches!(
+            &decoded.ops[0],
+            Op::NewCon {
+                val: ConValue::Val(PackValue::Integer(42)),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn roundtrip_new_con_ref() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_ref(ts(2, 5));
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(
+            &decoded.ops[0],
+            Op::NewCon {
+                val: ConValue::Ref(ref_id),
+                ..
+            } if ref_id.sid == 2 && ref_id.time == 5
+        ));
+    }
+
+    #[test]
+    fn roundtrip_creation_ops() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.val();
+        b.obj();
+        b.vec();
+        b.str_node();
+        b.bin();
+        b.arr();
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 6);
+        assert!(matches!(&decoded.ops[0], Op::NewVal { .. }));
+        assert!(matches!(&decoded.ops[1], Op::NewObj { .. }));
+        assert!(matches!(&decoded.ops[2], Op::NewVec { .. }));
+        assert!(matches!(&decoded.ops[3], Op::NewStr { .. }));
+        assert!(matches!(&decoded.ops[4], Op::NewBin { .. }));
+        assert!(matches!(&decoded.ops[5], Op::NewArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_ins_val() {
+        let mut b = PatchBuilder::new(1, 0);
+        let val_id = b.val();
+        let con_id = b.con_val(PackValue::Null);
+        b.set_val(val_id, con_id);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert_eq!(decoded.ops.len(), 3);
+        assert!(matches!(&decoded.ops[2], Op::InsVal { .. }));
+    }
+
+    #[test]
+    fn roundtrip_ins_str() {
+        let mut b = PatchBuilder::new(1, 0);
+        let str_id = b.str_node();
+        b.ins_str(str_id, str_id, "hello".into());
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsStr { data, .. } = &decoded.ops[1] {
+            assert_eq!(data, "hello");
+        } else {
+            panic!("expected InsStr");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_bin() {
+        let mut b = PatchBuilder::new(1, 0);
+        let bin_id = b.bin();
+        b.ins_bin(bin_id, bin_id, vec![0xDE, 0xAD]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsBin { data, .. } = &decoded.ops[1] {
+            assert_eq!(data, &[0xDE, 0xAD]);
+        } else {
+            panic!("expected InsBin");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_obj() {
+        let mut b = PatchBuilder::new(1, 0);
+        let obj_id = b.obj();
+        let con_id = b.con_val(PackValue::Bool(true));
+        b.ins_obj(obj_id, vec![("key".into(), con_id)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsObj { data, .. } = &decoded.ops[2] {
+            assert_eq!(data.len(), 1);
+            assert_eq!(data[0].0, "key");
+        } else {
+            panic!("expected InsObj");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_vec() {
+        let mut b = PatchBuilder::new(1, 0);
+        let vec_id = b.vec();
+        let con_id = b.con_val(PackValue::Null);
+        b.ins_vec(vec_id, vec![(0, con_id)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::InsVec { data, .. } = &decoded.ops[2] {
+            assert_eq!(data.len(), 1);
+            assert_eq!(data[0].0, 0);
+        } else {
+            panic!("expected InsVec");
+        }
+    }
+
+    #[test]
+    fn roundtrip_ins_arr() {
+        let mut b = PatchBuilder::new(1, 0);
+        let arr_id = b.arr();
+        let con_id = b.con_val(PackValue::Null);
+        b.ins_arr(arr_id, arr_id, vec![con_id]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[2], Op::InsArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_upd_arr() {
+        let mut b = PatchBuilder::new(1, 0);
+        let arr_id = b.arr();
+        let c1 = b.con_val(PackValue::Integer(1));
+        b.ins_arr(arr_id, arr_id, vec![c1]);
+        let c2 = b.con_val(PackValue::Integer(2));
+        b.upd_arr(arr_id, c1, c2);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[4], Op::UpdArr { .. }));
+    }
+
+    #[test]
+    fn roundtrip_del() {
+        let mut b = PatchBuilder::new(1, 0);
+        let str_id = b.str_node();
+        b.ins_str(str_id, str_id, "abc".into());
+        b.del(str_id, vec![tss(1, 1, 2)]);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        if let Op::Del { what, .. } = &decoded.ops[2] {
+            assert_eq!(what.len(), 1);
+            assert_eq!(what[0].span, 2);
+        } else {
+            panic!("expected Del");
+        }
+    }
+
+    #[test]
+    fn roundtrip_nop() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.nop(5);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[0], Op::Nop { len: 5, .. }));
+    }
+
+    #[test]
+    fn roundtrip_nop_default_len() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.nop(1);
+        let patch = b.flush();
+        let decoded = roundtrip(&patch);
+        assert!(matches!(&decoded.ops[0], Op::Nop { len: 1, .. }));
+    }
+
+    #[test]
+    fn roundtrip_with_meta() {
+        let mut b = PatchBuilder::new(1, 0);
+        b.con_val(PackValue::Null);
+        let mut patch = b.flush();
+        patch.meta = Some(PackValue::Str("test-meta".into()));
+        let decoded = roundtrip(&patch);
+        assert!(decoded.meta.is_some());
+    }
+
+    #[test]
+    fn decode_server_id() {
+        // When id is a plain number, it's a server-session patch.
+        let data = json!({
+            "id": 10,
+            "ops": [{"op": "new_val"}]
+        });
+        let patch = decode(&data);
+        assert_eq!(patch.ops.len(), 1);
+    }
+
+    #[test]
+    fn decode_skips_non_object_ops() {
+        let data = json!({
+            "id": [1, 0],
+            "ops": [42, "not_an_op", {"op": "new_obj"}]
+        });
+        let patch = decode(&data);
+        // Only the valid op should be decoded.
+        assert_eq!(patch.ops.len(), 1);
+    }
+
+    #[test]
+    fn decode_skips_unknown_op() {
+        let data = json!({
+            "id": [1, 0],
+            "ops": [{"op": "unknown_op_type"}]
+        });
+        let patch = decode(&data);
+        assert_eq!(patch.ops.len(), 0);
+    }
+
+    #[test]
+    fn decode_empty_ops() {
+        let data = json!({
+            "id": [1, 0],
+            "ops": []
+        });
+        let patch = decode(&data);
+        assert_eq!(patch.ops.len(), 0);
+    }
+
+    #[test]
+    fn decode_no_ops_key() {
+        let data = json!({
+            "id": [1, 0]
+        });
+        let patch = decode(&data);
+        assert_eq!(patch.ops.len(), 0);
+    }
+}

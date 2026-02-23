@@ -434,4 +434,483 @@ mod tests {
         // After "B" is inserted first, our op should still insert "A" in the right place
         assert!(result.contains('A'));
     }
+
+    // ── StringComponent src_len / dst_len ───────────────────────────────
+
+    #[test]
+    fn src_len_retain() {
+        assert_eq!(StringComponent::Retain(5).src_len(), 5);
+    }
+
+    #[test]
+    fn src_len_delete() {
+        assert_eq!(StringComponent::Delete(3).src_len(), 3);
+    }
+
+    #[test]
+    fn src_len_delete_str() {
+        assert_eq!(StringComponent::DeleteStr("abc".to_string()).src_len(), 3);
+    }
+
+    #[test]
+    fn src_len_insert() {
+        assert_eq!(StringComponent::Insert("xyz".to_string()).src_len(), 0);
+    }
+
+    #[test]
+    fn dst_len_retain() {
+        assert_eq!(StringComponent::Retain(5).dst_len(), 5);
+    }
+
+    #[test]
+    fn dst_len_delete() {
+        assert_eq!(StringComponent::Delete(3).dst_len(), 0);
+    }
+
+    #[test]
+    fn dst_len_delete_str() {
+        assert_eq!(StringComponent::DeleteStr("abc".to_string()).dst_len(), 0);
+    }
+
+    #[test]
+    fn dst_len_insert() {
+        assert_eq!(StringComponent::Insert("xyz".to_string()).dst_len(), 3);
+    }
+
+    #[test]
+    fn src_len_unicode() {
+        // Multi-byte chars: "éà" is 2 chars
+        assert_eq!(StringComponent::DeleteStr("éà".to_string()).src_len(), 2);
+    }
+
+    #[test]
+    fn dst_len_unicode() {
+        assert_eq!(StringComponent::Insert("日本語".to_string()).dst_len(), 3);
+    }
+
+    // ── apply edge cases ────────────────────────────────────────────────
+
+    #[test]
+    fn apply_empty_op() {
+        assert_eq!(apply("hello", &vec![]), "hello");
+    }
+
+    #[test]
+    fn apply_empty_string() {
+        let op = vec![StringComponent::Insert("abc".to_string())];
+        assert_eq!(apply("", &op), "abc");
+    }
+
+    #[test]
+    fn apply_delete_str() {
+        let op = vec![StringComponent::DeleteStr("hel".to_string())];
+        assert_eq!(apply("hello", &op), "lo");
+    }
+
+    #[test]
+    fn apply_complex_sequence() {
+        // "hello world" -> "hXrld"
+        let op = vec![
+            StringComponent::Retain(1),          // keep 'h'
+            StringComponent::Delete(4),          // delete "ello"
+            StringComponent::Insert("X".into()), // insert "X"
+            StringComponent::Delete(2),          // delete " w"
+        ];
+        assert_eq!(apply("hello world", &op), "hXorld");
+    }
+
+    #[test]
+    fn apply_insert_at_beginning() {
+        let op = vec![StringComponent::Insert(">>".to_string())];
+        assert_eq!(apply("hello", &op), ">>hello");
+    }
+
+    // ── trim ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn trim_removes_trailing_retain_zero() {
+        let mut op = vec![
+            StringComponent::Insert("a".to_string()),
+            StringComponent::Retain(0),
+        ];
+        trim(&mut op);
+        assert_eq!(op, vec![StringComponent::Insert("a".to_string())]);
+    }
+
+    #[test]
+    fn trim_removes_trailing_delete_zero() {
+        let mut op = vec![
+            StringComponent::Insert("a".to_string()),
+            StringComponent::Delete(0),
+        ];
+        trim(&mut op);
+        assert_eq!(op, vec![StringComponent::Insert("a".to_string())]);
+    }
+
+    #[test]
+    fn trim_removes_trailing_empty_insert() {
+        let mut op = vec![
+            StringComponent::Retain(3),
+            StringComponent::Insert(String::new()),
+        ];
+        trim(&mut op);
+        assert_eq!(op, vec![StringComponent::Retain(3)]);
+    }
+
+    #[test]
+    fn trim_removes_trailing_empty_delete_str() {
+        let mut op = vec![
+            StringComponent::Retain(3),
+            StringComponent::DeleteStr(String::new()),
+        ];
+        trim(&mut op);
+        assert_eq!(op, vec![StringComponent::Retain(3)]);
+    }
+
+    #[test]
+    fn trim_stops_at_nonempty() {
+        let mut op = vec![
+            StringComponent::Insert("a".to_string()),
+            StringComponent::Retain(3),
+        ];
+        trim(&mut op);
+        assert_eq!(
+            op,
+            vec![
+                StringComponent::Insert("a".to_string()),
+                StringComponent::Retain(3)
+            ]
+        );
+    }
+
+    // ── normalize ───────────────────────────────────────────────────────
+
+    #[test]
+    fn normalize_removes_zero_components() {
+        let op = vec![
+            StringComponent::Retain(0),
+            StringComponent::Delete(0),
+            StringComponent::Insert(String::new()),
+            StringComponent::DeleteStr(String::new()),
+            StringComponent::Insert("a".to_string()),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![StringComponent::Insert("a".to_string())]
+        );
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_deletes() {
+        let op = vec![
+            StringComponent::Delete(2),
+            StringComponent::Delete(3),
+            StringComponent::Insert("x".to_string()),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![
+                StringComponent::Delete(5),
+                StringComponent::Insert("x".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_delete_str() {
+        let op = vec![
+            StringComponent::DeleteStr("ab".to_string()),
+            StringComponent::DeleteStr("cd".to_string()),
+            StringComponent::Insert("x".to_string()),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![
+                StringComponent::DeleteStr("abcd".to_string()),
+                StringComponent::Insert("x".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn normalize_coalesces_adjacent_inserts() {
+        let op = vec![
+            StringComponent::Insert("a".to_string()),
+            StringComponent::Insert("b".to_string()),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![StringComponent::Insert("ab".to_string())]
+        );
+    }
+
+    #[test]
+    fn normalize_strips_trailing_retain() {
+        let op = vec![
+            StringComponent::Insert("a".to_string()),
+            StringComponent::Retain(5),
+        ];
+        assert_eq!(
+            normalize(op),
+            vec![StringComponent::Insert("a".to_string())]
+        );
+    }
+
+    // ── compose ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn compose_identity() {
+        // Composing two identity ops should yield identity
+        let op1: StringOp = vec![];
+        let op2: StringOp = vec![];
+        assert!(compose(&op1, &op2).is_empty());
+    }
+
+    #[test]
+    fn compose_retain_retain() {
+        let op1 = vec![StringComponent::Retain(5)];
+        let op2 = vec![StringComponent::Retain(5)];
+        let composed = compose(&op1, &op2);
+        // Trailing retains are stripped
+        assert!(composed.is_empty());
+    }
+
+    #[test]
+    fn compose_insert_then_retain() {
+        let op1 = vec![StringComponent::Insert("abc".to_string())];
+        let op2 = vec![StringComponent::Retain(3)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![StringComponent::Insert("abc".to_string())]);
+    }
+
+    #[test]
+    fn compose_retain_then_delete() {
+        let op1 = vec![StringComponent::Retain(5)];
+        let op2 = vec![StringComponent::Delete(3)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![StringComponent::Delete(3)]);
+    }
+
+    #[test]
+    fn compose_retain_then_delete_str() {
+        let op1 = vec![StringComponent::Retain(5)];
+        let op2 = vec![StringComponent::DeleteStr("hel".to_string())];
+        let composed = compose(&op1, &op2);
+        assert_eq!(
+            composed,
+            vec![StringComponent::DeleteStr("hel".to_string())]
+        );
+    }
+
+    #[test]
+    fn compose_insert_then_delete_str() {
+        let op1 = vec![StringComponent::Insert("abc".to_string())];
+        let op2 = vec![StringComponent::DeleteStr("ab".to_string())];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![StringComponent::Insert("c".to_string())]);
+    }
+
+    #[test]
+    fn compose_verifies_apply_equivalence() {
+        // apply(apply(s, op1), op2) == apply(s, compose(op1, op2))
+        let s = "hello world";
+        let op1 = vec![
+            StringComponent::Retain(5),
+            StringComponent::Delete(1),
+            StringComponent::Insert("-".to_string()),
+        ];
+        let op2 = vec![
+            StringComponent::Retain(6),
+            StringComponent::Insert("!".to_string()),
+        ];
+        let sequential = apply(&apply(s, &op1), &op2);
+        let composed = compose(&op1, &op2);
+        let direct = apply(s, &composed);
+        assert_eq!(sequential, direct);
+    }
+
+    #[test]
+    fn compose_delete_passes_through() {
+        // op1 deletes chars, op2 inserts — delete should pass through
+        let op1 = vec![StringComponent::Delete(3)];
+        let op2 = vec![StringComponent::Insert("X".to_string())];
+        let composed = compose(&op1, &op2);
+        // Apply to "abcdef" -> op1 removes "abc" -> "def", op2 inserts "X" -> "Xdef"
+        let s = "abcdef";
+        let sequential = apply(&apply(s, &op1), &op2);
+        let direct = apply(s, &composed);
+        assert_eq!(sequential, direct);
+    }
+
+    #[test]
+    fn compose_delete_str_passes_through() {
+        let op1 = vec![StringComponent::DeleteStr("abc".to_string())];
+        let op2 = vec![StringComponent::Insert("X".to_string())];
+        let composed = compose(&op1, &op2);
+        let s = "abcdef";
+        let sequential = apply(&apply(s, &op1), &op2);
+        let direct = apply(s, &composed);
+        assert_eq!(sequential, direct);
+    }
+
+    #[test]
+    fn compose_insert_partial_retain() {
+        // Insert "abcde", then retain only 3 of them
+        let op1 = vec![StringComponent::Insert("abcde".to_string())];
+        let op2 = vec![StringComponent::Retain(3), StringComponent::Delete(2)];
+        let composed = compose(&op1, &op2);
+        assert_eq!(composed, vec![StringComponent::Insert("abc".to_string())]);
+    }
+
+    // ── transform ───────────────────────────────────────────────────────
+
+    #[test]
+    fn transform_identity() {
+        let op: StringOp = vec![];
+        let against: StringOp = vec![];
+        assert!(transform(&op, &against, true).is_empty());
+    }
+
+    #[test]
+    fn transform_insert_right_wins() {
+        let op = vec![StringComponent::Insert("A".to_string())];
+        let against = vec![StringComponent::Insert("B".to_string())];
+        let t = transform(&op, &against, false);
+        // Right wins: against insert goes first, so op should retain over B then insert A
+        let s = "B";
+        let result = apply(s, &t);
+        assert!(result.contains('A'));
+    }
+
+    #[test]
+    fn transform_retain_vs_delete() {
+        // op retains 5, against deletes 3 -> op should only retain 2
+        let op = vec![StringComponent::Retain(5)];
+        let against = vec![StringComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        // After against deletes 3, the remaining 2 chars of our retain survive
+        assert_eq!(t, vec![]); // trailing retain stripped
+    }
+
+    #[test]
+    fn transform_retain_vs_delete_str() {
+        let op = vec![StringComponent::Retain(5)];
+        let against = vec![StringComponent::DeleteStr("abc".to_string())];
+        let t = transform(&op, &against, true);
+        // Against deleted 3 chars, so op's retain of 5 -> retain of 2, stripped as trailing
+        assert_eq!(t, vec![]);
+    }
+
+    #[test]
+    fn transform_delete_vs_retain() {
+        let op = vec![StringComponent::Delete(3)];
+        let against = vec![StringComponent::Retain(5)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![StringComponent::Delete(3)]);
+    }
+
+    #[test]
+    fn transform_delete_str_vs_retain() {
+        let op = vec![StringComponent::DeleteStr("abc".to_string())];
+        let against = vec![StringComponent::Retain(5)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![StringComponent::DeleteStr("abc".to_string())]);
+    }
+
+    #[test]
+    fn transform_delete_vs_delete() {
+        // Both delete same region: op's delete becomes redundant
+        let op = vec![StringComponent::Delete(3)];
+        let against = vec![StringComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_vs_delete_str() {
+        let op = vec![StringComponent::Delete(3)];
+        let against = vec![StringComponent::DeleteStr("abc".to_string())];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_str_vs_delete() {
+        let op = vec![StringComponent::DeleteStr("abc".to_string())];
+        let against = vec![StringComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_str_vs_delete_str() {
+        let op = vec![StringComponent::DeleteStr("abc".to_string())];
+        let against = vec![StringComponent::DeleteStr("abc".to_string())];
+        let t = transform(&op, &against, true);
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_partial_vs_delete() {
+        // op deletes 5, against deletes 3 -> op should still delete 2 more
+        let op = vec![StringComponent::Delete(5)];
+        let against = vec![StringComponent::Delete(3)];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![StringComponent::Delete(2)]);
+    }
+
+    #[test]
+    fn transform_convergence() {
+        // Both ops applied to same doc should converge
+        let s = "hello";
+        let op_a = vec![
+            StringComponent::Retain(5),
+            StringComponent::Insert(" world".to_string()),
+        ];
+        let op_b = vec![
+            StringComponent::Delete(1),
+            StringComponent::Insert("H".to_string()),
+        ];
+        let t_a = transform(&op_a, &op_b, true);
+        let t_b = transform(&op_b, &op_a, false);
+        let result_a = apply(&apply(s, &op_b), &t_a);
+        let result_b = apply(&apply(s, &op_a), &t_b);
+        assert_eq!(result_a, result_b);
+    }
+
+    #[test]
+    fn transform_op_remaining_after_against_exhausted() {
+        // op has more components than against
+        let op = vec![
+            StringComponent::Retain(2),
+            StringComponent::Insert("X".to_string()),
+        ];
+        let against: StringOp = vec![];
+        let t = transform(&op, &against, true);
+        // op passes through since against is empty
+        assert_eq!(
+            t,
+            vec![
+                StringComponent::Retain(2),
+                StringComponent::Insert("X".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn transform_retain_vs_retain_partial() {
+        let op = vec![StringComponent::Retain(5)];
+        let against = vec![StringComponent::Retain(3)];
+        let t = transform(&op, &against, true);
+        // Trailing retains stripped
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn transform_delete_str_vs_delete_str_partial() {
+        let op = vec![StringComponent::DeleteStr("abcde".to_string())];
+        let against = vec![StringComponent::DeleteStr("abc".to_string())];
+        let t = transform(&op, &against, true);
+        assert_eq!(t, vec![StringComponent::DeleteStr("de".to_string())]);
+    }
 }

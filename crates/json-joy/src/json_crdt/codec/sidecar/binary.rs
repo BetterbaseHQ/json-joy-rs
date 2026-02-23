@@ -948,4 +948,567 @@ mod tests {
         let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
         assert_eq!(decoded.view(), view_val);
     }
+
+    // ── Additional roundtrip tests ────────────────────────────────────
+
+    #[test]
+    fn roundtrip_obj_with_multiple_keys() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("hello".into())),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![("num".into(), ts(s, 2)), ("str".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_vec() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(20)),
+        });
+        model.apply_operation(&Op::InsVec {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![(0, ts(s, 2)), (1, ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_bin() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsBin {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![0xDE, 0xAD, 0xBE, 0xEF],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_arr() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Str("a".into())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("b".into())),
+        });
+        model.apply_operation(&Op::InsArr {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![ts(s, 2), ts(s, 3)],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_con_ref() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "target".to_string(),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 8),
+            val: ConValue::Ref(ts(s, 1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 9),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 8),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_con_bool_null_undefined() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Null),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Bool(false)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 4),
+            val: ConValue::Val(PackValue::Undefined),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![
+                ("nil".into(), ts(s, 2)),
+                ("flag".into(), ts(s, 3)),
+                ("undef".into(), ts(s, 4)),
+            ],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_multibyte_string() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "Hello \u{1F600} \u{00E9}".to_string(),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 15),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_nested_obj() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewObj { id: ts(s, 2) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(7)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 2),
+            data: vec![("x".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![("inner".into(), ts(s, 2))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    // ── Decode error paths ────────────────────────────────────────────
+
+    #[test]
+    fn decode_rejects_short_meta() {
+        let err = decode(&[], &[0, 0, 0]).expect_err("should reject short meta");
+        assert!(matches!(err, DecodeError::EndOfInput));
+    }
+
+    #[test]
+    fn decode_rejects_empty_clock_table() {
+        // 4-byte offset pointing to position 0 (immediately), then clock count=0
+        let meta = vec![0, 0, 0, 0, 0]; // offset=0, then vu57(0) = 0
+        let err = decode(&[], &meta).expect_err("should reject empty clock table");
+        assert!(matches!(err, DecodeError::InvalidClockTable));
+    }
+
+    // ── Additional coverage tests ───────────────────────────────────
+
+    #[test]
+    fn roundtrip_empty_model() {
+        let model = Model::new(sid());
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_con_undefined() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Undefined),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_con_float() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Float(1.5)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_empty_str() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_empty_bin() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_empty_arr() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_empty_vec() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_empty_obj() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_val_wrapping_val() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(42)),
+        });
+        model.apply_operation(&Op::NewVal { id: ts(s, 2) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 3),
+            obj: ts(s, 2),
+            val: ts(s, 1),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 2),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_obj_many_keys() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("two".into())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 4),
+            val: ConValue::Val(PackValue::Bool(true)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![
+                ("a".into(), ts(s, 2)),
+                ("b".into(), ts(s, 3)),
+                ("c".into(), ts(s, 4)),
+            ],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_emoji_string() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "\u{1F4A9}\u{1F680}\u{2764}".to_string(),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 10),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn decode_rejects_empty_meta() {
+        let err = decode(&[], &[]).expect_err("should reject empty meta");
+        assert!(matches!(err, DecodeError::EndOfInput));
+    }
+
+    #[test]
+    fn decode_rejects_meta_exactly_3_bytes() {
+        let err = decode(&[], &[0, 0, 0]).expect_err("should reject 3-byte meta");
+        assert!(matches!(err, DecodeError::EndOfInput));
+    }
+
+    #[test]
+    fn decode_error_display() {
+        assert_eq!(
+            DecodeError::EndOfInput.to_string(),
+            "unexpected end of input"
+        );
+        assert_eq!(
+            DecodeError::UnknownMajor(7).to_string(),
+            "unknown node major type: 7"
+        );
+        assert_eq!(
+            DecodeError::InvalidClockTable.to_string(),
+            "invalid clock table"
+        );
+        let err = DecodeError::Format("test".into());
+        assert_eq!(err.to_string(), "format error: test");
+    }
+
+    #[test]
+    fn roundtrip_arr_with_nested_objects() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::NewObj { id: ts(s, 2) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 2),
+            data: vec![("x".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsArr {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![ts(s, 2)],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
+
+    #[test]
+    fn roundtrip_large_binary() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        // 256 bytes to exercise larger CBOR length encoding
+        let data: Vec<u8> = (0..=255).collect();
+        model.apply_operation(&Op::InsBin {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data,
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 258),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view_val = model.view();
+        let (view_bytes, meta_bytes) = encode(&model);
+        let decoded = decode(&view_bytes, &meta_bytes).expect("decode");
+        assert_eq!(decoded.view(), view_val);
+    }
 }

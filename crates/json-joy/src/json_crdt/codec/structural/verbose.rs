@@ -792,4 +792,860 @@ mod tests {
         let err = decode(&data).expect_err("should reject non-object child node");
         assert!(matches!(err, DecodeError::Format(_)));
     }
+
+    // ── Roundtrip coverage for all node types ─────────────────────────
+
+    #[test]
+    fn roundtrip_obj_with_multiple_keys() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("hello".into())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 4),
+            val: ConValue::Val(PackValue::Bool(true)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 1),
+            data: vec![
+                ("num".into(), ts(s, 2)),
+                ("str".into(), ts(s, 3)),
+                ("flag".into(), ts(s, 4)),
+            ],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_nested_obj_in_obj() {
+        let s = sid();
+        let mut model = Model::new(s);
+        // Inner obj
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(42)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 3),
+            obj: ts(s, 1),
+            data: vec![("x".into(), ts(s, 2))],
+        });
+        // Outer obj
+        model.apply_operation(&Op::NewObj { id: ts(s, 4) });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 5),
+            obj: ts(s, 4),
+            data: vec![("inner".into(), ts(s, 1))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 6),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 4),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_vec_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Integer(10)),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Integer(20)),
+        });
+        model.apply_operation(&Op::InsVec {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![(0, ts(s, 2)), (1, ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_bin_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsBin {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![0xDE, 0xAD, 0xBE, 0xEF],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_arr_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Str("a".into())),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Str("b".into())),
+        });
+        model.apply_operation(&Op::InsArr {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: vec![ts(s, 2), ts(s, 3)],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 7),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_con_with_ref() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "ref-target".to_string(),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 12),
+            val: ConValue::Ref(ts(s, 1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 13),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 12),
+        });
+
+        let encoded = encode(&model);
+        // Verify the ref is preserved through encode/decode
+        let root = encoded.get("root").unwrap();
+        let value = root.get("value").unwrap();
+        assert_eq!(value.get("type").unwrap(), "con");
+        assert!(value.get("timestamp").is_some());
+
+        let decoded = decode(&encoded).expect("decode should succeed");
+        // Both should produce the same view
+        assert_eq!(decoded.view(), model.view());
+    }
+
+    #[test]
+    fn roundtrip_con_null_and_bool() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 2),
+            val: ConValue::Val(PackValue::Null),
+        });
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 3),
+            val: ConValue::Val(PackValue::Bool(false)),
+        });
+        model.apply_operation(&Op::InsObj {
+            id: ts(s, 4),
+            obj: ts(s, 1),
+            data: vec![("nil".into(), ts(s, 2)), ("flag".into(), ts(s, 3))],
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 5),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_multibyte_string() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsStr {
+            id: ts(s, 2),
+            obj: ts(s, 1),
+            after: crate::json_crdt::constants::ORIGIN,
+            data: "Hello \u{1F600} world \u{00E9}".to_string(),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 20),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_server_mode() {
+        let mut model = Model::new_server(10);
+        let s = crate::json_crdt_patch::enums::SESSION::SERVER;
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Str("server".into())),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        // Server mode uses a number for time
+        assert!(encoded.get("time").unwrap().is_number());
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_con_undefined() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Undefined),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    // ── Decode error paths ────────────────────────────────────────────
+
+    #[test]
+    fn decode_rejects_empty_clock_table() {
+        let data = json!({
+            "time": [],
+            "root": { "type": "val", "id": 0 }
+        });
+        let err = decode(&data).expect_err("should reject empty clock table");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_clock_entry_too_short() {
+        let data = json!({
+            "time": [[1]],
+            "root": { "type": "val", "id": 0 }
+        });
+        let err = decode(&data).expect_err("should reject short clock entry");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_obj_without_map() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "obj", "id": 1 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject obj without map");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_vec_without_map() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "vec", "id": 1 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject vec without map");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_str_without_chunks() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "str", "id": 1 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject str without chunks");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_bin_without_chunks() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "bin", "id": 1 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject bin without chunks");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_arr_without_chunks() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "arr", "id": 1 }
+            }
+        });
+        let err = decode(&data).expect_err("should reject arr without chunks");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_str_chunk_without_span_or_value() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "str",
+                    "id": 1,
+                    "chunks": [{ "id": 2 }]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject str chunk without span or value");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_bin_chunk_without_span_or_value() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "bin",
+                    "id": 1,
+                    "chunks": [{ "id": 2 }]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject bin chunk without span or value");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_arr_chunk_without_span_or_value() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "arr",
+                    "id": 1,
+                    "chunks": [{ "id": 2 }]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject arr chunk without span or value");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_invalid_timestamp_format() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "con", "id": "bad" }
+            }
+        });
+        let err = decode(&data).expect_err("should reject invalid timestamp");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn roundtrip_logical_clock_with_peers() {
+        let s = sid();
+        let peer = 999999u64;
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(1)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+        // Observe a peer timestamp
+        model.clock.observe(ts(peer, 5), 1);
+
+        let encoded = encode(&model);
+        // Should be an array-based clock, not a number
+        assert!(encoded.get("time").unwrap().is_array());
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), model.view());
+    }
+
+    // ── Additional coverage tests ───────────────────────────────────
+
+    #[test]
+    fn roundtrip_con_float() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Float(1.5)),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_str_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewStr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_bin_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewBin { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_arr_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewArr { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_vec_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewVec { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_empty_obj_node() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewObj { id: ts(s, 1) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 2),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 1),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn roundtrip_val_wrapping_val() {
+        let s = sid();
+        let mut model = Model::new(s);
+        model.apply_operation(&Op::NewCon {
+            id: ts(s, 1),
+            val: ConValue::Val(PackValue::Integer(42)),
+        });
+        model.apply_operation(&Op::NewVal { id: ts(s, 2) });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 3),
+            obj: ts(s, 2),
+            val: ts(s, 1),
+        });
+        model.apply_operation(&Op::InsVal {
+            id: ts(s, 4),
+            obj: crate::json_crdt::constants::ORIGIN,
+            val: ts(s, 2),
+        });
+
+        let view = model.view();
+        let encoded = encode(&model);
+        let decoded = decode(&encoded).expect("decode should succeed");
+        assert_eq!(decoded.view(), view);
+    }
+
+    #[test]
+    fn decode_rejects_non_array_clock_entry() {
+        let data = json!({
+            "time": ["not_an_array"],
+            "root": { "type": "val", "id": 0 }
+        });
+        let err = decode(&data).expect_err("should reject non-array clock entry");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_str_chunk_not_object() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "str",
+                    "id": 1,
+                    "chunks": ["not_an_object"]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject non-object str chunk");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_bin_chunk_not_object() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "bin",
+                    "id": 1,
+                    "chunks": [42]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject non-object bin chunk");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_arr_chunk_not_object() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "arr",
+                    "id": 1,
+                    "chunks": ["bad"]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject non-object arr chunk");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_bin_invalid_base64() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "bin",
+                    "id": 1,
+                    "chunks": [{ "id": 2, "value": "!!!invalid-base64!!!" }]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject invalid base64");
+        assert!(matches!(err, DecodeError::Format(_)));
+    }
+
+    #[test]
+    fn decode_rejects_con_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "con" }
+            }
+        });
+        let err = decode(&data).expect_err("should reject con without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_obj_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "obj", "map": {} }
+            }
+        });
+        let err = decode(&data).expect_err("should reject obj without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_vec_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "vec", "map": [] }
+            }
+        });
+        let err = decode(&data).expect_err("should reject vec without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_str_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "str", "chunks": [] }
+            }
+        });
+        let err = decode(&data).expect_err("should reject str without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_bin_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "bin", "chunks": [] }
+            }
+        });
+        let err = decode(&data).expect_err("should reject bin without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_arr_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": { "type": "arr", "chunks": [] }
+            }
+        });
+        let err = decode(&data).expect_err("should reject arr without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_rejects_chunk_missing_id() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "str",
+                    "id": 1,
+                    "chunks": [{ "value": "text" }]
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject chunk without id");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_con_with_timestamp_but_missing_value() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "con",
+                    "id": 1,
+                    "timestamp": true
+                }
+            }
+        });
+        let err = decode(&data).expect_err("should reject con with timestamp but no value");
+        assert!(matches!(err, DecodeError::MissingField(_)));
+    }
+
+    #[test]
+    fn decode_vec_with_null_elements() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "vec",
+                    "id": 1,
+                    "map": [
+                        null,
+                        { "type": "con", "id": 2, "value": 42 }
+                    ]
+                }
+            }
+        });
+        let decoded = decode(&data).expect("decode should succeed");
+        let view = decoded.view();
+        // The null element and the con(42) element
+        assert!(view.is_array() || view.is_null() || view.as_array().is_some());
+    }
+
+    #[test]
+    fn decode_str_with_deleted_chunk() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "str",
+                    "id": 1,
+                    "chunks": [
+                        { "id": 2, "value": "hello" },
+                        { "id": 7, "span": 3 }
+                    ]
+                }
+            }
+        });
+        let decoded = decode(&data).expect("decode should succeed");
+        let view = decoded.view();
+        assert_eq!(view, json!("hello"));
+    }
+
+    #[test]
+    fn decode_bin_with_deleted_chunk() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "bin",
+                    "id": 1,
+                    "chunks": [
+                        { "id": 2, "value": "AAEC" },
+                        { "id": 5, "span": 2 }
+                    ]
+                }
+            }
+        });
+        let decoded = decode(&data).expect("decode should succeed");
+        // Should decode successfully with the first chunk live and second tombstoned
+        let _ = decoded.view();
+    }
+
+    #[test]
+    fn decode_arr_with_deleted_chunk() {
+        let data = json!({
+            "time": 5,
+            "root": {
+                "value": {
+                    "type": "arr",
+                    "id": 1,
+                    "chunks": [
+                        { "id": 2, "value": [{ "type": "con", "id": 3, "value": "x" }] },
+                        { "id": 4, "span": 1 }
+                    ]
+                }
+            }
+        });
+        let decoded = decode(&data).expect("decode should succeed");
+        let view = decoded.view();
+        assert_eq!(view, json!(["x"]));
+    }
+
+    #[test]
+    fn decode_error_display() {
+        let err = DecodeError::Format("test error".into());
+        assert_eq!(err.to_string(), "unexpected format: test error");
+
+        let err = DecodeError::UnknownNodeType("foo".into());
+        assert_eq!(err.to_string(), "unknown node type: foo");
+
+        let err = DecodeError::MissingField("bar".into());
+        assert_eq!(err.to_string(), "missing field: bar");
+    }
 }

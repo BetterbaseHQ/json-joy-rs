@@ -681,4 +681,661 @@ mod tests {
         let rt = roundtrip(op);
         assert_eq!(rt.op_name(), "and");
     }
+
+    // ── Path encoding/decoding ──────────────────────────────────────────
+
+    #[test]
+    fn encode_path_empty() {
+        let v = to_json(&Op::Add {
+            path: vec![],
+            value: json!(1),
+        });
+        assert_eq!(v["path"], "");
+    }
+
+    #[test]
+    fn encode_path_with_tilde_and_slash() {
+        let op = Op::Add {
+            path: vec!["a/b".to_string(), "c~d".to_string()],
+            value: json!(1),
+        };
+        let v = to_json(&op);
+        // '/' -> '~1', '~' -> '~0'
+        assert_eq!(v["path"], "/a~1b/c~0d");
+    }
+
+    #[test]
+    fn decode_path_not_a_string() {
+        let v = json!({"op": "add", "path": 42, "value": 1});
+        let err = from_json(&v).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    // ── Error paths for from_json ───────────────────────────────────────
+
+    #[test]
+    fn from_json_not_object() {
+        let err = from_json(&json!("not an object")).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_missing_op_field() {
+        let err = from_json(&json!({"path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_unknown_op() {
+        let err = from_json(&json!({"op": "bogus"})).unwrap_err();
+        match err {
+            PatchError::InvalidOp(s) => assert!(s.contains("unknown op")),
+            _ => panic!("expected InvalidOp"),
+        }
+    }
+
+    #[test]
+    fn from_json_add_missing_value() {
+        let err = from_json(&json!({"op": "add", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_replace_missing_value() {
+        let err = from_json(&json!({"op": "replace", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_test_missing_value() {
+        let err = from_json(&json!({"op": "test", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_copy_missing_from() {
+        let err = from_json(&json!({"op": "copy", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_move_missing_from() {
+        let err = from_json(&json!({"op": "move", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_str_ins_missing_pos() {
+        let err = from_json(&json!({"op": "str_ins", "path": "/a", "str": "x"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_str_ins_missing_str() {
+        let err = from_json(&json!({"op": "str_ins", "path": "/a", "pos": 0})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_str_del_missing_pos() {
+        let err = from_json(&json!({"op": "str_del", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_inc_missing_inc() {
+        let err = from_json(&json!({"op": "inc", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_split_missing_pos() {
+        let err = from_json(&json!({"op": "split", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_merge_missing_pos() {
+        let err = from_json(&json!({"op": "merge", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_extend_missing_props() {
+        let err = from_json(&json!({"op": "extend", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_contains_missing_value() {
+        let err = from_json(&json!({"op": "contains", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_ends_missing_value() {
+        let err = from_json(&json!({"op": "ends", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_starts_missing_value() {
+        let err = from_json(&json!({"op": "starts", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_in_missing_value() {
+        let err = from_json(&json!({"op": "in", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_less_missing_value() {
+        let err = from_json(&json!({"op": "less", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_more_missing_value() {
+        let err = from_json(&json!({"op": "more", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_matches_missing_value() {
+        let err = from_json(&json!({"op": "matches", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_test_type_missing_type() {
+        let err = from_json(&json!({"op": "test_type", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_test_string_missing_fields() {
+        let err = from_json(&json!({"op": "test_string", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_test_string_len_missing_len() {
+        let err = from_json(&json!({"op": "test_string_len", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_type_missing_value() {
+        let err = from_json(&json!({"op": "type", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_and_missing_apply() {
+        let err = from_json(&json!({"op": "and", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_not_missing_apply() {
+        let err = from_json(&json!({"op": "not", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_or_missing_apply() {
+        let err = from_json(&json!({"op": "or", "path": "/a"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    // ── Roundtrip for all op types ──────────────────────────────────────
+
+    #[test]
+    fn roundtrip_copy() {
+        let op = Op::Copy {
+            path: vec!["a".to_string()],
+            from: vec!["b".to_string()],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "copy");
+    }
+
+    #[test]
+    fn roundtrip_move() {
+        let op = Op::Move {
+            path: vec!["a".to_string()],
+            from: vec!["b".to_string()],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "move");
+    }
+
+    #[test]
+    fn roundtrip_test_not() {
+        let op = Op::Test {
+            path: vec!["a".to_string()],
+            value: json!(42),
+            not: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["not"], true);
+        let rt = from_json(&v).unwrap();
+        match rt {
+            Op::Test { not, .. } => assert!(not),
+            _ => panic!("expected Test"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_test_no_not() {
+        let op = Op::Test {
+            path: vec!["a".to_string()],
+            value: json!(42),
+            not: false,
+        };
+        let v = to_json(&op);
+        assert!(v.get("not").is_none());
+    }
+
+    #[test]
+    fn roundtrip_str_ins() {
+        let op = Op::StrIns {
+            path: vec!["a".to_string()],
+            pos: 5,
+            str_val: "hello".to_string(),
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "str_ins");
+    }
+
+    #[test]
+    fn roundtrip_str_del_with_str_and_len() {
+        let op = Op::StrDel {
+            path: vec!["a".to_string()],
+            pos: 3,
+            str_val: Some("abc".to_string()),
+            len: Some(3),
+        };
+        let v = to_json(&op);
+        assert_eq!(v["str"], "abc");
+        assert_eq!(v["len"], 3);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "str_del");
+    }
+
+    #[test]
+    fn roundtrip_str_del_no_optional() {
+        let op = Op::StrDel {
+            path: vec!["a".to_string()],
+            pos: 0,
+            str_val: None,
+            len: None,
+        };
+        let v = to_json(&op);
+        assert!(v.get("str").is_none());
+        assert!(v.get("len").is_none());
+    }
+
+    #[test]
+    fn roundtrip_flip() {
+        let op = Op::Flip {
+            path: vec!["x".to_string()],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "flip");
+    }
+
+    #[test]
+    fn roundtrip_inc() {
+        let op = Op::Inc {
+            path: vec!["c".to_string()],
+            inc: 3.5,
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "inc");
+    }
+
+    #[test]
+    fn roundtrip_split_with_props() {
+        let op = Op::Split {
+            path: vec!["a".to_string()],
+            pos: 5,
+            props: Some(json!({"bold": true})),
+        };
+        let v = to_json(&op);
+        assert_eq!(v["props"]["bold"], true);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "split");
+    }
+
+    #[test]
+    fn roundtrip_split_no_props() {
+        let op = Op::Split {
+            path: vec!["a".to_string()],
+            pos: 5,
+            props: None,
+        };
+        let v = to_json(&op);
+        assert!(v.get("props").is_none());
+    }
+
+    #[test]
+    fn roundtrip_merge_with_props() {
+        let op = Op::Merge {
+            path: vec!["a".to_string()],
+            pos: 2,
+            props: Some(json!({"style": "italic"})),
+        };
+        let v = to_json(&op);
+        assert!(v.get("props").is_some());
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "merge");
+    }
+
+    #[test]
+    fn roundtrip_merge_no_props() {
+        let op = Op::Merge {
+            path: vec!["a".to_string()],
+            pos: 2,
+            props: None,
+        };
+        let v = to_json(&op);
+        assert!(v.get("props").is_none());
+    }
+
+    #[test]
+    fn roundtrip_extend_with_delete_null() {
+        let mut props = serde_json::Map::new();
+        props.insert("key".into(), json!("val"));
+        let op = Op::Extend {
+            path: vec!["a".to_string()],
+            props,
+            delete_null: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["deleteNull"], true);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "extend");
+    }
+
+    #[test]
+    fn roundtrip_extend_no_delete_null() {
+        let mut props = serde_json::Map::new();
+        props.insert("key".into(), json!("val"));
+        let op = Op::Extend {
+            path: vec!["a".to_string()],
+            props,
+            delete_null: false,
+        };
+        let v = to_json(&op);
+        assert!(v.get("deleteNull").is_none());
+    }
+
+    #[test]
+    fn roundtrip_defined() {
+        let rt = roundtrip(Op::Defined {
+            path: vec!["a".to_string()],
+        });
+        assert_eq!(rt.op_name(), "defined");
+    }
+
+    #[test]
+    fn roundtrip_undefined() {
+        let rt = roundtrip(Op::Undefined {
+            path: vec!["a".to_string()],
+        });
+        assert_eq!(rt.op_name(), "undefined");
+    }
+
+    #[test]
+    fn roundtrip_contains_ignore_case() {
+        let op = Op::Contains {
+            path: vec!["a".to_string()],
+            value: "test".to_string(),
+            ignore_case: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["ignore_case"], true);
+        let rt = from_json(&v).unwrap();
+        match rt {
+            Op::Contains { ignore_case, .. } => assert!(ignore_case),
+            _ => panic!("expected Contains"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_contains_case_sensitive() {
+        let op = Op::Contains {
+            path: vec![],
+            value: "x".to_string(),
+            ignore_case: false,
+        };
+        let v = to_json(&op);
+        assert!(v.get("ignore_case").is_none());
+    }
+
+    #[test]
+    fn roundtrip_ends_ignore_case() {
+        let op = Op::Ends {
+            path: vec![],
+            value: "xyz".to_string(),
+            ignore_case: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["ignore_case"], true);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "ends");
+    }
+
+    #[test]
+    fn roundtrip_starts_ignore_case() {
+        let op = Op::Starts {
+            path: vec![],
+            value: "abc".to_string(),
+            ignore_case: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["ignore_case"], true);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "starts");
+    }
+
+    #[test]
+    fn roundtrip_in() {
+        let op = Op::In {
+            path: vec!["x".to_string()],
+            value: vec![json!(1), json!(2)],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "in");
+    }
+
+    #[test]
+    fn roundtrip_less() {
+        let op = Op::Less {
+            path: vec![],
+            value: 42.0,
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "less");
+    }
+
+    #[test]
+    fn roundtrip_more() {
+        let op = Op::More {
+            path: vec![],
+            value: 99.0,
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "more");
+    }
+
+    #[test]
+    fn roundtrip_matches_ignore_case() {
+        let op = Op::Matches {
+            path: vec![],
+            value: "^abc$".to_string(),
+            ignore_case: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["ignore_case"], true);
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "matches");
+    }
+
+    #[test]
+    fn roundtrip_test_string() {
+        let op = Op::TestString {
+            path: vec!["a".to_string()],
+            pos: 3,
+            str_val: "abc".to_string(),
+            not: false,
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "test_string");
+    }
+
+    #[test]
+    fn roundtrip_test_string_with_not() {
+        let op = Op::TestString {
+            path: vec![],
+            pos: 0,
+            str_val: "x".to_string(),
+            not: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["not"], true);
+    }
+
+    #[test]
+    fn roundtrip_test_string_len() {
+        let op = Op::TestStringLen {
+            path: vec![],
+            len: 10,
+            not: false,
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "test_string_len");
+    }
+
+    #[test]
+    fn roundtrip_test_string_len_with_not() {
+        let op = Op::TestStringLen {
+            path: vec![],
+            len: 5,
+            not: true,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["not"], true);
+    }
+
+    #[test]
+    fn roundtrip_type() {
+        let op = Op::Type {
+            path: vec![],
+            value: JsonPatchType::Array,
+        };
+        let v = to_json(&op);
+        assert_eq!(v["value"], "array");
+        let rt = from_json(&v).unwrap();
+        assert_eq!(rt.op_name(), "type");
+    }
+
+    #[test]
+    fn roundtrip_not_predicate() {
+        let op = Op::Not {
+            path: vec![],
+            ops: vec![Op::Defined {
+                path: vec!["a".to_string()],
+            }],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "not");
+    }
+
+    #[test]
+    fn roundtrip_or_predicate() {
+        let op = Op::Or {
+            path: vec![],
+            ops: vec![Op::Less {
+                path: vec![],
+                value: 1.0,
+            }],
+        };
+        let rt = roundtrip(op);
+        assert_eq!(rt.op_name(), "or");
+    }
+
+    #[test]
+    fn roundtrip_remove_with_old_value() {
+        let op = Op::Remove {
+            path: vec!["a".to_string()],
+            old_value: Some(json!("old")),
+        };
+        let v = to_json(&op);
+        assert_eq!(v["oldValue"], "old");
+        let rt = from_json(&v).unwrap();
+        match rt {
+            Op::Remove { old_value, .. } => assert_eq!(old_value, Some(json!("old"))),
+            _ => panic!("expected Remove"),
+        }
+    }
+
+    // ── to_json_patch / from_json_patch ─────────────────────────────────
+
+    #[test]
+    fn to_json_patch_produces_array() {
+        let ops = vec![
+            Op::Add {
+                path: vec!["a".to_string()],
+                value: json!(1),
+            },
+            Op::Remove {
+                path: vec!["b".to_string()],
+                old_value: None,
+            },
+        ];
+        let v = to_json_patch(&ops);
+        assert!(v.is_array());
+        assert_eq!(v.as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn from_json_patch_not_array() {
+        let err = from_json_patch(&json!({"op": "add"})).unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_no_path_defaults_empty() {
+        let v = json!({"op": "flip"});
+        let op = from_json(&v).unwrap();
+        assert!(op.path().is_empty());
+    }
+
+    // ── decode_type error path ──────────────────────────────────────────
+
+    #[test]
+    fn from_json_test_type_invalid_type_string() {
+        let err = from_json(&json!({
+            "op": "test_type",
+            "path": "/a",
+            "type": ["bogus"]
+        }))
+        .unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
+
+    #[test]
+    fn from_json_type_invalid_value_type() {
+        let err = from_json(&json!({
+            "op": "type",
+            "path": "/a",
+            "value": 42
+        }))
+        .unwrap_err();
+        assert!(matches!(err, PatchError::InvalidOp(_)));
+    }
 }

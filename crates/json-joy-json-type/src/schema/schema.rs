@@ -340,3 +340,236 @@ impl Schema {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn schema_kind_returns_correct_strings() {
+        assert_eq!(Schema::Any(AnySchema::default()).kind(), "any");
+        assert_eq!(Schema::Bool(BoolSchema::default()).kind(), "bool");
+        assert_eq!(Schema::Num(NumSchema::default()).kind(), "num");
+        assert_eq!(Schema::Str(StrSchema::default()).kind(), "str");
+        assert_eq!(
+            Schema::Con(ConSchema {
+                base: SchemaBase::default(),
+                value: json!(42),
+            })
+            .kind(),
+            "con"
+        );
+        assert_eq!(Schema::Arr(ArrSchema::default()).kind(), "arr");
+        assert_eq!(Schema::Obj(ObjSchema::default()).kind(), "obj");
+        assert_eq!(
+            Schema::Key(KeySchema {
+                base: SchemaBase::default(),
+                key: "k".into(),
+                value: Box::new(Schema::Any(AnySchema::default())),
+                optional: None,
+            })
+            .kind(),
+            "key"
+        );
+        assert_eq!(
+            Schema::Map(MapSchema {
+                base: SchemaBase::default(),
+                key: None,
+                value: Box::new(Schema::Any(AnySchema::default())),
+            })
+            .kind(),
+            "map"
+        );
+        assert_eq!(
+            Schema::Ref(RefSchema {
+                base: SchemaBase::default(),
+                ref_: "Foo".into(),
+            })
+            .kind(),
+            "ref"
+        );
+        assert_eq!(
+            Schema::Or(OrSchema {
+                base: SchemaBase::default(),
+                types: vec![],
+                discriminator: json!(null),
+            })
+            .kind(),
+            "or"
+        );
+        assert_eq!(
+            Schema::Fn(FnSchema {
+                base: SchemaBase::default(),
+                req: Box::new(Schema::Any(AnySchema::default())),
+                res: Box::new(Schema::Any(AnySchema::default())),
+            })
+            .kind(),
+            "fn"
+        );
+        assert_eq!(
+            Schema::FnRx(FnRxSchema {
+                base: SchemaBase::default(),
+                req: Box::new(Schema::Any(AnySchema::default())),
+                res: Box::new(Schema::Any(AnySchema::default())),
+            })
+            .kind(),
+            "fn$"
+        );
+        assert_eq!(
+            Schema::Alias(AliasSchema {
+                base: SchemaBase::default(),
+                key: "A".into(),
+                value: Box::new(Schema::Any(AnySchema::default())),
+                optional: None,
+                pub_: None,
+            })
+            .kind(),
+            "key"
+        );
+        assert_eq!(Schema::Module(ModuleSchema::default()).kind(), "module");
+    }
+
+    #[test]
+    fn schema_base_returns_base_for_all_variants() {
+        let base = SchemaBase {
+            title: Some("test".into()),
+            ..Default::default()
+        };
+        let s = Schema::Any(AnySchema { base: base.clone() });
+        assert_eq!(s.base().title.as_deref(), Some("test"));
+
+        let s = Schema::Bool(BoolSchema { base: base.clone() });
+        assert_eq!(s.base().title.as_deref(), Some("test"));
+
+        let s = Schema::Num(NumSchema {
+            base: base.clone(),
+            ..Default::default()
+        });
+        assert_eq!(s.base().title.as_deref(), Some("test"));
+
+        let s = Schema::Str(StrSchema {
+            base: base.clone(),
+            ..Default::default()
+        });
+        assert_eq!(s.base().title.as_deref(), Some("test"));
+    }
+
+    #[test]
+    fn num_format_as_str() {
+        assert_eq!(NumFormat::I.as_str(), "i");
+        assert_eq!(NumFormat::U.as_str(), "u");
+        assert_eq!(NumFormat::F.as_str(), "f");
+        assert_eq!(NumFormat::I8.as_str(), "i8");
+        assert_eq!(NumFormat::I16.as_str(), "i16");
+        assert_eq!(NumFormat::I32.as_str(), "i32");
+        assert_eq!(NumFormat::I64.as_str(), "i64");
+        assert_eq!(NumFormat::U8.as_str(), "u8");
+        assert_eq!(NumFormat::U16.as_str(), "u16");
+        assert_eq!(NumFormat::U32.as_str(), "u32");
+        assert_eq!(NumFormat::U64.as_str(), "u64");
+        assert_eq!(NumFormat::F32.as_str(), "f32");
+        assert_eq!(NumFormat::F64.as_str(), "f64");
+    }
+
+    #[test]
+    fn num_format_is_integer() {
+        assert!(NumFormat::I.is_integer());
+        assert!(NumFormat::I8.is_integer());
+        assert!(NumFormat::U.is_integer());
+        assert!(NumFormat::U64.is_integer());
+        assert!(!NumFormat::F.is_integer());
+        assert!(!NumFormat::F32.is_integer());
+        assert!(!NumFormat::F64.is_integer());
+    }
+
+    #[test]
+    fn num_format_is_unsigned() {
+        assert!(NumFormat::U.is_unsigned());
+        assert!(NumFormat::U8.is_unsigned());
+        assert!(NumFormat::U16.is_unsigned());
+        assert!(NumFormat::U32.is_unsigned());
+        assert!(NumFormat::U64.is_unsigned());
+        assert!(!NumFormat::I.is_unsigned());
+        assert!(!NumFormat::F.is_unsigned());
+    }
+
+    #[test]
+    fn num_format_is_float() {
+        assert!(NumFormat::F.is_float());
+        assert!(NumFormat::F32.is_float());
+        assert!(NumFormat::F64.is_float());
+        assert!(!NumFormat::I.is_float());
+        assert!(!NumFormat::U.is_float());
+    }
+
+    #[test]
+    fn str_format_as_str() {
+        assert_eq!(StrFormat::Ascii.as_str(), "ascii");
+        assert_eq!(StrFormat::Utf8.as_str(), "utf8");
+    }
+
+    #[test]
+    fn bin_format_as_str() {
+        assert_eq!(BinFormat::Json.as_str(), "json");
+        assert_eq!(BinFormat::Cbor.as_str(), "cbor");
+        assert_eq!(BinFormat::Msgpack.as_str(), "msgpack");
+        assert_eq!(BinFormat::Resp3.as_str(), "resp3");
+        assert_eq!(BinFormat::Ion.as_str(), "ion");
+        assert_eq!(BinFormat::Bson.as_str(), "bson");
+        assert_eq!(BinFormat::Ubjson.as_str(), "ubjson");
+        assert_eq!(BinFormat::Bencode.as_str(), "bencode");
+    }
+
+    #[test]
+    fn schema_base_default_all_none() {
+        let base = SchemaBase::default();
+        assert!(base.title.is_none());
+        assert!(base.intro.is_none());
+        assert!(base.description.is_none());
+        assert!(base.meta.is_none());
+        assert!(base.default.is_none());
+        assert!(base.examples.is_empty());
+        assert!(base.deprecated.is_none());
+    }
+
+    #[test]
+    fn schema_example_holds_value() {
+        let ex = SchemaExample {
+            value: json!({"hello": "world"}),
+            title: Some("Example".into()),
+            intro: None,
+            description: Some("A simple object".into()),
+        };
+        assert_eq!(ex.value, json!({"hello": "world"}));
+        assert_eq!(ex.title.as_deref(), Some("Example"));
+        assert!(ex.intro.is_none());
+    }
+
+    #[test]
+    fn deprecated_holds_info() {
+        let d = Deprecated {
+            info: Some("Use v2 instead".into()),
+        };
+        assert_eq!(d.info.as_deref(), Some("Use v2 instead"));
+        let d2 = Deprecated { info: None };
+        assert!(d2.info.is_none());
+    }
+
+    #[test]
+    fn bin_schema_construction() {
+        let s = Schema::Bin(BinSchema {
+            base: SchemaBase::default(),
+            type_: Box::new(Schema::Any(AnySchema::default())),
+            format: Some(BinFormat::Json),
+            min: Some(0),
+            max: Some(1024),
+        });
+        assert_eq!(s.kind(), "bin");
+        if let Schema::Bin(bin) = &s {
+            assert_eq!(bin.format, Some(BinFormat::Json));
+            assert_eq!(bin.min, Some(0));
+            assert_eq!(bin.max, Some(1024));
+        }
+    }
+}

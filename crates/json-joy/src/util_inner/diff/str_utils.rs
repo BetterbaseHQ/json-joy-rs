@@ -241,4 +241,280 @@ mod tests {
         assert_eq!(src, "the cat sat on the mat");
         assert_eq!(dst, "the cat sat on the bat");
     }
+
+    // ── Helper to verify patch integrity ────────────────────────────────
+
+    fn assert_patch_reconstructs(src: &str, dst: &str, patch: &Patch) {
+        let reconstructed_src: String = patch
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Ins)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        let reconstructed_dst: String = patch
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Del)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(reconstructed_src, src, "source reconstruction failed");
+        assert_eq!(reconstructed_dst, dst, "destination reconstruction failed");
+    }
+
+    // ── semantic_score ──────────────────────────────────────────────────
+
+    #[test]
+    fn semantic_score_both_empty() {
+        assert_eq!(semantic_score("", ""), 6);
+    }
+
+    #[test]
+    fn semantic_score_one_empty() {
+        assert_eq!(semantic_score("abc", ""), 6);
+        assert_eq!(semantic_score("", "abc"), 6);
+    }
+
+    #[test]
+    fn semantic_score_both_alphanumeric() {
+        assert_eq!(semantic_score("abc", "def"), 0);
+    }
+
+    #[test]
+    fn semantic_score_non_alphanumeric_boundary() {
+        assert_eq!(semantic_score("abc.", "def"), 1);
+        assert_eq!(semantic_score("abc", ".def"), 1);
+    }
+
+    #[test]
+    fn semantic_score_whitespace_boundary() {
+        assert_eq!(semantic_score("abc ", "def"), 2);
+        assert_eq!(semantic_score("abc", " def"), 2);
+    }
+
+    #[test]
+    fn semantic_score_punctuation_then_whitespace() {
+        // non_alnum1 && !ws1 && ws2
+        assert_eq!(semantic_score("abc.", " def"), 3);
+    }
+
+    #[test]
+    fn semantic_score_line_break() {
+        assert_eq!(semantic_score("abc\n", "def"), 4);
+        assert_eq!(semantic_score("abc", "\ndef"), 4);
+    }
+
+    #[test]
+    fn semantic_score_blank_line() {
+        assert_eq!(semantic_score("abc\n\n", "def"), 5);
+        assert_eq!(semantic_score("abc", "\n\ndef"), 5);
+    }
+
+    #[test]
+    fn semantic_score_crlf_blank_line() {
+        assert_eq!(semantic_score("abc", "\r\n\r\ndef"), 5);
+    }
+
+    // ── cleanup_patch with identical strings ────────────────────────────
+
+    #[test]
+    fn cleanup_patch_identical() {
+        let mut p = diff("hello", "hello");
+        cleanup_patch(&mut p);
+        // Should just be one Eql
+        assert!(p.iter().all(|(t, _)| *t == PatchOpType::Eql));
+        assert_patch_reconstructs("hello", "hello", &p);
+    }
+
+    // ── cleanup_patch with empty strings ────────────────────────────────
+
+    #[test]
+    fn cleanup_patch_empty_to_nonempty() {
+        let mut p = diff("", "hello");
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs("", "hello", &p);
+    }
+
+    #[test]
+    fn cleanup_patch_nonempty_to_empty() {
+        let mut p = diff("hello", "");
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs("hello", "", &p);
+    }
+
+    // ── cleanup_patch overlap detection ─────────────────────────────────
+
+    #[test]
+    fn cleanup_patch_with_overlap() {
+        let mut p = diff("abcdef", "abxyzef");
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs("abcdef", "abxyzef", &p);
+    }
+
+    #[test]
+    fn cleanup_patch_word_boundary() {
+        let mut p = diff("The quick brown fox", "The slow brown fox");
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs("The quick brown fox", "The slow brown fox", &p);
+    }
+
+    #[test]
+    fn cleanup_patch_multiple_changes() {
+        let mut p = diff("alpha beta gamma", "alpha delta gamma");
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs("alpha beta gamma", "alpha delta gamma", &p);
+    }
+
+    // ── cleanup_semantic_lossless ───────────────────────────────────────
+
+    #[test]
+    fn cleanup_semantic_lossless_shifts_to_word_boundary() {
+        // Manually create a patch: Eql("The "), Del("c"), Eql("at sat")
+        // After lossless cleanup it should shift to a better boundary
+        let mut p: Patch = vec![
+            (PatchOpType::Eql, "The ".to_string()),
+            (PatchOpType::Del, "c".to_string()),
+            (PatchOpType::Eql, "at sat".to_string()),
+        ];
+        cleanup_semantic_lossless(&mut p);
+        // The patch should still reconstruct correctly
+        let src: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Ins)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(src, "The cat sat");
+    }
+
+    #[test]
+    fn cleanup_semantic_lossless_no_equalities() {
+        let mut p: Patch = vec![
+            (PatchOpType::Del, "abc".to_string()),
+            (PatchOpType::Ins, "xyz".to_string()),
+        ];
+        cleanup_semantic_lossless(&mut p);
+        // No equalities to shift around, patch stays the same
+        assert_eq!(p.len(), 2);
+    }
+
+    #[test]
+    fn cleanup_semantic_lossless_empty_equality_removed() {
+        // When lossless cleanup shifts text, empty equalities should be removed
+        let mut p: Patch = vec![
+            (PatchOpType::Eql, "a".to_string()),
+            (PatchOpType::Ins, "b".to_string()),
+            (PatchOpType::Eql, "cde".to_string()),
+        ];
+        cleanup_semantic_lossless(&mut p);
+        // Should still be valid
+        let dst: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Del)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(dst, "abcde");
+    }
+
+    // ── cleanup_patch with line-oriented content ────────────────────────
+
+    #[test]
+    fn cleanup_patch_line_changes() {
+        let src = "line1\nline2\nline3\n";
+        let dst = "line1\nmodified\nline3\n";
+        let mut p = diff(src, dst);
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs(src, dst, &p);
+    }
+
+    // ── cleanup_patch with large overlap ────────────────────────────────
+
+    #[test]
+    fn cleanup_patch_large_overlap_insertion() {
+        // Tests the ov1 >= ov2 branch with significant overlap
+        let mut p: Patch = vec![
+            (PatchOpType::Del, "abcxyz".to_string()),
+            (PatchOpType::Ins, "xyzdef".to_string()),
+        ];
+        cleanup_patch(&mut p);
+        let src: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Ins)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        let dst: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Del)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(src, "abcxyz");
+        assert_eq!(dst, "xyzdef");
+    }
+
+    #[test]
+    fn cleanup_patch_large_overlap_reverse() {
+        // Tests the ov2 > ov1 branch
+        let mut p: Patch = vec![
+            (PatchOpType::Del, "xyzabc".to_string()),
+            (PatchOpType::Ins, "defxyz".to_string()),
+        ];
+        cleanup_patch(&mut p);
+        let src: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Ins)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        let dst: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Del)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(src, "xyzabc");
+        assert_eq!(dst, "defxyz");
+    }
+
+    // ── cleanup_patch redundant equality elimination ────────────────────
+
+    #[test]
+    fn cleanup_patch_eliminates_small_equalities() {
+        // Small equality surrounded by larger diffs should be eliminated
+        let mut p: Patch = vec![
+            (PatchOpType::Del, "aaaa".to_string()),
+            (PatchOpType::Eql, "x".to_string()),
+            (PatchOpType::Del, "bbbb".to_string()),
+        ];
+        cleanup_patch(&mut p);
+        let src: String = p
+            .iter()
+            .filter(|(t, _)| *t != PatchOpType::Ins)
+            .map(|(_, s)| s.as_str())
+            .collect();
+        assert_eq!(src, "aaaaxbbbb");
+    }
+
+    // ── cleanup_patch recursion ─────────────────────────────────────────
+
+    #[test]
+    fn cleanup_patch_handles_recursion() {
+        // A case that triggers the recursive cleanup path
+        let src = "aXbXcXd";
+        let dst = "a1b2c3d";
+        let mut p = diff(src, dst);
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs(src, dst, &p);
+    }
+
+    // ── cleanup_patch unicode ───────────────────────────────────────────
+
+    #[test]
+    fn cleanup_patch_unicode() {
+        let src = "héllo wörld";
+        let dst = "héllo wörld!";
+        let mut p = diff(src, dst);
+        cleanup_patch(&mut p);
+        assert_patch_reconstructs(src, dst, &p);
+    }
+
+    #[test]
+    fn cleanup_patch_empty_both() {
+        let mut p = diff("", "");
+        cleanup_patch(&mut p);
+        assert!(p.is_empty() || p.iter().all(|(_, s)| s.is_empty()));
+    }
 }

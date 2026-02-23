@@ -598,3 +598,504 @@ impl AliasType {
         "alias"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::sync::Arc;
+
+    // -- AnyType --
+
+    #[test]
+    fn any_type_new_default() {
+        let t = AnyType::new();
+        assert_eq!(t.kind(), "any");
+        assert!(t.base.system.is_none());
+    }
+
+    #[test]
+    fn any_type_sys() {
+        let module = Arc::new(ModuleType::new());
+        let t = AnyType::new().sys(Some(module));
+        assert!(t.base.system.is_some());
+    }
+
+    #[test]
+    fn any_type_get_schema() {
+        let s = AnyType::new().get_schema();
+        assert_eq!(s.kind(), "any");
+    }
+
+    // -- BoolType --
+
+    #[test]
+    fn bool_type_new_default() {
+        let t = BoolType::new();
+        assert_eq!(t.kind(), "bool");
+    }
+
+    #[test]
+    fn bool_type_sys() {
+        let module = Arc::new(ModuleType::new());
+        let t = BoolType::new().sys(Some(module));
+        assert!(t.base.system.is_some());
+    }
+
+    #[test]
+    fn bool_type_get_schema() {
+        let s = BoolType::new().get_schema();
+        assert_eq!(s.kind(), "bool");
+    }
+
+    // -- NumType --
+
+    #[test]
+    fn num_type_new_default() {
+        let t = NumType::new();
+        assert_eq!(t.kind(), "num");
+        assert!(t.schema.format.is_none());
+    }
+
+    #[test]
+    fn num_type_format() {
+        let t = NumType::new().format(NumFormat::I32);
+        assert_eq!(t.schema.format, Some(NumFormat::I32));
+    }
+
+    #[test]
+    fn num_type_gt() {
+        let t = NumType::new().gt(5.0);
+        assert_eq!(t.schema.gt, Some(5.0));
+    }
+
+    #[test]
+    fn num_type_gte() {
+        let t = NumType::new().gte(5.0);
+        assert_eq!(t.schema.gte, Some(5.0));
+    }
+
+    #[test]
+    fn num_type_lt() {
+        let t = NumType::new().lt(10.0);
+        assert_eq!(t.schema.lt, Some(10.0));
+    }
+
+    #[test]
+    fn num_type_lte() {
+        let t = NumType::new().lte(10.0);
+        assert_eq!(t.schema.lte, Some(10.0));
+    }
+
+    #[test]
+    fn num_type_get_schema() {
+        let t = NumType::new().format(NumFormat::F64).gt(0.0);
+        let s = t.get_schema();
+        if let Schema::Num(num) = &s {
+            assert_eq!(num.format, Some(NumFormat::F64));
+            assert_eq!(num.gt, Some(0.0));
+        } else {
+            panic!("Expected Num");
+        }
+    }
+
+    // -- StrType --
+
+    #[test]
+    fn str_type_new_default() {
+        let t = StrType::new();
+        assert_eq!(t.kind(), "str");
+    }
+
+    #[test]
+    fn str_type_format() {
+        let t = StrType::new().format(StrFormat::Ascii);
+        assert_eq!(t.schema.format, Some(StrFormat::Ascii));
+    }
+
+    #[test]
+    fn str_type_min_max() {
+        let t = StrType::new().min(1).max(100);
+        assert_eq!(t.schema.min, Some(1));
+        assert_eq!(t.schema.max, Some(100));
+    }
+
+    #[test]
+    fn str_type_ascii() {
+        let t = StrType::new().ascii(true);
+        assert_eq!(t.schema.ascii, Some(true));
+    }
+
+    #[test]
+    fn str_type_get_schema() {
+        let t = StrType::new().min(5).max(50);
+        let s = t.get_schema();
+        if let Schema::Str(str_s) = &s {
+            assert_eq!(str_s.min, Some(5));
+            assert_eq!(str_s.max, Some(50));
+        } else {
+            panic!("Expected Str");
+        }
+    }
+
+    // -- BinType --
+
+    #[test]
+    fn bin_type_new() {
+        let inner = super::super::TypeNode::Any(AnyType::new());
+        let t = BinType::new(inner);
+        assert_eq!(t.kind(), "bin");
+    }
+
+    #[test]
+    fn bin_type_min_max() {
+        let inner = super::super::TypeNode::Any(AnyType::new());
+        let t = BinType::new(inner).min(0).max(1024);
+        assert_eq!(t.schema.min, Some(0));
+        assert_eq!(t.schema.max, Some(1024));
+    }
+
+    #[test]
+    fn bin_type_get_schema() {
+        let inner = super::super::TypeNode::Any(AnyType::new());
+        let t = BinType::new(inner);
+        let s = t.get_schema();
+        assert_eq!(s.kind(), "bin");
+    }
+
+    // -- ConType --
+
+    #[test]
+    fn con_type_new() {
+        let t = ConType::new(json!(42));
+        assert_eq!(t.kind(), "con");
+        assert_eq!(t.value, json!(42));
+    }
+
+    #[test]
+    fn con_type_literal() {
+        let t = ConType::new(json!("hello"));
+        assert_eq!(t.literal(), &json!("hello"));
+    }
+
+    #[test]
+    fn con_type_get_schema() {
+        let t = ConType::new(json!(true));
+        let s = t.get_schema();
+        if let Schema::Con(con) = &s {
+            assert_eq!(con.value, json!(true));
+        } else {
+            panic!("Expected Con");
+        }
+    }
+
+    // -- ArrType --
+
+    #[test]
+    fn arr_type_new() {
+        let inner = super::super::TypeNode::Num(NumType::new());
+        let t = ArrType::new(Some(inner), vec![], vec![]);
+        assert_eq!(t.kind(), "arr");
+    }
+
+    #[test]
+    fn arr_type_min_max() {
+        let inner = super::super::TypeNode::Num(NumType::new());
+        let t = ArrType::new(Some(inner), vec![], vec![]).min(1).max(10);
+        assert_eq!(t.schema.min, Some(1));
+        assert_eq!(t.schema.max, Some(10));
+    }
+
+    #[test]
+    fn arr_type_get_schema_with_head_and_tail() {
+        let head = vec![super::super::TypeNode::Str(StrType::new())];
+        let inner = super::super::TypeNode::Num(NumType::new());
+        let tail = vec![super::super::TypeNode::Bool(BoolType::new())];
+        let t = ArrType::new(Some(inner), head, tail);
+        let s = t.get_schema();
+        if let Schema::Arr(arr) = &s {
+            assert!(arr.head.is_some());
+            assert!(arr.type_.is_some());
+            assert!(arr.tail.is_some());
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    #[test]
+    fn arr_type_get_schema_no_head_tail() {
+        let t = ArrType::new(None, vec![], vec![]);
+        let s = t.get_schema();
+        if let Schema::Arr(arr) = &s {
+            assert!(arr.head.is_none());
+            assert!(arr.type_.is_none());
+            assert!(arr.tail.is_none());
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    // -- KeyType --
+
+    #[test]
+    fn key_type_new_required() {
+        let val = super::super::TypeNode::Str(StrType::new());
+        let k = KeyType::new("name", val);
+        assert_eq!(k.key, "name");
+        assert!(!k.optional);
+        assert_eq!(k.kind(), "key");
+    }
+
+    #[test]
+    fn key_type_new_opt() {
+        let val = super::super::TypeNode::Str(StrType::new());
+        let k = KeyType::new_opt("age", val);
+        assert_eq!(k.key, "age");
+        assert!(k.optional);
+    }
+
+    #[test]
+    fn key_type_get_schema_required() {
+        let val = super::super::TypeNode::Num(NumType::new());
+        let k = KeyType::new("count", val);
+        let s = k.get_schema();
+        if let Schema::Key(key) = &s {
+            assert_eq!(key.key, "count");
+            assert!(key.optional.is_none());
+        } else {
+            panic!("Expected Key");
+        }
+    }
+
+    #[test]
+    fn key_type_get_schema_optional() {
+        let val = super::super::TypeNode::Num(NumType::new());
+        let k = KeyType::new_opt("count", val);
+        let s = k.get_schema();
+        if let Schema::Key(key) = &s {
+            assert_eq!(key.optional, Some(true));
+        } else {
+            panic!("Expected Key");
+        }
+    }
+
+    // -- ObjType --
+
+    #[test]
+    fn obj_type_new_empty() {
+        let t = ObjType::new(vec![]);
+        assert_eq!(t.kind(), "obj");
+        assert!(t.keys.is_empty());
+    }
+
+    #[test]
+    fn obj_type_prop() {
+        let t = ObjType::new(vec![]).prop("name", super::super::TypeNode::Str(StrType::new()));
+        assert_eq!(t.keys.len(), 1);
+        assert_eq!(t.keys[0].key, "name");
+        assert!(!t.keys[0].optional);
+    }
+
+    #[test]
+    fn obj_type_opt() {
+        let t = ObjType::new(vec![]).opt("age", super::super::TypeNode::Num(NumType::new()));
+        assert_eq!(t.keys.len(), 1);
+        assert!(t.keys[0].optional);
+    }
+
+    #[test]
+    fn obj_type_extend() {
+        let base = ObjType::new(vec![KeyType::new(
+            "id",
+            super::super::TypeNode::Num(NumType::new()),
+        )]);
+        let child = ObjType::new(vec![KeyType::new(
+            "name",
+            super::super::TypeNode::Str(StrType::new()),
+        )])
+        .extend(base);
+        assert_eq!(child.keys.len(), 2);
+    }
+
+    #[test]
+    fn obj_type_omit() {
+        let t = ObjType::new(vec![
+            KeyType::new("a", super::super::TypeNode::Str(StrType::new())),
+            KeyType::new("b", super::super::TypeNode::Num(NumType::new())),
+        ])
+        .omit("a");
+        assert_eq!(t.keys.len(), 1);
+        assert_eq!(t.keys[0].key, "b");
+    }
+
+    #[test]
+    fn obj_type_get_field() {
+        let t = ObjType::new(vec![KeyType::new(
+            "name",
+            super::super::TypeNode::Str(StrType::new()),
+        )]);
+        assert!(t.get_field("name").is_some());
+        assert!(t.get_field("missing").is_none());
+    }
+
+    #[test]
+    fn obj_type_get_schema() {
+        let t = ObjType::new(vec![KeyType::new(
+            "x",
+            super::super::TypeNode::Num(NumType::new()),
+        )]);
+        let s = t.get_schema();
+        if let Schema::Obj(obj) = &s {
+            assert_eq!(obj.keys.len(), 1);
+            assert_eq!(obj.keys[0].key, "x");
+        } else {
+            panic!("Expected Obj");
+        }
+    }
+
+    // -- MapType --
+
+    #[test]
+    fn map_type_new() {
+        let val = super::super::TypeNode::Num(NumType::new());
+        let t = MapType::new(val, None);
+        assert_eq!(t.kind(), "map");
+        assert!(t.key.is_none());
+    }
+
+    #[test]
+    fn map_type_with_key() {
+        let val = super::super::TypeNode::Num(NumType::new());
+        let key = super::super::TypeNode::Str(StrType::new());
+        let t = MapType::new(val, Some(key));
+        assert!(t.key.is_some());
+    }
+
+    #[test]
+    fn map_type_get_schema() {
+        let val = super::super::TypeNode::Any(AnyType::new());
+        let t = MapType::new(val, None);
+        let s = t.get_schema();
+        if let Schema::Map(map) = &s {
+            assert!(map.key.is_none());
+        } else {
+            panic!("Expected Map");
+        }
+    }
+
+    // -- RefType --
+
+    #[test]
+    fn ref_type_new() {
+        let t = RefType::new("MyType");
+        assert_eq!(t.kind(), "ref");
+        assert_eq!(t.ref_name(), "MyType");
+    }
+
+    #[test]
+    fn ref_type_get_schema() {
+        let t = RefType::new("Foo");
+        let s = t.get_schema();
+        if let Schema::Ref(r) = &s {
+            assert_eq!(r.ref_, "Foo");
+        } else {
+            panic!("Expected Ref");
+        }
+    }
+
+    // -- OrType --
+
+    #[test]
+    fn or_type_new() {
+        let types = vec![
+            super::super::TypeNode::Str(StrType::new()),
+            super::super::TypeNode::Num(NumType::new()),
+        ];
+        let t = OrType::new(types);
+        assert_eq!(t.kind(), "or");
+        assert_eq!(t.types.len(), 2);
+    }
+
+    #[test]
+    fn or_type_get_schema() {
+        let types = vec![super::super::TypeNode::Str(StrType::new())];
+        let t = OrType::new(types);
+        let s = t.get_schema();
+        if let Schema::Or(or) = &s {
+            assert_eq!(or.types.len(), 1);
+        } else {
+            panic!("Expected Or");
+        }
+    }
+
+    // -- FnType --
+
+    #[test]
+    fn fn_type_new() {
+        let req = super::super::TypeNode::Str(StrType::new());
+        let res = super::super::TypeNode::Num(NumType::new());
+        let t = FnType::new(req, res);
+        assert_eq!(t.kind(), "fn");
+    }
+
+    #[test]
+    fn fn_type_get_schema() {
+        let req = super::super::TypeNode::Any(AnyType::new());
+        let res = super::super::TypeNode::Bool(BoolType::new());
+        let t = FnType::new(req, res);
+        let s = t.get_schema();
+        if let Schema::Fn(f) = &s {
+            assert_eq!(f.req.kind(), "any");
+            assert_eq!(f.res.kind(), "bool");
+        } else {
+            panic!("Expected Fn");
+        }
+    }
+
+    // -- FnRxType --
+
+    #[test]
+    fn fn_rx_type_new() {
+        let req = super::super::TypeNode::Str(StrType::new());
+        let res = super::super::TypeNode::Num(NumType::new());
+        let t = FnRxType::new(req, res);
+        assert_eq!(t.kind(), "fn$");
+    }
+
+    #[test]
+    fn fn_rx_type_get_schema() {
+        let req = super::super::TypeNode::Any(AnyType::new());
+        let res = super::super::TypeNode::Any(AnyType::new());
+        let t = FnRxType::new(req, res);
+        let s = t.get_schema();
+        assert_eq!(s.kind(), "fn$");
+    }
+
+    // -- AliasType --
+
+    #[test]
+    fn alias_type_new() {
+        let system = Arc::new(ModuleType::new());
+        let inner = super::super::TypeNode::Str(StrType::new());
+        let t = AliasType::new(system, "MyAlias", inner);
+        assert_eq!(t.kind(), "alias");
+        assert_eq!(t.id, "MyAlias");
+    }
+
+    #[test]
+    fn alias_type_get_type() {
+        let system = Arc::new(ModuleType::new());
+        let inner = super::super::TypeNode::Num(NumType::new());
+        let t = AliasType::new(system, "NumAlias", inner);
+        assert_eq!(t.get_type().kind(), "num");
+    }
+
+    #[test]
+    fn alias_type_get_schema() {
+        let system = Arc::new(ModuleType::new());
+        let inner = super::super::TypeNode::Bool(BoolType::new());
+        let t = AliasType::new(system, "BoolAlias", inner);
+        let s = t.get_schema();
+        assert_eq!(s.kind(), "bool");
+    }
+}

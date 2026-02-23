@@ -296,4 +296,236 @@ mod tests {
         let buf = reader.buf(3);
         assert_eq!(buf, vec![1, 2, 3]);
     }
+
+    #[test]
+    fn test_default() {
+        let reader = StreamingReader::default();
+        assert_eq!(reader.size(), 0);
+    }
+
+    #[test]
+    fn test_with_alloc_size() {
+        let mut reader = StreamingReader::with_alloc_size(64);
+        reader.push(&[10, 20]);
+        assert_eq!(reader.u8(), 10);
+        assert_eq!(reader.u8(), 20);
+    }
+
+    #[test]
+    fn test_size_tracks_remaining() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1, 2, 3, 4, 5]);
+        assert_eq!(reader.size(), 5);
+        reader.u8();
+        assert_eq!(reader.size(), 4);
+        reader.skip(2);
+        assert_eq!(reader.size(), 2);
+    }
+
+    #[test]
+    fn test_i8() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0xff]); // -1 as i8
+        assert_eq!(reader.i8(), -1);
+    }
+
+    #[test]
+    fn test_u16_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0x01, 0x00]);
+        assert_eq!(reader.u16(), 256);
+    }
+
+    #[test]
+    fn test_i16_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0xff, 0xfe]); // -2 in big-endian i16
+        assert_eq!(reader.i16(), -2);
+    }
+
+    #[test]
+    fn test_u32_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0x00, 0x01, 0x00, 0x00]);
+        assert_eq!(reader.u32(), 0x10000);
+    }
+
+    #[test]
+    fn test_i32_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0xff, 0xff, 0xff, 0xff]); // -1
+        assert_eq!(reader.i32(), -1);
+    }
+
+    #[test]
+    fn test_u64_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00]);
+        assert_eq!(reader.u64(), 256);
+    }
+
+    #[test]
+    fn test_i64_big_endian() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe]); // -2
+        assert_eq!(reader.i64(), -2);
+    }
+
+    #[test]
+    fn test_f32_big_endian() {
+        let mut reader = StreamingReader::new();
+        let bytes = 1.5f32.to_be_bytes();
+        reader.push(&bytes);
+        assert_eq!(reader.f32(), 1.5);
+    }
+
+    #[test]
+    fn test_f64_big_endian() {
+        let mut reader = StreamingReader::new();
+        let bytes = 1.5f64.to_be_bytes();
+        reader.push(&bytes);
+        assert_eq!(reader.f64(), 1.5);
+    }
+
+    #[test]
+    fn test_utf8() {
+        let mut reader = StreamingReader::new();
+        reader.push(b"hello world");
+        let s = reader.utf8(5);
+        assert_eq!(s, "hello");
+    }
+
+    #[test]
+    fn test_ascii() {
+        let mut reader = StreamingReader::new();
+        reader.push(b"test");
+        let s = reader.ascii(4);
+        assert_eq!(s, "test");
+    }
+
+    #[test]
+    fn test_cut() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40]);
+        let data = reader.cut(2);
+        assert_eq!(data, vec![10, 20]);
+        assert_eq!(reader.size(), 2);
+    }
+
+    #[test]
+    fn test_consume_and_x() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1, 2, 3, 4]);
+        let x_before = reader.x();
+        reader.u8();
+        reader.u8();
+        reader.consume();
+        // After consume, x0 advanced, dx reset
+        assert_eq!(reader.size(), 2);
+        // x() should still be consistent
+        let _ = reader.u8();
+        assert_eq!(reader.size(), 1);
+        let _ = x_before; // suppress unused warning
+    }
+
+    #[test]
+    fn test_set_x() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40]);
+        reader.u8(); // advance to position 1
+        let x = reader.x();
+        reader.u8(); // advance to position 2
+        reader.set_x(x); // go back
+        assert_eq!(reader.u8(), 20);
+    }
+
+    #[test]
+    fn test_subarray() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40, 50]);
+        let sub = reader.subarray(1, Some(3));
+        assert_eq!(sub, &[20, 30]);
+    }
+
+    #[test]
+    fn test_subarray_no_end() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40, 50]);
+        // When end is None, uses (size - start) bytes from offset start
+        // size=5, start=0 => 5 bytes from offset 0 = all
+        let sub = reader.subarray(0, None);
+        assert_eq!(sub, &[10, 20, 30, 40, 50]);
+    }
+
+    #[test]
+    fn test_slice() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40, 50]);
+        let slice_reader = reader.slice(1, Some(3));
+        // The slice reader should cover bytes 20, 30
+        assert_eq!(slice_reader.size(), 2);
+    }
+
+    #[test]
+    fn test_slice_no_end() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[10, 20, 30, 40, 50]);
+        // When end is None, uses (size - start) bytes from offset start
+        let slice_reader = reader.slice(0, None);
+        assert_eq!(slice_reader.size(), 5);
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1, 2, 3]);
+        reader.u8();
+        reader.reset(&[10, 20]);
+        assert_eq!(reader.size(), 2);
+        assert_eq!(reader.u8(), 10);
+    }
+
+    #[test]
+    fn test_multiple_pushes() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1, 2]);
+        reader.push(&[3, 4]);
+        assert_eq!(reader.size(), 4);
+        assert_eq!(reader.u8(), 1);
+        assert_eq!(reader.u8(), 2);
+        assert_eq!(reader.u8(), 3);
+        assert_eq!(reader.u8(), 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "OUT_OF_BOUNDS")]
+    fn test_u8_out_of_bounds() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1]);
+        reader.u8();
+        reader.u8(); // should panic
+    }
+
+    #[test]
+    #[should_panic(expected = "OUT_OF_BOUNDS")]
+    fn test_peek_empty() {
+        let reader = StreamingReader::new();
+        reader.peek();
+    }
+
+    #[test]
+    #[should_panic(expected = "OUT_OF_BOUNDS")]
+    fn test_skip_out_of_bounds() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1, 2]);
+        reader.skip(3);
+    }
+
+    #[test]
+    #[should_panic(expected = "OUT_OF_BOUNDS")]
+    fn test_buf_out_of_bounds() {
+        let mut reader = StreamingReader::new();
+        reader.push(&[1]);
+        reader.buf(5);
+    }
 }

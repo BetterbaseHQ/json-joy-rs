@@ -333,3 +333,480 @@ fn str_header_length(size: usize) -> usize {
 fn cmp_obj_key(a: &str, b: &str) -> std::cmp::Ordering {
     a.len().cmp(&b.len()).then_with(|| a.cmp(b))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::PackValue;
+
+    fn enc(value: &PackValue) -> Vec<u8> {
+        let mut encoder = CborEncoderStable::new();
+        encoder.encode(value)
+    }
+
+    // --- str_header_length ---
+
+    #[test]
+    fn test_str_header_length_tiny() {
+        assert_eq!(str_header_length(0), 1);
+        assert_eq!(str_header_length(23), 1);
+    }
+
+    #[test]
+    fn test_str_header_length_u8() {
+        assert_eq!(str_header_length(24), 2);
+        assert_eq!(str_header_length(255), 2);
+    }
+
+    #[test]
+    fn test_str_header_length_u16() {
+        assert_eq!(str_header_length(256), 3);
+        assert_eq!(str_header_length(0xffff), 3);
+    }
+
+    #[test]
+    fn test_str_header_length_u32() {
+        assert_eq!(str_header_length(0x10000), 5);
+    }
+
+    // --- cmp_obj_key ---
+
+    #[test]
+    fn test_cmp_obj_key_shorter_first() {
+        assert_eq!(cmp_obj_key("a", "bb"), std::cmp::Ordering::Less);
+    }
+
+    #[test]
+    fn test_cmp_obj_key_same_length_lexicographic() {
+        assert_eq!(cmp_obj_key("ab", "ba"), std::cmp::Ordering::Less);
+        assert_eq!(cmp_obj_key("ba", "ab"), std::cmp::Ordering::Greater);
+    }
+
+    #[test]
+    fn test_cmp_obj_key_equal() {
+        assert_eq!(cmp_obj_key("abc", "abc"), std::cmp::Ordering::Equal);
+    }
+
+    // --- write_null ---
+
+    #[test]
+    fn test_encode_null() {
+        assert_eq!(enc(&PackValue::Null), vec![0xf6]);
+    }
+
+    #[test]
+    fn test_encode_undefined_maps_to_null() {
+        assert_eq!(enc(&PackValue::Undefined), vec![0xf6]);
+    }
+
+    // --- write_boolean ---
+
+    #[test]
+    fn test_encode_true() {
+        assert_eq!(enc(&PackValue::Bool(true)), vec![0xf5]);
+    }
+
+    #[test]
+    fn test_encode_false() {
+        assert_eq!(enc(&PackValue::Bool(false)), vec![0xf4]);
+    }
+
+    // --- write_u_integer (all size classes) ---
+
+    #[test]
+    fn test_encode_uint_tiny() {
+        assert_eq!(enc(&PackValue::UInteger(0)), vec![0x00]);
+        assert_eq!(enc(&PackValue::UInteger(23)), vec![0x17]);
+    }
+
+    #[test]
+    fn test_encode_uint_u8() {
+        assert_eq!(enc(&PackValue::UInteger(24)), vec![0x18, 24]);
+        assert_eq!(enc(&PackValue::UInteger(255)), vec![0x18, 0xff]);
+    }
+
+    #[test]
+    fn test_encode_uint_u16() {
+        assert_eq!(enc(&PackValue::UInteger(256)), vec![0x19, 0x01, 0x00]);
+        assert_eq!(enc(&PackValue::UInteger(0xffff)), vec![0x19, 0xff, 0xff]);
+    }
+
+    #[test]
+    fn test_encode_uint_u32() {
+        assert_eq!(
+            enc(&PackValue::UInteger(0x10000)),
+            vec![0x1a, 0x00, 0x01, 0x00, 0x00]
+        );
+        assert_eq!(
+            enc(&PackValue::UInteger(0xffffffff)),
+            vec![0x1a, 0xff, 0xff, 0xff, 0xff]
+        );
+    }
+
+    #[test]
+    fn test_encode_uint_u64() {
+        assert_eq!(
+            enc(&PackValue::UInteger(0x100000000)),
+            vec![0x1b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]
+        );
+    }
+
+    // --- encode_nint (negative integers, all size classes) ---
+
+    #[test]
+    fn test_encode_nint_tiny() {
+        // -1 => uint=0 => 0x20
+        assert_eq!(enc(&PackValue::Integer(-1)), vec![0x20]);
+        // -24 => uint=23 => 0x37
+        assert_eq!(enc(&PackValue::Integer(-24)), vec![0x37]);
+    }
+
+    #[test]
+    fn test_encode_nint_u8() {
+        // -25 => uint=24
+        assert_eq!(enc(&PackValue::Integer(-25)), vec![0x38, 24]);
+        // -256 => uint=255
+        assert_eq!(enc(&PackValue::Integer(-256)), vec![0x38, 0xff]);
+    }
+
+    #[test]
+    fn test_encode_nint_u16() {
+        // -257 => uint=256
+        assert_eq!(enc(&PackValue::Integer(-257)), vec![0x39, 0x01, 0x00]);
+    }
+
+    #[test]
+    fn test_encode_nint_u32() {
+        // -(0x10000 + 1) => uint=0x10000
+        assert_eq!(
+            enc(&PackValue::Integer(-0x10001)),
+            vec![0x3a, 0x00, 0x01, 0x00, 0x00]
+        );
+    }
+
+    #[test]
+    fn test_encode_nint_u64() {
+        // -(0x100000000 + 1) => uint=0x100000000
+        assert_eq!(
+            enc(&PackValue::Integer(-0x100000001)),
+            vec![0x3b, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]
+        );
+    }
+
+    // --- write_integer positive path ---
+
+    #[test]
+    fn test_encode_positive_integer_uses_uint_path() {
+        assert_eq!(enc(&PackValue::Integer(42)), vec![0x18, 42]);
+    }
+
+    // --- write_big_int ---
+
+    #[test]
+    fn test_encode_big_int_small_positive() {
+        assert_eq!(enc(&PackValue::BigInt(10)), vec![0x0a]);
+    }
+
+    #[test]
+    fn test_encode_big_int_large_positive_clamps() {
+        // value > u64::MAX => clamped to u64::MAX
+        let large = u64::MAX as i128 + 1;
+        let result = enc(&PackValue::BigInt(large));
+        assert_eq!(result[0], 0x1b);
+    }
+
+    #[test]
+    fn test_encode_big_int_negative_fits_i64() {
+        let result = enc(&PackValue::BigInt(-100));
+        // -100 => uint=99 => 0x38, 99
+        assert_eq!(result, vec![0x38, 99]);
+    }
+
+    #[test]
+    fn test_encode_big_int_very_negative() {
+        // smaller than i64::MIN
+        let val = i64::MIN as i128 - 1;
+        let result = enc(&PackValue::BigInt(val));
+        assert_eq!(result[0], 0x3b);
+    }
+
+    // --- write_float ---
+
+    #[test]
+    fn test_encode_float32_representable() {
+        // 1.5 can be losslessly represented as f32
+        let result = enc(&PackValue::Float(1.5));
+        assert_eq!(result[0], 0xfa);
+        assert_eq!(result.len(), 5);
+    }
+
+    #[test]
+    fn test_encode_float64_needed() {
+        // 1.1 cannot be losslessly f32
+        let result = enc(&PackValue::Float(1.1));
+        assert_eq!(result[0], 0xfb);
+        assert_eq!(result.len(), 9);
+    }
+
+    // --- write_bin ---
+
+    #[test]
+    fn test_encode_bin_tiny() {
+        let result = enc(&PackValue::Bytes(vec![0xaa, 0xbb]));
+        // header: OVERLAY_BIN | 2 = 0x42, then data
+        assert_eq!(result, vec![0x42, 0xaa, 0xbb]);
+    }
+
+    #[test]
+    fn test_encode_bin_empty() {
+        let result = enc(&PackValue::Bytes(vec![]));
+        assert_eq!(result, vec![0x40]);
+    }
+
+    #[test]
+    fn test_encode_bin_u8_length() {
+        let data = vec![0u8; 24];
+        let result = enc(&PackValue::Bytes(data.clone()));
+        assert_eq!(result[0], 0x58);
+        assert_eq!(result[1], 24);
+        assert_eq!(result.len(), 2 + 24);
+    }
+
+    #[test]
+    fn test_encode_bin_u16_length() {
+        let data = vec![0u8; 256];
+        let result = enc(&PackValue::Bytes(data));
+        assert_eq!(result[0], 0x59);
+        assert_eq!(result.len(), 3 + 256);
+    }
+
+    // --- write_str ---
+
+    #[test]
+    fn test_encode_str_tiny() {
+        let result = enc(&PackValue::Str("hi".into()));
+        assert_eq!(result, vec![0x62, b'h', b'i']);
+    }
+
+    #[test]
+    fn test_encode_str_empty() {
+        let result = enc(&PackValue::Str(String::new()));
+        assert_eq!(result, vec![0x60]);
+    }
+
+    #[test]
+    fn test_encode_str_u8_length() {
+        let s = "a".repeat(24);
+        let result = enc(&PackValue::Str(s));
+        assert_eq!(result[0], 0x78);
+        assert_eq!(result[1], 24);
+    }
+
+    #[test]
+    fn test_encode_str_u16_length() {
+        let s = "a".repeat(256);
+        let result = enc(&PackValue::Str(s));
+        assert_eq!(result[0], 0x79);
+        assert_eq!(result[1..3], [0x01, 0x00]);
+    }
+
+    // --- write_arr ---
+
+    #[test]
+    fn test_encode_array_empty() {
+        let result = enc(&PackValue::Array(vec![]));
+        assert_eq!(result, vec![0x80]);
+    }
+
+    #[test]
+    fn test_encode_array_with_items() {
+        let result = enc(&PackValue::Array(vec![
+            PackValue::Null,
+            PackValue::Bool(true),
+        ]));
+        assert_eq!(result, vec![0x82, 0xf6, 0xf5]);
+    }
+
+    #[test]
+    fn test_encode_arr_hdr_u8() {
+        let arr: Vec<PackValue> = (0..24).map(|_| PackValue::Null).collect();
+        let result = enc(&PackValue::Array(arr));
+        assert_eq!(result[0], 0x98);
+        assert_eq!(result[1], 24);
+    }
+
+    // --- write_obj (sorted keys) ---
+
+    #[test]
+    fn test_encode_object_empty() {
+        let result = enc(&PackValue::Object(vec![]));
+        assert_eq!(result, vec![0xa0]);
+    }
+
+    #[test]
+    fn test_encode_object_sorts_keys() {
+        let obj = PackValue::Object(vec![
+            ("bb".into(), PackValue::Integer(2)),
+            ("a".into(), PackValue::Integer(1)),
+        ]);
+        let result = enc(&obj);
+        // Sorted: "a" (len 1) before "bb" (len 2)
+        // map(2) = 0xa2
+        // str "a" = 0x61 0x61
+        // int 1 = 0x01
+        // str "bb" = 0x62 0x62 0x62
+        // int 2 = 0x02
+        assert_eq!(result[0], 0xa2);
+        // first key is "a"
+        assert_eq!(result[1], 0x61);
+        assert_eq!(result[2], b'a');
+    }
+
+    #[test]
+    fn test_encode_object_hdr_u8() {
+        let obj: Vec<(String, PackValue)> = (0..24)
+            .map(|i| (format!("k{i:02}"), PackValue::Null))
+            .collect();
+        let result = enc(&PackValue::Object(obj));
+        assert_eq!(result[0], 0xb8);
+        assert_eq!(result[1], 24);
+    }
+
+    // --- write_tag ---
+
+    #[test]
+    fn test_encode_tag_tiny() {
+        let ext = crate::JsonPackExtension::new(1, PackValue::Str("test".into()));
+        let result = enc(&PackValue::Extension(Box::new(ext)));
+        assert_eq!(result[0], 0xc1); // OVERLAY_TAG | 1
+    }
+
+    #[test]
+    fn test_encode_tag_u8() {
+        let ext = crate::JsonPackExtension::new(24, PackValue::Null);
+        let result = enc(&PackValue::Extension(Box::new(ext)));
+        assert_eq!(result[0], 0xd8);
+        assert_eq!(result[1], 24);
+    }
+
+    #[test]
+    fn test_encode_tag_u16() {
+        let ext = crate::JsonPackExtension::new(256, PackValue::Null);
+        let result = enc(&PackValue::Extension(Box::new(ext)));
+        assert_eq!(result[0], 0xd9);
+    }
+
+    #[test]
+    fn test_encode_tag_u32() {
+        let ext = crate::JsonPackExtension::new(0x10000, PackValue::Null);
+        let result = enc(&PackValue::Extension(Box::new(ext)));
+        assert_eq!(result[0], 0xda);
+    }
+
+    #[test]
+    fn test_encode_tag_u64() {
+        let ext = crate::JsonPackExtension::new(0x100000000, PackValue::Null);
+        let result = enc(&PackValue::Extension(Box::new(ext)));
+        assert_eq!(result[0], 0xdb);
+    }
+
+    // --- encode_json ---
+
+    #[test]
+    fn test_encode_json_null() {
+        let mut encoder = CborEncoderStable::new();
+        let json = serde_json::Value::Null;
+        let result = encoder.encode_json(&json);
+        assert_eq!(result, vec![0xf6]);
+    }
+
+    // --- Default ---
+
+    #[test]
+    fn test_default() {
+        let encoder = CborEncoderStable::default();
+        assert_eq!(encoder.writer.x, 0);
+    }
+
+    // --- Blob passthrough ---
+
+    #[test]
+    fn test_encode_blob_passes_through() {
+        let blob = crate::JsonPackValue::new(vec![0xde, 0xad]);
+        let result = enc(&PackValue::Blob(blob));
+        assert_eq!(result, vec![0xde, 0xad]);
+    }
+
+    // --- write_str_hdr ---
+
+    #[test]
+    fn test_write_str_hdr_all_sizes() {
+        let mut e = CborEncoderStable::new();
+
+        e.writer.reset();
+        e.write_str_hdr(5);
+        let r = e.writer.flush();
+        assert_eq!(r, vec![OVERLAY_STR | 5]);
+
+        e.writer.reset();
+        e.write_str_hdr(100);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x78);
+
+        e.writer.reset();
+        e.write_str_hdr(300);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x79);
+
+        e.writer.reset();
+        e.write_str_hdr(70000);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x7a);
+    }
+
+    // --- write_arr_hdr ---
+
+    #[test]
+    fn test_write_arr_hdr_u16() {
+        let mut e = CborEncoderStable::new();
+        e.write_arr_hdr(300);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x99);
+    }
+
+    #[test]
+    fn test_write_arr_hdr_u32() {
+        let mut e = CborEncoderStable::new();
+        e.write_arr_hdr(70000);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x9a);
+    }
+
+    // --- write_obj_hdr ---
+
+    #[test]
+    fn test_write_obj_hdr_u16() {
+        let mut e = CborEncoderStable::new();
+        e.write_obj_hdr(300);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0xb9);
+    }
+
+    #[test]
+    fn test_write_obj_hdr_u32() {
+        let mut e = CborEncoderStable::new();
+        e.write_obj_hdr(70000);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0xba);
+    }
+
+    // --- write_bin_hdr u32 branch ---
+
+    #[test]
+    fn test_write_bin_hdr_u32() {
+        let mut e = CborEncoderStable::new();
+        e.write_bin_hdr(70000);
+        let r = e.writer.flush();
+        assert_eq!(r[0], 0x5a);
+    }
+}

@@ -188,7 +188,7 @@ impl TypeBuilder {
         self.Tuple(types, None, None)
     }
 
-    /// Import a Schema into a TypeNode.
+    /// Import a `Schema` into a `TypeNode`.
     pub fn import(&self, schema: &Schema) -> TypeNode {
         match schema {
             Schema::Any(_) => self.Any(None),
@@ -311,6 +311,509 @@ impl TypeBuilder {
                     .collect();
                 self.Object(keys)
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::{self, SchemaBase};
+    use serde_json::json;
+
+    fn t() -> TypeBuilder {
+        TypeBuilder::new()
+    }
+
+    // -- Shorthand getters --
+
+    #[test]
+    fn shorthand_any() {
+        assert_eq!(t().any().kind(), "any");
+    }
+
+    #[test]
+    fn shorthand_bool() {
+        assert_eq!(t().bool().kind(), "bool");
+    }
+
+    #[test]
+    fn shorthand_num() {
+        assert_eq!(t().num().kind(), "num");
+    }
+
+    #[test]
+    fn shorthand_str() {
+        assert_eq!(t().str().kind(), "str");
+    }
+
+    #[test]
+    fn shorthand_bin() {
+        assert_eq!(t().bin().kind(), "bin");
+    }
+
+    #[test]
+    fn shorthand_arr() {
+        assert_eq!(t().arr().kind(), "arr");
+    }
+
+    #[test]
+    fn shorthand_obj() {
+        assert_eq!(t().obj().kind(), "obj");
+    }
+
+    #[test]
+    fn shorthand_map() {
+        assert_eq!(t().map().kind(), "map");
+    }
+
+    #[test]
+    fn shorthand_undef() {
+        assert_eq!(t().undef().kind(), "con");
+    }
+
+    #[test]
+    fn shorthand_nil() {
+        assert_eq!(t().nil().kind(), "con");
+    }
+
+    #[test]
+    fn shorthand_fn() {
+        assert_eq!(t().fn_().kind(), "fn");
+    }
+
+    #[test]
+    fn shorthand_fn_rx() {
+        assert_eq!(t().fn_rx().kind(), "fn$");
+    }
+
+    // -- Factory methods --
+
+    #[test]
+    fn factory_const() {
+        let node = t().Const(json!(42), None);
+        assert_eq!(node.kind(), "con");
+    }
+
+    #[test]
+    fn factory_binary() {
+        let node = t().Binary(t().str(), None);
+        assert_eq!(node.kind(), "bin");
+    }
+
+    #[test]
+    fn factory_array() {
+        let node = t().Array(t().num(), None);
+        assert_eq!(node.kind(), "arr");
+    }
+
+    #[test]
+    fn factory_tuple() {
+        let node = t().Tuple(vec![t().str()], Some(t().num()), Some(vec![t().bool()]));
+        assert_eq!(node.kind(), "arr");
+    }
+
+    #[test]
+    fn factory_object() {
+        let node = t().Object(vec![KeyType::new("x", t().num())]);
+        assert_eq!(node.kind(), "obj");
+    }
+
+    #[test]
+    fn factory_key() {
+        let node = t().Key("k", t().str());
+        assert_eq!(node.kind(), "key");
+    }
+
+    #[test]
+    fn factory_key_opt() {
+        let node = t().KeyOpt("k", t().str());
+        if let TypeNode::Key(k) = &node {
+            assert!(k.optional);
+        } else {
+            panic!("Expected Key");
+        }
+    }
+
+    #[test]
+    fn factory_map() {
+        let node = t().Map(t().num(), Some(t().str()), None);
+        assert_eq!(node.kind(), "map");
+    }
+
+    #[test]
+    fn factory_or() {
+        let node = t().Or(vec![t().str(), t().num()]);
+        assert_eq!(node.kind(), "or");
+    }
+
+    #[test]
+    fn factory_ref() {
+        let node = t().Ref("MyType");
+        assert_eq!(node.kind(), "ref");
+    }
+
+    #[test]
+    fn factory_function() {
+        let node = t().Function(t().str(), t().num(), None);
+        assert_eq!(node.kind(), "fn");
+    }
+
+    #[test]
+    fn factory_function_streaming() {
+        let node = t().function_streaming(t().str(), t().num(), None);
+        assert_eq!(node.kind(), "fn$");
+    }
+
+    // -- Higher-level helpers --
+
+    #[test]
+    fn enum_creates_or_of_consts() {
+        let node = t().enum_(vec!["a", "b", "c"]);
+        if let TypeNode::Or(or) = &node {
+            assert_eq!(or.types.len(), 3);
+            for ty in &or.types {
+                assert_eq!(ty.kind(), "con");
+            }
+        } else {
+            panic!("Expected Or");
+        }
+    }
+
+    #[test]
+    fn maybe_creates_union_with_undef() {
+        let node = t().maybe(t().str());
+        if let TypeNode::Or(or) = &node {
+            assert_eq!(or.types.len(), 2);
+            assert_eq!(or.types[0].kind(), "str");
+            assert_eq!(or.types[1].kind(), "con");
+        } else {
+            panic!("Expected Or");
+        }
+    }
+
+    #[test]
+    fn object_from_hashmap() {
+        let mut record = HashMap::new();
+        record.insert("b".into(), t().num());
+        record.insert("a".into(), t().str());
+        let node = t().object(record);
+        if let TypeNode::Obj(obj) = &node {
+            // Keys should be sorted
+            assert_eq!(obj.keys[0].key, "a");
+            assert_eq!(obj.keys[1].key, "b");
+        } else {
+            panic!("Expected Obj");
+        }
+    }
+
+    #[test]
+    fn tuple_helper() {
+        let node = t().tuple(vec![t().str(), t().num()]);
+        if let TypeNode::Arr(arr) = &node {
+            assert_eq!(arr.head.len(), 2);
+            assert!(arr.type_.is_none());
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    // -- with_system --
+
+    #[test]
+    fn with_system_stores_system() {
+        let module = Arc::new(ModuleType::new());
+        let tb = TypeBuilder::with_system(module.clone());
+        assert!(tb.system.is_some());
+        // All constructed types should carry the system
+        let node = tb.any();
+        assert!(node.base().system.is_some());
+    }
+
+    // -- import --
+
+    #[test]
+    fn import_any() {
+        let s = Schema::Any(schema::AnySchema::default());
+        let node = t().import(&s);
+        assert_eq!(node.kind(), "any");
+    }
+
+    #[test]
+    fn import_bool() {
+        let s = Schema::Bool(schema::BoolSchema::default());
+        assert_eq!(t().import(&s).kind(), "bool");
+    }
+
+    #[test]
+    fn import_num() {
+        let s = Schema::Num(schema::NumSchema {
+            format: Some(schema::NumFormat::I32),
+            gt: Some(0.0),
+            ..Default::default()
+        });
+        let node = t().import(&s);
+        if let TypeNode::Num(n) = &node {
+            assert_eq!(n.schema.format, Some(schema::NumFormat::I32));
+            assert_eq!(n.schema.gt, Some(0.0));
+        } else {
+            panic!("Expected Num");
+        }
+    }
+
+    #[test]
+    fn import_str() {
+        let s = Schema::Str(schema::StrSchema {
+            min: Some(5),
+            ..Default::default()
+        });
+        let node = t().import(&s);
+        if let TypeNode::Str(st) = &node {
+            assert_eq!(st.schema.min, Some(5));
+        } else {
+            panic!("Expected Str");
+        }
+    }
+
+    #[test]
+    fn import_bin() {
+        let s = Schema::Bin(schema::BinSchema {
+            base: SchemaBase::default(),
+            type_: Box::new(Schema::Any(schema::AnySchema::default())),
+            format: None,
+            min: None,
+            max: None,
+        });
+        assert_eq!(t().import(&s).kind(), "bin");
+    }
+
+    #[test]
+    fn import_con() {
+        let s = Schema::Con(schema::ConSchema {
+            base: SchemaBase::default(),
+            value: json!("hello"),
+        });
+        assert_eq!(t().import(&s).kind(), "con");
+    }
+
+    #[test]
+    fn import_arr() {
+        let s = Schema::Arr(schema::ArrSchema {
+            type_: Some(Box::new(Schema::Num(schema::NumSchema::default()))),
+            ..Default::default()
+        });
+        assert_eq!(t().import(&s).kind(), "arr");
+    }
+
+    #[test]
+    fn import_arr_with_head_tail() {
+        let s = Schema::Arr(schema::ArrSchema {
+            head: Some(vec![Schema::Str(schema::StrSchema::default())]),
+            type_: Some(Box::new(Schema::Num(schema::NumSchema::default()))),
+            tail: Some(vec![Schema::Bool(schema::BoolSchema::default())]),
+            min: Some(1),
+            max: Some(10),
+            ..Default::default()
+        });
+        let node = t().import(&s);
+        if let TypeNode::Arr(arr) = &node {
+            assert_eq!(arr.head.len(), 1);
+            assert!(arr.type_.is_some());
+            assert_eq!(arr.tail.len(), 1);
+            assert_eq!(arr.schema.min, Some(1));
+            assert_eq!(arr.schema.max, Some(10));
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    #[test]
+    fn import_obj() {
+        let s = Schema::Obj(schema::ObjSchema {
+            keys: vec![schema::KeySchema {
+                base: SchemaBase::default(),
+                key: "name".into(),
+                value: Box::new(Schema::Str(schema::StrSchema::default())),
+                optional: Some(true),
+            }],
+            decode_unknown_keys: Some(true),
+            ..Default::default()
+        });
+        let node = t().import(&s);
+        if let TypeNode::Obj(obj) = &node {
+            assert_eq!(obj.keys.len(), 1);
+            assert!(obj.keys[0].optional);
+            assert_eq!(obj.schema.decode_unknown_keys, Some(true));
+        } else {
+            panic!("Expected Obj");
+        }
+    }
+
+    #[test]
+    fn import_key_required() {
+        let s = Schema::Key(schema::KeySchema {
+            base: SchemaBase::default(),
+            key: "x".into(),
+            value: Box::new(Schema::Num(schema::NumSchema::default())),
+            optional: None,
+        });
+        let node = t().import(&s);
+        if let TypeNode::Key(k) = &node {
+            assert!(!k.optional);
+        } else {
+            panic!("Expected Key");
+        }
+    }
+
+    #[test]
+    fn import_key_optional() {
+        let s = Schema::Key(schema::KeySchema {
+            base: SchemaBase::default(),
+            key: "x".into(),
+            value: Box::new(Schema::Num(schema::NumSchema::default())),
+            optional: Some(true),
+        });
+        let node = t().import(&s);
+        if let TypeNode::Key(k) = &node {
+            assert!(k.optional);
+        } else {
+            panic!("Expected Key");
+        }
+    }
+
+    #[test]
+    fn import_map() {
+        let s = Schema::Map(schema::MapSchema {
+            base: SchemaBase::default(),
+            key: Some(Box::new(Schema::Str(schema::StrSchema::default()))),
+            value: Box::new(Schema::Num(schema::NumSchema::default())),
+        });
+        assert_eq!(t().import(&s).kind(), "map");
+    }
+
+    #[test]
+    fn import_ref() {
+        let s = Schema::Ref(schema::RefSchema {
+            base: SchemaBase::default(),
+            ref_: "Foo".into(),
+        });
+        assert_eq!(t().import(&s).kind(), "ref");
+    }
+
+    #[test]
+    fn import_or() {
+        let s = Schema::Or(schema::OrSchema {
+            base: SchemaBase::default(),
+            types: vec![
+                Schema::Str(schema::StrSchema::default()),
+                Schema::Num(schema::NumSchema::default()),
+            ],
+            discriminator: json!(null),
+        });
+        assert_eq!(t().import(&s).kind(), "or");
+    }
+
+    #[test]
+    fn import_fn() {
+        let s = Schema::Fn(schema::FnSchema {
+            base: SchemaBase::default(),
+            req: Box::new(Schema::Str(schema::StrSchema::default())),
+            res: Box::new(Schema::Num(schema::NumSchema::default())),
+        });
+        assert_eq!(t().import(&s).kind(), "fn");
+    }
+
+    #[test]
+    fn import_fn_rx() {
+        let s = Schema::FnRx(schema::FnRxSchema {
+            base: SchemaBase::default(),
+            req: Box::new(Schema::Any(schema::AnySchema::default())),
+            res: Box::new(Schema::Any(schema::AnySchema::default())),
+        });
+        assert_eq!(t().import(&s).kind(), "fn$");
+    }
+
+    #[test]
+    fn import_alias() {
+        let s = Schema::Alias(schema::AliasSchema {
+            base: SchemaBase::default(),
+            key: "Foo".into(),
+            value: Box::new(Schema::Str(schema::StrSchema::default())),
+            optional: None,
+            pub_: None,
+        });
+        // Alias import delegates to the inner value
+        assert_eq!(t().import(&s).kind(), "str");
+    }
+
+    #[test]
+    fn import_module() {
+        let s = Schema::Module(schema::ModuleSchema::default());
+        // Module import falls back to any
+        assert_eq!(t().import(&s).kind(), "any");
+    }
+
+    // -- from_value --
+
+    #[test]
+    fn from_value_null() {
+        assert_eq!(t().from_value(&json!(null)).kind(), "con");
+    }
+
+    #[test]
+    fn from_value_bool() {
+        assert_eq!(t().from_value(&json!(true)).kind(), "bool");
+    }
+
+    #[test]
+    fn from_value_number() {
+        assert_eq!(t().from_value(&json!(42)).kind(), "num");
+    }
+
+    #[test]
+    fn from_value_string() {
+        assert_eq!(t().from_value(&json!("hello")).kind(), "str");
+    }
+
+    #[test]
+    fn from_value_empty_array() {
+        assert_eq!(t().from_value(&json!([])).kind(), "arr");
+    }
+
+    #[test]
+    fn from_value_homogeneous_array() {
+        let node = t().from_value(&json!([1, 2, 3]));
+        assert_eq!(node.kind(), "arr");
+        // Should be Array, not Tuple
+        if let TypeNode::Arr(arr) = &node {
+            assert!(arr.type_.is_some());
+            assert!(arr.head.is_empty());
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    #[test]
+    fn from_value_heterogeneous_array() {
+        let node = t().from_value(&json!([1, "two", true]));
+        assert_eq!(node.kind(), "arr");
+        // Should be Tuple (head elements, no type_)
+        if let TypeNode::Arr(arr) = &node {
+            assert!(!arr.head.is_empty());
+            assert!(arr.type_.is_none());
+        } else {
+            panic!("Expected Arr");
+        }
+    }
+
+    #[test]
+    fn from_value_object() {
+        let node = t().from_value(&json!({"name": "Alice", "age": 30}));
+        assert_eq!(node.kind(), "obj");
+        if let TypeNode::Obj(obj) = &node {
+            assert_eq!(obj.keys.len(), 2);
+        } else {
+            panic!("Expected Obj");
         }
     }
 }
