@@ -3,6 +3,6 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "json-joy": "17.67.0"
+    "json-joy": "18.0.0"
   }
 }

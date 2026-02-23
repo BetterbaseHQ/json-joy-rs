@@ -50,7 +50,6 @@ test-crate pkg:
     cargo test -p {{pkg}}
 
 test-gates: test-smoke
-    just test-crate json-joy-ffi
     just parity-fixtures
 
 # One-command fast port loop for a package slice.
@@ -66,9 +65,6 @@ port-slice pkg suite filter='' fixtures='1' gates='0':
     just test-crate {{pkg}}
     if [ -n "{{filter}}" ]; then just test-suite-filter {{suite}} {{filter}} {{pkg}}; else just test-suite {{suite}} {{pkg}}; fi
     if [ "{{gates}}" = "1" ]; then just test-gates; fi
-
-bindings-python:
-    bin/generate-bindings.sh python
 
 compat-fixtures:
     bin/generate-compat-fixtures.sh

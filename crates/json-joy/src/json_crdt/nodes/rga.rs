@@ -1,6 +1,6 @@
 //! RGA (Replicated Growable Array) — dual splay-tree implementation.
 //!
-//! Mirrors `AbstractRga.ts` from upstream `json-joy@17.67.0`.
+//! Mirrors `AbstractRga.ts` from upstream `json-joy@18.0.0`.
 //!
 //! The RGA maintains two concurrent splay trees over an arena (`Vec<Chunk<T>>`):
 //!

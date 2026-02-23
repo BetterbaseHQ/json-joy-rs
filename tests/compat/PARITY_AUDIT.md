@@ -25,7 +25,6 @@ It is a review checkpoint artifact and should be updated as gaps are closed.
 | --- | --- | ---: | ---: |
 | `base64` | `base64` | 26 | 13 |
 | `buffers` | `buffers` | 61 | 14 |
-| `codegen` | `codegen` | 11 | 2 |
 | `json-expression` | `json-expression` | 29 | 23 |
 | `json-joy` | `json-joy` | 1044 | 107 |
 | `json-pack` | `json-joy-json-pack` | 398 | 97 |
@@ -131,7 +130,6 @@ Notes:
 
 ### In-code stubs and intentional behavior notes
 
-- `crates/codegen/src/lib.rs`: package is explicitly a stub; runtime JS codegen not ported.
 - `crates/json-joy/src/json_crdt/draft.rs`: redo methods are explicit stubs.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
 - `crates/json-joy-json-pack/src/ejson/decoder.rs`: Decimal128 decoder returns zero 16-byte stub (matching upstream stub behavior).

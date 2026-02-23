@@ -2,7 +2,7 @@
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-Rust implementation of the [json-joy](https://github.com/streamich/json-joy) CRDT, patch, diff, and codec library. Provides a complete port of core json-joy functionality with native bridges for WASM and Python.
+Rust implementation of the [json-joy](https://github.com/streamich/json-joy) CRDT, patch, diff, and codec library. Provides a complete port of core json-joy functionality with a native WASM bridge.
 
 This project ports and adapts the upstream `json-joy` library by [streamich](https://github.com/streamich/json-joy), pinned against `json-joy@18.0.0` with 1,398 compatibility fixtures ensuring parity.
 
@@ -20,7 +20,6 @@ This project ports and adapts the upstream `json-joy` library by [streamich](htt
 | `json-joy-json-random` | Random JSON value generator for testing |
 | `sonic-forest` | Arena-based splay tree for dual-tree data structures |
 | `json-joy-wasm` | WASM bridge via wasm-bindgen |
-| `json-joy-ffi` | UniFFI bridge for Python and other languages |
 
 ## Quick Start
 
@@ -64,9 +63,7 @@ crates/
   json-joy-json-random/     Random JSON generator
   sonic-forest/             Splay tree utilities
   json-joy-wasm/            WASM bridge
-  json-joy-ffi/             UniFFI bridge (cdylib)
 bindings/
-  python/                   Python packaging and generated bindings
   wasm/                     WASM benchmark and interop harness
 tests/
   compat/                   Fixture corpus, manifest, and xfail policy
