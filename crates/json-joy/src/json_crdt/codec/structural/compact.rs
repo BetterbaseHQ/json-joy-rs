@@ -420,7 +420,7 @@ fn decode_con(
         }
     } else {
         // Normal: arr[2] is the value
-        let pv = json_to_pack_value(&arr[2]);
+        let pv = PackValue::from(&arr[2]);
         ConValue::Val(pv)
     };
 
@@ -639,12 +639,6 @@ fn decode_arr(
     }
     model.index.insert(TsKey::from(id), CrdtNode::Arr(node));
     Ok(id)
-}
-
-// ── Helper: serde_json::Value → PackValue ─────────────────────────────────
-
-fn json_to_pack_value(v: &Value) -> PackValue {
-    PackValue::from(v.clone())
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

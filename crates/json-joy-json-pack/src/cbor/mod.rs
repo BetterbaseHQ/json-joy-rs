@@ -1,5 +1,4 @@
 //! CBOR module layout aligned to upstream `json-pack/src/cbor/*` family.
-#![allow(dead_code)]
 
 mod codec;
 mod constants;

@@ -6,6 +6,7 @@ use crate::json_crdt_patch::clock::{ts, tss, ClockVector, ServerClockVector, Ts}
 use crate::json_crdt_patch::enums::{JsonCrdtPatchOpcode, SESSION};
 use crate::json_crdt_patch::patch::Patch;
 use crate::json_crdt_patch::patch_builder::PatchBuilder;
+use json_joy_json_pack::PackValue;
 use serde_json::Value;
 
 fn decode_id(v: &Value, patch_sid: u64) -> Ts {
@@ -38,30 +39,6 @@ fn decode_tss(v: &Value, patch_sid: u64) -> Option<crate::json_crdt_patch::clock
     }
 }
 
-fn json_to_pack(v: &Value) -> json_joy_json_pack::PackValue {
-    use json_joy_json_pack::PackValue;
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(u) = n.as_u64() {
-                PackValue::UInteger(u)
-            } else {
-                PackValue::Float(n.as_f64().unwrap_or(0.0))
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(arr) => PackValue::Array(arr.iter().map(json_to_pack).collect()),
-        Value::Object(obj) => PackValue::Object(
-            obj.iter()
-                .map(|(k, v)| (k.clone(), json_to_pack(v)))
-                .collect(),
-        ),
-    }
-}
-
 /// Decodes a compact-format array into a [`Patch`].
 pub fn decode(data: &[Value]) -> Patch {
     if data.is_empty() {
@@ -87,7 +64,7 @@ pub fn decode(data: &[Value]) -> Patch {
     };
 
     if let Some(meta_val) = header.get(1) {
-        builder.patch.meta = Some(json_to_pack(meta_val));
+        builder.patch.meta = Some(PackValue::from(meta_val));
     }
 
     // Remaining elements are operations
@@ -111,7 +88,7 @@ pub fn decode(data: &[Value]) -> Patch {
                 } else {
                     let val = arr
                         .get(1)
-                        .map(json_to_pack)
+                        .map(PackValue::from)
                         .unwrap_or(json_joy_json_pack::PackValue::Undefined);
                     builder.con_val(val);
                 }
@@ -189,10 +166,7 @@ pub fn decode(data: &[Value]) -> Patch {
                 let obj = decode_id(arr.get(1).unwrap_or(&Value::Null), patch_sid);
                 let after = decode_id(arr.get(2).unwrap_or(&Value::Null), patch_sid);
                 let b64 = arr.get(3).and_then(|v| v.as_str()).unwrap_or("");
-                use base64::Engine;
-                let data = base64::engine::general_purpose::STANDARD
-                    .decode(b64)
-                    .unwrap_or_default();
+                let data = json_joy_base64::from_base64(b64).unwrap_or_default();
                 if !data.is_empty() {
                     builder.ins_bin(obj, after, data);
                 }

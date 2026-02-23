@@ -1,8 +1,9 @@
 [package]
 name = "json-joy-wasm"
 version = "0.18.0"
-edition = "2021"
-license = "AGPL-3.0-only"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "WASM bindings for json-joy-rs — the Rust port of the json-joy library"
 
 [lib]

@@ -63,10 +63,7 @@ fn pack_to_json_value(v: json_joy_json_pack::PackValue) -> serde_json::Value {
             .unwrap_or(Value::Null),
         PackValue::BigInt(i) => serde_json::json!(i),
         PackValue::Str(s) => Value::String(s),
-        PackValue::Bytes(b) => {
-            use base64::Engine;
-            Value::String(base64::engine::general_purpose::STANDARD.encode(&b))
-        }
+        PackValue::Bytes(b) => Value::String(json_joy_base64::to_base64(&b)),
         PackValue::Array(arr) => Value::Array(arr.into_iter().map(pack_to_json_value).collect()),
         PackValue::Object(obj) => {
             let map: serde_json::Map<_, _> = obj

@@ -1,7 +1,7 @@
 //! `json-joy-json-type` — type-system and schema framework for the json-joy ecosystem.
 //!
-//! Upstream reference: `@jsonjoy.com/json-type` v17.67.0
-//! Source: `/Users/nchapman/Code/json-joy/packages/json-type/src/`
+//! Upstream reference: `@jsonjoy.com/json-type` v18.0.0
+//! Source: `json-joy/packages/json-type/src/`
 
 pub mod codegen;
 pub mod constants;

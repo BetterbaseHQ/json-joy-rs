@@ -363,7 +363,10 @@ impl<'a> JsonCrdtDiff<'a> {
                     continue;
                 }
                 if matches!(child, CrdtNode::Con(_)) && is_js_non_object(value) {
-                    edits.push((i as u8, self.builder.con_val(json_to_pack(value))));
+                    edits.push((
+                        i as u8,
+                        self.builder.con_val(PackValue::from_json_scalar(value)),
+                    ));
                     continue;
                 }
             }
@@ -457,7 +460,7 @@ impl<'a> JsonCrdtDiff<'a> {
 
     fn build_json_val(&mut self, dst: &Value) -> Ts {
         let val_id = self.builder.val();
-        let con_id = self.builder.con_val(json_to_pack(dst));
+        let con_id = self.builder.con_val(PackValue::from_json_scalar(dst));
         self.builder.set_val(val_id, con_id);
         val_id
     }
@@ -507,7 +510,7 @@ impl<'a> JsonCrdtDiff<'a> {
     fn build_con_view(&mut self, dst: &Value) -> Ts {
         match dst {
             Value::Null | Value::Bool(_) | Value::Number(_) => {
-                self.builder.con_val(json_to_pack(dst))
+                self.builder.con_val(PackValue::from_json_scalar(dst))
             }
             _ => self.build_view(dst),
         }
@@ -528,22 +531,6 @@ fn con_equals_dst(val: &ConValue, dst: &Value) -> bool {
 
 fn is_js_non_object(value: &Value) -> bool {
     matches!(value, Value::String(_) | Value::Number(_) | Value::Bool(_))
-}
-
-fn json_to_pack(val: &Value) -> PackValue {
-    match val {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else {
-                PackValue::Float(n.as_f64().unwrap_or(0.0))
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        _ => PackValue::Null,
-    }
 }
 
 fn find_bin_ts(src: &BinNode, pos: usize) -> Option<Ts> {

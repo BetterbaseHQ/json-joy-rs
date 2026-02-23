@@ -18,34 +18,11 @@ const PATCH_DIFF_APPLY_XFAILS: &[&str] = &[];
 
 const MODEL_DIFF_DST_KEYS_XFAILS: &[&str] = &[];
 
-fn json_to_pack(v: &Value) -> PackValue {
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(u) = n.as_u64() {
-                PackValue::UInteger(u)
-            } else if let Some(f) = n.as_f64() {
-                PackValue::Float(f)
-            } else {
-                PackValue::Null
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(arr) => PackValue::Array(arr.iter().map(json_to_pack).collect()),
-        Value::Object(obj) => PackValue::Object(
-            obj.iter()
-                .map(|(k, v)| (k.clone(), json_to_pack(v)))
-                .collect(),
-        ),
-    }
-}
-
 fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
     match v {
-        Value::Null | Value::Bool(_) | Value::Number(_) => builder.con_val(json_to_pack(v)),
+        Value::Null | Value::Bool(_) | Value::Number(_) => {
+            builder.con_val(PackValue::from_json_scalar(v))
+        }
         Value::String(s) => {
             let str_id = builder.str_node();
             if !s.is_empty() {

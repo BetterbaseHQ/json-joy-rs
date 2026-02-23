@@ -71,7 +71,7 @@
   },
   "meta": {
     "upstream_package": "json-joy",
-    "upstream_version": "17.67.0",
+    "upstream_version": "18.0.0",
     "generator": "tools/oracle-node/generate-fixtures.cjs"
   }
 }

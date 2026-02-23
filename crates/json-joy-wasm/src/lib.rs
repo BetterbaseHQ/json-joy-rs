@@ -29,26 +29,6 @@ use serde_json::Value;
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
-/// Convert a plain JSON value to its `PackValue` equivalent for `con` nodes.
-/// Complex types (array/object) return `Null` — the caller must use `build_json`.
-fn json_to_pack(v: &Value) -> PackValue {
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(f) = n.as_f64() {
-                PackValue::Float(f)
-            } else {
-                PackValue::Null
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        _ => PackValue::Null,
-    }
-}
-
 /// Recursively allocate CRDT nodes for a JSON value using the given builder.
 /// Returns the timestamp ID of the root node created.
 ///
@@ -59,7 +39,9 @@ fn json_to_pack(v: &Value) -> PackValue {
 /// - Objects → ObjNode (values via `build_json` recursively)
 fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
     match v {
-        Value::Null | Value::Bool(_) | Value::Number(_) => builder.con_val(json_to_pack(v)),
+        Value::Null | Value::Bool(_) | Value::Number(_) => {
+            builder.con_val(PackValue::from_json_scalar(v))
+        }
         Value::String(s) => {
             // Strings become CRDT-editable StrNodes, matching upstream behaviour.
             let str_id = builder.str_node();
@@ -95,7 +77,7 @@ fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
 fn const_or_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
     match v {
         Value::Array(_) | Value::Object(_) => build_json(builder, v),
-        _ => builder.con_val(json_to_pack(v)),
+        _ => builder.con_val(PackValue::from_json_scalar(v)),
     }
 }
 

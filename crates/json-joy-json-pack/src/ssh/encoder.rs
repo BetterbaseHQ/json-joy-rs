@@ -4,6 +4,7 @@
 
 use json_joy_buffers::Writer;
 
+use super::SshError;
 use crate::JsonPackMpint;
 use crate::PackValue;
 
@@ -36,29 +37,30 @@ impl SshEncoder {
     /// - `Str` → SSH string (uint32 length + UTF-8 bytes)
     /// - `Bytes` → SSH string (uint32 length + raw bytes)
     /// - `Array` → name-list (comma-separated ASCII strings; all elements must be `Str`)
-    pub fn encode(&mut self, value: &PackValue) -> Vec<u8> {
+    pub fn encode(&mut self, value: &PackValue) -> Result<Vec<u8>, SshError> {
         self.writer.reset();
-        self.write_any(value);
-        self.writer.flush()
+        self.write_any(value)?;
+        Ok(self.writer.flush())
     }
 
-    pub fn write_any(&mut self, value: &PackValue) {
+    pub fn write_any(&mut self, value: &PackValue) -> Result<(), SshError> {
         match value {
             PackValue::Bool(b) => self.write_boolean(*b),
             PackValue::Integer(i) => self.write_number_i64(*i),
             PackValue::UInteger(u) => self.write_number_u64(*u),
-            PackValue::Float(_) => panic!("SSH protocol does not support floating point numbers"),
+            PackValue::Float(_) => return Err(SshError::UnsupportedType("float")),
             PackValue::Str(s) => self.write_str(s),
             PackValue::Bytes(b) => self.write_bin_str(b),
-            PackValue::Array(arr) => self.write_name_list(arr),
+            PackValue::Array(arr) => return self.write_name_list(arr),
             PackValue::Null | PackValue::Undefined => {
-                panic!("SSH protocol does not have a null type")
+                return Err(SshError::UnsupportedType("null"))
             }
-            PackValue::Object(_) => panic!("SSH protocol does not have an object type"),
-            PackValue::BigInt(_) | PackValue::Extension(_) | PackValue::Blob(_) => {
-                panic!("SSH encoder does not support this value type")
-            }
+            PackValue::Object(_) => return Err(SshError::UnsupportedType("object")),
+            PackValue::BigInt(_) => return Err(SshError::UnsupportedType("bigint")),
+            PackValue::Extension(_) => return Err(SshError::UnsupportedType("extension")),
+            PackValue::Blob(_) => return Err(SshError::UnsupportedType("blob")),
         }
+        Ok(())
     }
 
     /// Writes an SSH boolean (1 byte: 0=false, 1=true).
@@ -111,16 +113,17 @@ impl SshEncoder {
     /// Writes an SSH name-list (comma-separated names, length-prefixed).
     ///
     /// All elements of `arr` must be `PackValue::Str`.
-    pub fn write_name_list(&mut self, arr: &[PackValue]) {
-        let names: Vec<&str> = arr
-            .iter()
-            .map(|v| match v {
-                PackValue::Str(s) => s.as_str(),
-                _ => panic!("name-list elements must be strings"),
-            })
-            .collect();
+    pub fn write_name_list(&mut self, arr: &[PackValue]) -> Result<(), SshError> {
+        let mut names = Vec::with_capacity(arr.len());
+        for v in arr {
+            match v {
+                PackValue::Str(s) => names.push(s.as_str()),
+                _ => return Err(SshError::InvalidNameList),
+            }
+        }
         let joined = names.join(",");
         self.write_ascii_str(&joined);
+        Ok(())
     }
 
     fn write_number_i64(&mut self, n: i64) {

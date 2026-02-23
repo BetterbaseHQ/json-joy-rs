@@ -14,7 +14,7 @@
 //! }
 //! ```
 
-use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use json_joy_base64::{from_base64, to_base64};
 use serde_json::{json, Value};
 
 use crate::json_crdt::constants::UNDEFINED_TS;
@@ -191,7 +191,7 @@ fn encode_bin(node: &BinNode) -> Value {
                 json!({ "id": chunk_id, "span": chunk.span })
             } else {
                 let data = chunk.data.as_deref().unwrap_or(&[]);
-                let b64 = B64.encode(data);
+                let b64 = to_base64(data);
                 json!({ "id": chunk_id, "value": b64 })
             }
         })
@@ -516,8 +516,7 @@ fn decode_bin(val: &Value, model: &mut Model) -> Result<Ts, DecodeError> {
         if let Some(span) = chunk_obj.get("span").and_then(|v| v.as_u64()) {
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else if let Some(b64) = chunk_obj.get("value").and_then(|v| v.as_str()) {
-            let data = B64
-                .decode(b64)
+            let data = from_base64(b64)
                 .map_err(|e| DecodeError::Format(format!("base64 decode error: {}", e)))?;
             let span = data.len() as u64;
             node.rga.push_chunk(Chunk::new(chunk_id, span, data));

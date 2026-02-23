@@ -36,10 +36,7 @@ fn pack_to_json(v: &json_joy_json_pack::PackValue) -> Value {
             .unwrap_or(Value::Null),
         PackValue::BigInt(i) => json!(i),
         PackValue::Str(s) => json!(s),
-        PackValue::Bytes(b) => {
-            use base64::Engine;
-            Value::String(base64::engine::general_purpose::STANDARD.encode(b))
-        }
+        PackValue::Bytes(b) => Value::String(json_joy_base64::to_base64(b)),
         PackValue::Array(arr) => Value::Array(arr.iter().map(pack_to_json).collect()),
         PackValue::Object(obj) => {
             let map: serde_json::Map<_, _> = obj
@@ -130,8 +127,7 @@ pub fn encode(patch: &Patch) -> Vec<Value> {
             Op::InsBin {
                 obj, after, data, ..
             } => {
-                use base64::Engine;
-                let b64 = base64::engine::general_purpose::STANDARD.encode(data);
+                let b64 = json_joy_base64::to_base64(data);
                 json!([
                     JsonCrdtPatchOpcode::InsBin as u8,
                     encode_ts(*obj, patch_sid),

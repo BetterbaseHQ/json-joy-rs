@@ -1,7 +1,7 @@
 //! Binary serialization formats for json-joy (CBOR, MessagePack, JSON, and more).
 //!
-//! Upstream reference:
-//! - `/Users/nchapman/Code/json-joy/packages/json-pack/src/`
+//! Upstream reference: `@jsonjoy.com/json-pack` v18.0.0
+//! Source: `json-joy/packages/json-pack/src/`
 
 mod constants;
 mod json_pack_extension;
@@ -648,7 +648,7 @@ mod tests {
             PackValue::Str("aes128-ctr".into()),
             PackValue::Str("aes256-ctr".into()),
         ];
-        enc.write_name_list(&names);
+        enc.write_name_list(&names).unwrap();
         let bytes = enc.writer.flush();
         dec.reset(&bytes);
         let decoded = dec.read_name_list().unwrap();

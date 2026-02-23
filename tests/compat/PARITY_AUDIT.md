@@ -1,11 +1,11 @@
-# Parity Audit (json-joy@17.67.0)
+# Parity Audit (json-joy@18.0.0)
 
 Last updated: 2026-02-21
 
 This document tracks known, explicit parity gaps between:
 
-- Upstream source of truth: `/Users/nchapman/Code/json-joy/packages`
-- Local port: `/Users/nchapman/Drive/Code/json-joy-rs/crates`
+- Upstream source of truth: `json-joy/packages`
+- Local port: `crates/`
 
 It is a review checkpoint artifact and should be updated as gaps are closed.
 
@@ -149,7 +149,7 @@ Notes:
 
 Upstream reference:
 
-- `/Users/nchapman/Code/sonic-forest/src`
+- `sonic-forest/src`
 
 Current local status:
 

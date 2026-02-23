@@ -50,7 +50,9 @@ fn ssh_encoder_decoder_string_and_mpint_matrix() {
     assert_eq!(decoder.read_bin_str().unwrap(), vec![1, 2, 3]);
 
     encoder.writer.reset();
-    encoder.write_name_list(&[PackValue::Str("zlib".into()), PackValue::Str("none".into())]);
+    encoder
+        .write_name_list(&[PackValue::Str("zlib".into()), PackValue::Str("none".into())])
+        .unwrap();
     decoder.reset(&encoder.writer.flush());
     assert_eq!(
         decoder.read_name_list().unwrap(),
@@ -72,16 +74,32 @@ fn ssh_codec_roundtrip_matrix() {
     encoder.writer.reset();
     encoder.write_byte(20);
     encoder.write_bin_str(&[0x42; 16]);
-    encoder.write_name_list(&[PackValue::Str("diffie-hellman-group14-sha1".into())]);
-    encoder.write_name_list(&[PackValue::Str("ssh-rsa".into())]);
-    encoder.write_name_list(&[PackValue::Str("aes128-ctr".into())]);
-    encoder.write_name_list(&[PackValue::Str("aes128-ctr".into())]);
-    encoder.write_name_list(&[PackValue::Str("hmac-sha1".into())]);
-    encoder.write_name_list(&[PackValue::Str("hmac-sha1".into())]);
-    encoder.write_name_list(&[PackValue::Str("none".into())]);
-    encoder.write_name_list(&[PackValue::Str("none".into())]);
-    encoder.write_name_list(&[]);
-    encoder.write_name_list(&[]);
+    encoder
+        .write_name_list(&[PackValue::Str("diffie-hellman-group14-sha1".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("ssh-rsa".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("aes128-ctr".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("aes128-ctr".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("hmac-sha1".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("hmac-sha1".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("none".into())])
+        .unwrap();
+    encoder
+        .write_name_list(&[PackValue::Str("none".into())])
+        .unwrap();
+    encoder.write_name_list(&[]).unwrap();
+    encoder.write_name_list(&[]).unwrap();
     encoder.write_boolean(false);
     encoder.write_uint32(0);
 
@@ -127,11 +145,11 @@ fn ssh_error_and_write_any_matrix() {
     let mut encoder = SshEncoder::new();
     let mut decoder = SshDecoder::new();
 
-    let encoded_bool = encoder.encode(&PackValue::Bool(true));
+    let encoded_bool = encoder.encode(&PackValue::Bool(true)).unwrap();
     decoder.reset(&encoded_bool);
     assert!(decoder.read_boolean().unwrap());
 
-    let encoded_int = encoder.encode(&PackValue::Integer(42));
+    let encoded_int = encoder.encode(&PackValue::Integer(42)).unwrap();
     decoder.reset(&encoded_int);
     assert_eq!(decoder.read_uint32().unwrap(), 42);
 

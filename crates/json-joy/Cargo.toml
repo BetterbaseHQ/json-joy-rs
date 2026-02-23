@@ -16,7 +16,7 @@ sonic-forest = { path = "../../crates/sonic-forest" }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 indexmap = "2"
 thiserror = "2.0"
-base64 = "0.22"
+json-joy-base64 = { path = "../base64" }
 regex = "1"
 
 [[bin]]

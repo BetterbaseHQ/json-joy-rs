@@ -1,9 +1,9 @@
 [package]
 name = "json-expression"
 version = "0.18.0"
-edition = "2021"
-license = "AGPL-3.0-only"
-repository = "https://github.com/nicoth-in/json-joy-rs"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "High-performance JSON expression evaluator - port of @jsonjoy.com/json-expression"
 
 [dependencies]

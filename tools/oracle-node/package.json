@@ -7,6 +7,6 @@
     "generate": "node ./generate-fixtures.cjs"
   },
   "dependencies": {
-    "json-joy": "17.67.0"
+    "json-joy": "18.0.0"
   }
 }

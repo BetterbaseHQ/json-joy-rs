@@ -43,6 +43,31 @@ pub enum PackValue {
     Blob(JsonPackValue),
 }
 
+impl PackValue {
+    /// Convert a JSON scalar (null, bool, number, string) into a `PackValue`.
+    ///
+    /// Arrays and objects return `PackValue::Null` — callers that need to handle
+    /// complex types should convert them separately (e.g. via `build_json` in
+    /// CRDT builder code).
+    pub fn from_json_scalar(v: &serde_json::Value) -> Self {
+        match v {
+            serde_json::Value::Null => PackValue::Null,
+            serde_json::Value::Bool(b) => PackValue::Bool(*b),
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    PackValue::Integer(i)
+                } else if let Some(f) = n.as_f64() {
+                    PackValue::Float(f)
+                } else {
+                    PackValue::Null
+                }
+            }
+            serde_json::Value::String(s) => PackValue::Str(s.clone()),
+            serde_json::Value::Array(_) | serde_json::Value::Object(_) => PackValue::Null,
+        }
+    }
+}
+
 impl From<serde_json::Value> for PackValue {
     fn from(v: serde_json::Value) -> Self {
         match v {
@@ -64,6 +89,33 @@ impl From<serde_json::Value> for PackValue {
             serde_json::Value::Object(obj) => PackValue::Object(
                 obj.into_iter()
                     .map(|(k, v)| (k, PackValue::from(v)))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+impl From<&serde_json::Value> for PackValue {
+    fn from(v: &serde_json::Value) -> Self {
+        match v {
+            serde_json::Value::Null => PackValue::Null,
+            serde_json::Value::Bool(b) => PackValue::Bool(*b),
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    PackValue::Integer(i)
+                } else if let Some(u) = n.as_u64() {
+                    PackValue::UInteger(u)
+                } else {
+                    PackValue::Float(n.as_f64().unwrap_or(0.0))
+                }
+            }
+            serde_json::Value::String(s) => PackValue::Str(s.clone()),
+            serde_json::Value::Array(arr) => {
+                PackValue::Array(arr.iter().map(PackValue::from).collect())
+            }
+            serde_json::Value::Object(obj) => PackValue::Object(
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), PackValue::from(v)))
                     .collect(),
             ),
         }

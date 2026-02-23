@@ -1,3 +1,5 @@
+//! Upstream: json-joy/packages/json-random/src/
+
 use json_joy_json_random::number::{int, int64};
 use json_joy_json_random::string::{random_string, Token};
 use json_joy_json_random::structured::templates;

@@ -33,50 +33,20 @@ use json_joy_json_pack::PackValue;
 // ── Error type ─────────────────────────────────────────────────────────────
 
 /// Errors returned by the model API editing methods.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ApiError {
     /// No node found for the given ID or path key.
+    #[error("NOT_FOUND")]
     NotFound,
     /// A node was found but it has the wrong CRDT type.
+    #[error("WRONG_TYPE")]
     WrongType,
     /// An index is out of bounds for the node's current length.
+    #[error("OUT_OF_BOUNDS")]
     OutOfBounds,
     /// An empty write (zero-length insert) was attempted.
+    #[error("EMPTY_WRITE")]
     EmptyWrite,
-}
-
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ApiError::NotFound => write!(f, "NOT_FOUND"),
-            ApiError::WrongType => write!(f, "WRONG_TYPE"),
-            ApiError::OutOfBounds => write!(f, "OUT_OF_BOUNDS"),
-            ApiError::EmptyWrite => write!(f, "EMPTY_WRITE"),
-        }
-    }
-}
-
-impl std::error::Error for ApiError {}
-
-// ── Helper: convert serde_json::Value → ConValue (PackValue) ───────────────
-
-fn json_to_pack(v: &Value) -> PackValue {
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(f) = n.as_f64() {
-                PackValue::Float(f)
-            } else {
-                PackValue::Null
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(_) => PackValue::Null, // complex — caller should use json()
-        Value::Object(_) => PackValue::Null,
-    }
 }
 
 // ── ModelApi ───────────────────────────────────────────────────────────────
@@ -507,7 +477,7 @@ impl<'a> ModelApi<'a> {
     pub fn const_or_json(&mut self, v: &Value) -> Result<Ts, ApiError> {
         match v {
             Value::Null | Value::Bool(_) | Value::Number(_) => {
-                let pv = json_to_pack(v);
+                let pv = PackValue::from_json_scalar(v);
                 Ok(self.builder.con_val(pv))
             }
             _ => self.json(v),
@@ -530,7 +500,7 @@ impl<'a> ModelApi<'a> {
         match v {
             Value::Null => Ok(self.json_val(PackValue::Null)),
             Value::Bool(b) => Ok(self.json_val(PackValue::Bool(*b))),
-            Value::Number(_) => Ok(self.json_val(json_to_pack(v))),
+            Value::Number(_) => Ok(self.json_val(PackValue::from_json_scalar(v))),
             Value::String(s) => {
                 let str_id = self.builder.str_node();
                 if !s.is_empty() {
@@ -557,7 +527,7 @@ impl<'a> ModelApi<'a> {
                         .map(|(k, v)| {
                             let id = match v {
                                 Value::Null | Value::Bool(_) | Value::Number(_) => {
-                                    self.builder.con_val(json_to_pack(v))
+                                    self.builder.con_val(PackValue::from_json_scalar(v))
                                 }
                                 _ => self.json(v)?,
                             };
@@ -1434,7 +1404,7 @@ mod tests {
         let mut model = Model::create();
         let patch = {
             let mut api = ModelApi::new(&mut model);
-            api.builder.con_val(json_to_pack(&json!(1)));
+            api.builder.con_val(PackValue::from_json_scalar(&json!(1)));
             api.flush()
         };
         // The patch has one op but the model is unchanged (still null).

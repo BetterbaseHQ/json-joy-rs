@@ -20,21 +20,17 @@ pub const OVERLAY_STR: u8 = 0b011_00000;
 pub const OVERLAY_ARR: u8 = 0b100_00000;
 pub const OVERLAY_MAP: u8 = 0b101_00000;
 pub const OVERLAY_TAG: u8 = 0b110_00000;
+#[allow(dead_code)] // upstream parity: cbor/constants.ts
 pub const OVERLAY_TKN: u8 = 0b111_00000;
 
 pub const MINOR_MASK: u8 = 0b11111;
 
 /// Maximum safe integer representable as f64 without precision loss.
+#[allow(dead_code)] // upstream parity: cbor/constants.ts
 pub const MAX_UINT: u64 = 9007199254740991; // Number.MAX_SAFE_INTEGER
 
 /// CBOR "break" stop code.
 pub const CBOR_END: u8 = 0xff;
-
-// Legacy aliases (kept for backward compatibility with the old stub)
-pub const MAJOR_UNSIGNED: u8 = MAJOR_UIN;
-pub const MAJOR_NEGATIVE: u8 = MAJOR_NIN;
-pub const MAJOR_BYTES: u8 = MAJOR_BIN;
-pub const MAJOR_ARRAY: u8 = MAJOR_ARR;
 
 /// Returns `true` if `f` can be losslessly represented as an `f32`.
 #[inline]

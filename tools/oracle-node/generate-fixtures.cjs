@@ -45,7 +45,7 @@ const {
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const OUT_DIR = path.join(ROOT, 'tests', 'compat', 'fixtures');
-const UPSTREAM_VERSION = '17.67.0';
+const UPSTREAM_VERSION = '18.0.0';
 const FIXTURE_VERSION = 1;
 const OPCODE_BY_NAME = {
   new_con: 0,

@@ -22,34 +22,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::common::assertions::{decode_hex, encode_hex, op_to_opcode};
 
-fn json_to_pack(v: &Value) -> PackValue {
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(u) = n.as_u64() {
-                PackValue::UInteger(u)
-            } else if let Some(f) = n.as_f64() {
-                PackValue::Float(f)
-            } else {
-                PackValue::Null
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(arr) => PackValue::Array(arr.iter().map(json_to_pack).collect()),
-        Value::Object(obj) => PackValue::Object(
-            obj.iter()
-                .map(|(k, v)| (k.clone(), json_to_pack(v)))
-                .collect(),
-        ),
-    }
-}
-
 fn build_json_val(builder: &mut PatchBuilder, v: &Value) -> Ts {
     let val_id = builder.val();
-    let con_id = builder.con_val(json_to_pack(v));
+    let con_id = builder.con_val(PackValue::from_json_scalar(v));
     builder.set_val(val_id, con_id);
     val_id
 }
@@ -82,7 +57,7 @@ fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
                         let id = match v {
                             // Mirrors PatchBuilder.jsonObj(): object scalar fields are con.
                             Value::Null | Value::Bool(_) | Value::Number(_) => {
-                                builder.con_val(json_to_pack(v))
+                                builder.con_val(PackValue::from_json_scalar(v))
                             }
                             _ => build_json(builder, v),
                         };
@@ -99,7 +74,9 @@ fn build_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
 fn build_const_or_json(builder: &mut PatchBuilder, v: &Value) -> Ts {
     match v {
         // Mirrors PatchBuilder.constOrJson(): root scalar values are con.
-        Value::Null | Value::Bool(_) | Value::Number(_) => builder.con_val(json_to_pack(v)),
+        Value::Null | Value::Bool(_) | Value::Number(_) => {
+            builder.con_val(PackValue::from_json_scalar(v))
+        }
         _ => build_json(builder, v),
     }
 }
@@ -259,7 +236,7 @@ fn parse_patch_ops(input_ops: &[Value]) -> Result<Vec<Op>, String> {
         let op = match kind {
             "new_con" => Op::NewCon {
                 id,
-                val: ConValue::Val(json_to_pack(obj.get("value").unwrap_or(&Value::Null))),
+                val: ConValue::Val(PackValue::from(obj.get("value").unwrap_or(&Value::Null))),
             },
             "new_con_ref" => Op::NewCon {
                 id,

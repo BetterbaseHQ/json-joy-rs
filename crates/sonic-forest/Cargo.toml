@@ -1,8 +1,9 @@
 [package]
 name = "sonic-forest"
 version = "0.18.0"
-edition = "2021"
-license = "AGPL-3.0-only"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "Rust port of sonic-forest — arena-based splay tree utilities for dual-tree data structures"
 
 [dependencies]

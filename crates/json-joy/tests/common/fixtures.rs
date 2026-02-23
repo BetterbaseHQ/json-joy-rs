@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 pub const EXPECTED_UPSTREAM_PACKAGE: &str = "json-joy";
-pub const EXPECTED_UPSTREAM_VERSION: &str = "17.67.0";
+pub const EXPECTED_UPSTREAM_VERSION: &str = "18.0.0";
 pub const EXPECTED_FIXTURE_VERSION: u64 = 1;
 pub const EXPECTED_FIXTURE_COUNT: usize = 1398;
 

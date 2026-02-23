@@ -6,6 +6,7 @@ use crate::json_crdt_patch::clock::{ts, tss, ClockVector, ServerClockVector, Ts}
 use crate::json_crdt_patch::enums::SESSION;
 use crate::json_crdt_patch::patch::Patch;
 use crate::json_crdt_patch::patch_builder::PatchBuilder;
+use json_joy_json_pack::PackValue;
 use serde_json::Value;
 
 fn decode_id(v: &Value) -> Ts {
@@ -17,30 +18,6 @@ fn decode_id(v: &Value) -> Ts {
             ts(sid, time)
         }
         _ => ts(SESSION::SERVER, 0),
-    }
-}
-
-fn json_to_pack(v: &Value) -> json_joy_json_pack::PackValue {
-    use json_joy_json_pack::PackValue;
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(u) = n.as_u64() {
-                PackValue::UInteger(u)
-            } else {
-                PackValue::Float(n.as_f64().unwrap_or(0.0))
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(arr) => PackValue::Array(arr.iter().map(json_to_pack).collect()),
-        Value::Object(obj) => PackValue::Object(
-            obj.iter()
-                .map(|(k, v)| (k.clone(), json_to_pack(v)))
-                .collect(),
-        ),
     }
 }
 
@@ -93,7 +70,7 @@ pub fn decode(data: &Value) -> Patch {
                     let ref_id = decode_id(op_obj.get("value").unwrap_or(&Value::Null));
                     builder.con_ref(ref_id);
                 } else {
-                    let val = json_to_pack(op_obj.get("value").unwrap_or(&Value::Null));
+                    let val = PackValue::from(op_obj.get("value").unwrap_or(&Value::Null));
                     builder.con_val(val);
                 }
             }
@@ -176,10 +153,7 @@ pub fn decode(data: &Value) -> Patch {
                 let obj = decode_id(op_obj.get("obj").unwrap_or(&Value::Null));
                 let after = op_obj.get("after").map(decode_id).unwrap_or(obj);
                 let b64 = op_obj.get("value").and_then(|v| v.as_str()).unwrap_or("");
-                use base64::Engine;
-                let data = base64::engine::general_purpose::STANDARD
-                    .decode(b64)
-                    .unwrap_or_default();
+                let data = json_joy_base64::from_base64(b64).unwrap_or_default();
                 if !data.is_empty() {
                     builder.ins_bin(obj, after, data);
                 }
@@ -230,7 +204,7 @@ pub fn decode(data: &Value) -> Patch {
 
     let mut patch = builder.flush();
     if let Some(meta_val) = obj.get("meta") {
-        patch.meta = Some(json_to_pack(meta_val));
+        patch.meta = Some(PackValue::from(meta_val));
     }
     patch
 }

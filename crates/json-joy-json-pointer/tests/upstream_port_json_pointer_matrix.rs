@@ -1,3 +1,6 @@
+//! Upstream: json-joy/packages/json-pointer/src/
+//! Also covers upstream `src/__tests__/testFindRef.ts`.
+
 use json_joy_json_pointer::{
     find, find_by_pointer, format_json_pointer, get, is_child, parent, parse_json_pointer,
     validate_json_pointer, JsonPointerError, ReferenceKey,

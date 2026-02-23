@@ -20,27 +20,11 @@ fn is_logical_model_binary(data: &[u8]) -> bool {
     data.first().is_some_and(|b| (b & 0x80) == 0)
 }
 
-fn json_to_pack(v: &Value) -> PackValue {
-    match v {
-        Value::Null => PackValue::Null,
-        Value::Bool(b) => PackValue::Bool(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                PackValue::Integer(i)
-            } else if let Some(f) = n.as_f64() {
-                PackValue::Float(f)
-            } else {
-                PackValue::Null
-            }
-        }
-        Value::String(s) => PackValue::Str(s.clone()),
-        Value::Array(_) | Value::Object(_) => PackValue::Null,
-    }
-}
-
 fn build_json(builder: &mut PatchBuilder, v: &Value) -> json_joy::json_crdt_patch::clock::Ts {
     match v {
-        Value::Null | Value::Bool(_) | Value::Number(_) => builder.con_val(json_to_pack(v)),
+        Value::Null | Value::Bool(_) | Value::Number(_) => {
+            builder.con_val(PackValue::from_json_scalar(v))
+        }
         Value::String(s) => {
             let str_id = builder.str_node();
             if !s.is_empty() {

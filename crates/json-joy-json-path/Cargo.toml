@@ -1,13 +1,13 @@
 [package]
 name = "json-joy-json-path"
 version = "0.18.0"
-edition = "2021"
-license = "AGPL-3.0-only"
-repository = "https://github.com/nicoth-in/json-joy-rs"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "JSONPath (RFC 9535) implementation - parse and evaluate JSONPath expressions"
 
 [dependencies]
-regex = "1.12"
+regex = "1"
 serde_json = "1.0"
 thiserror = "2.0"
 
