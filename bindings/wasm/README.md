@@ -6,23 +6,12 @@ Upstream Credit: This WASM bridge is for the Rust port of upstream
 - Upstream docs: <https://jsonjoy.com/libs/json-joy-js>
 - Upstream package reference: `packages/json-joy`
 
-This directory contains benchmark and interoperability harness scripts for the
-`json-joy-wasm` crate.
-
-## Build and run
+## Build
 
 From repository root:
 
 ```bash
 just wasm-build
-```
-
-Benchmarks:
-
-```bash
-just wasm-bench
-just wasm-bench-engine-one
-just wasm-bench-realistic
 ```
 
 Core parity differential check:

@@ -64,7 +64,7 @@ crates/
   sonic-forest/             Splay tree utilities
   json-joy-wasm/            WASM bridge
 bindings/
-  wasm/                     WASM benchmark and interop harness
+  wasm/                     WASM interop harness
 tests/
   compat/                   Fixture corpus, manifest, and xfail policy
 ```

@@ -82,14 +82,3 @@ parity: parity-fixtures parity-live-core
 wasm-build:
     CARGO_NET_OFFLINE=true wasm-pack build crates/json-joy-wasm --target nodejs --release
 
-wasm-bench: wasm-build
-    node bindings/wasm/bench/replay-batch-matrix.cjs
-
-wasm-bench-one: wasm-build
-    node bindings/wasm/bench/replay-batch.cjs
-
-wasm-bench-engine-one: wasm-build
-    node bindings/wasm/bench/replay-engine-one.cjs
-
-wasm-bench-realistic: wasm-build
-    node bindings/wasm/bench/lessdb-realistic.cjs
