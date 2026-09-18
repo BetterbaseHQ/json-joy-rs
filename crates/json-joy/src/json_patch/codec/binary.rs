@@ -616,25 +616,13 @@ fn decode_pack_op(v: &PackValue, parent_path: Option<&[String]>) -> Result<Op, P
         OPCODE_SPLIT => {
             let path = pack_to_path(pack_arr_get(arr, 1)?)?;
             let pos = pack_as_u64(pack_arr_get(arr, 2)?)? as usize;
-            let props = arr.get(3).map(pack_to_json_value).and_then(|v| {
-                if v.is_null() {
-                    None
-                } else {
-                    Some(v)
-                }
-            });
+            let props = arr.get(3).map(pack_to_json_value).filter(|v| !v.is_null());
             Ok(Op::Split { path, pos, props })
         }
         OPCODE_MERGE => {
             let path = pack_to_path(pack_arr_get(arr, 1)?)?;
             let pos = pack_as_u64(pack_arr_get(arr, 2)?)? as usize;
-            let props = arr.get(3).map(pack_to_json_value).and_then(|v| {
-                if v.is_null() {
-                    None
-                } else {
-                    Some(v)
-                }
-            });
+            let props = arr.get(3).map(pack_to_json_value).filter(|v| !v.is_null());
             Ok(Op::Merge { path, pos, props })
         }
         OPCODE_EXTEND => {

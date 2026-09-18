@@ -157,10 +157,8 @@ fn validate_num(
                         return make_error(ValidationError::Int, path, opts);
                     }
                 }
-                NumFormat::I32 => {
-                    if !(-2147483648.0..=2147483647.0).contains(&num) {
-                        return make_error(ValidationError::Int, path, opts);
-                    }
+                NumFormat::I32 if !(-2147483648.0..=2147483647.0).contains(&num) => {
+                    return make_error(ValidationError::Int, path, opts);
                 }
                 // I64/U64: f64 cannot represent all i64/u64 values exactly (max safe integer
                 // is 2^53-1), so boundary checks at the i64/u64 limit would be imprecise.

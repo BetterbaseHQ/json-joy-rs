@@ -96,7 +96,7 @@ pub fn apply(mut doc: Value, op: &JsonOp) -> Option<Value> {
     let mut registers: std::collections::HashMap<RegId, Value> = std::collections::HashMap::new();
     let mut picks_sorted = op.pick.clone();
     // Sort deepest-first so nested picks work correctly
-    picks_sorted.sort_by(|a, b| b.path.len().cmp(&a.path.len()));
+    picks_sorted.sort_by_key(|p| std::cmp::Reverse(p.path.len()));
 
     for pick in &picks_sorted {
         if let Some(val) = remove_at_path(&mut doc, &pick.path) {
@@ -111,7 +111,7 @@ pub fn apply(mut doc: Value, op: &JsonOp) -> Option<Value> {
 
     // Phase 4: drop — insert register values (shallowest first)
     let mut drops_sorted = op.drop.clone();
-    drops_sorted.sort_by(|a, b| a.path.len().cmp(&b.path.len()));
+    drops_sorted.sort_by_key(|d| d.path.len());
 
     for drop in &drops_sorted {
         if let Some(val) = registers.get(&drop.register).cloned() {

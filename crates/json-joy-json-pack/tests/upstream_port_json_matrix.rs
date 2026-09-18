@@ -28,7 +28,7 @@ fn assert_json_eq(actual: &PackValue, expected: &PackValue) {
             let mut right: Vec<_> = b.iter().collect();
             left.sort_by(|(ka, _), (kb, _)| ka.cmp(kb));
             right.sort_by(|(ka, _), (kb, _)| ka.cmp(kb));
-            for ((ak, av), (bk, bv)) in left.into_iter().zip(right.into_iter()) {
+            for ((ak, av), (bk, bv)) in left.into_iter().zip(right) {
                 assert_eq!(ak, bk, "object key mismatch");
                 assert_json_eq(av, bv);
             }

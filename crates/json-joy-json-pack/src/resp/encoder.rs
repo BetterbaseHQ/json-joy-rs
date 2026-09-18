@@ -156,13 +156,12 @@ impl RespEncoder {
         self.writer.u8(Resp::FLOAT); // ,
         if f == f64::INFINITY {
             self.writer.u8(b'i');
-            self.writer.u16(u16::from_be_bytes([b'n', b'f']));
+            self.writer.u16(u16::from_be_bytes(*b"nf"));
         } else if f == f64::NEG_INFINITY {
-            self.writer
-                .u32(u32::from_be_bytes([b'-', b'i', b'n', b'f']));
+            self.writer.u32(u32::from_be_bytes(*b"-inf"));
         } else if f.is_nan() {
             self.writer.u8(b'n');
-            self.writer.u16(u16::from_be_bytes([b'a', b'n']));
+            self.writer.u16(u16::from_be_bytes(*b"an"));
         } else {
             let s = format!("{}", f);
             self.writer.ascii(&s);

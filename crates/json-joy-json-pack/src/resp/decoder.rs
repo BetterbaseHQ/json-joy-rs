@@ -343,7 +343,7 @@ impl RespDecoder {
         let length = self.read_length()?;
         let prefix = self.u32_be()?;
         // "txt:" = 0x7478743a
-        const TXT_COLON: u32 = u32::from_be_bytes([b't', b'x', b't', b':']);
+        const TXT_COLON: u32 = u32::from_be_bytes(*b"txt:");
         if prefix == TXT_COLON {
             let s = self.utf8(length - 4)?;
             self.skip(2)?; // \r\n
