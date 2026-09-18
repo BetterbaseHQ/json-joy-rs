@@ -1,0 +1,31 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.93.1
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      # Parity fixtures regenerate against the Node oracle (bin/generate-compat-fixtures.sh)
+      - uses: jdx/mise-action@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: ./bin/generate-compat-fixtures.sh
+      - run: git diff --exit-code -- tools || (echo "Parity fixtures out of date — run bin/generate-compat-fixtures.sh and commit"; exit 1)
+      - run: cargo test -p json-joy --lib
+      - run: cargo test --workspace
