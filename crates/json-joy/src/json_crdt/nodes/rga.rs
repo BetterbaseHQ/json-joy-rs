@@ -1028,6 +1028,54 @@ impl<T: Clone + ChunkData> Rga<T> {
         Some(chunk)
     }
 
+    /// Returns the previous ID in the RGA sequence, optionally skipping
+    /// deleted items, as `(id, chunk_arena_index)`.
+    ///
+    /// Mirrors `AbstractRga.prevId()` (upstream commits 78e3028c1, 96132112b).
+    pub fn prev_id(&self, id: Ts, skip_deleted: bool) -> Option<(Ts, u32)> {
+        let chunk_idx = self.find_by_id(id)?;
+        let chunk = &self.chunks[chunk_idx as usize];
+        if (!skip_deleted || !chunk.deleted) && chunk.id.time < id.time {
+            return Some((Ts::new(id.sid, id.time - 1), chunk_idx));
+        }
+        let mut curr = chunk_idx;
+        loop {
+            curr = pos_prev(&self.chunks, curr)?;
+            let prev_chunk = &self.chunks[curr as usize];
+            if !prev_chunk.deleted || !skip_deleted {
+                let prev_id = prev_chunk.id;
+                let span = prev_chunk.span;
+                let last = if span > 1 {
+                    Ts::new(prev_id.sid, prev_id.time + span - 1)
+                } else {
+                    prev_id
+                };
+                return Some((last, curr));
+            }
+        }
+    }
+
+    /// Returns the next ID in the RGA sequence, optionally skipping deleted
+    /// items, as `(id, chunk_arena_index)`.
+    ///
+    /// Mirrors `AbstractRga.nextId()` (upstream commits 78e3028c1, 96132112b).
+    pub fn next_id(&self, id: Ts, skip_deleted: bool) -> Option<(Ts, u32)> {
+        let chunk_idx = self.find_by_id(id)?;
+        let chunk = &self.chunks[chunk_idx as usize];
+        let next_time = id.time + 1;
+        if (!skip_deleted || !chunk.deleted) && chunk.id.time + chunk.span > next_time {
+            return Some((Ts::new(id.sid, next_time), chunk_idx));
+        }
+        let mut curr = chunk_idx;
+        loop {
+            curr = pos_next(&self.chunks, curr)?;
+            let next_chunk = &self.chunks[curr as usize];
+            if !next_chunk.deleted || !skip_deleted {
+                return Some((next_chunk.id, curr));
+            }
+        }
+    }
+
     // ── Insert ────────────────────────────────────────────────────────────
 
     /// Insert `data` (with timestamp `id`, logical span `span`) after the
@@ -1333,5 +1381,184 @@ mod tests {
         rga.insert(origin(), ts(1, 1), 5, "hello".to_string());
         assert!(rga.find_by_id(ts(1, 3)).is_some());
         assert!(rga.find_by_id(ts(2, 1)).is_none());
+    }
+
+    // ── prev_id / next_id ────────────────────────────────────────────────
+    // Mirrors upstream `StrNode.spec.ts` ".nextId()"/".prevId()" scenarios
+    // (upstream commits 78e3028c1 and 96132112b).
+
+    fn sequence() -> Rga<String> {
+        let mut rga: Rga<String> = Rga::new();
+        rga.insert(origin(), ts(1, 2), 9, "123456789".to_string());
+        rga.insert(ts(1, 4), ts(2, 5), 3, "xxx".to_string());
+        rga.insert(ts(1, 7), ts(3, 5), 3, "yyy".to_string());
+        rga
+    }
+
+    fn ids_walk(rga: &Rga<String>, from: Ts, forward: bool, skip_deleted: bool) -> Vec<Ts> {
+        let mut out = vec![from];
+        for _ in 0..64 {
+            let last = *out.last().unwrap();
+            let step = if forward {
+                rga.next_id(last, skip_deleted).map(|(id, _)| id)
+            } else {
+                rga.prev_id(last, skip_deleted).map(|(id, _)| id)
+            };
+            match step {
+                Some(id) => out.push(id),
+                None => return out,
+            }
+        }
+        panic!("prev_id/next_id walk did not terminate within 64 steps");
+    }
+
+    #[test]
+    fn next_id_iterates_through_ids_forward_including_deleted() {
+        let rga = sequence();
+        let expected: Vec<Ts> = [
+            ts(1, 2),
+            ts(1, 3),
+            ts(1, 4),
+            ts(2, 5),
+            ts(2, 6),
+            ts(2, 7),
+            ts(1, 5),
+            ts(1, 6),
+            ts(1, 7),
+            ts(3, 5),
+            ts(3, 6),
+            ts(3, 7),
+            ts(1, 8),
+            ts(1, 9),
+            ts(1, 10),
+        ]
+        .into();
+        assert_eq!(ids_walk(&rga, ts(1, 2), true, false), expected);
+    }
+
+    #[test]
+    fn prev_id_iterates_through_ids_backward_including_deleted() {
+        let rga = sequence();
+        let expected: Vec<Ts> = [
+            ts(1, 10),
+            ts(1, 9),
+            ts(1, 8),
+            ts(3, 7),
+            ts(3, 6),
+            ts(3, 5),
+            ts(1, 7),
+            ts(1, 6),
+            ts(1, 5),
+            ts(2, 7),
+            ts(2, 6),
+            ts(2, 5),
+            ts(1, 4),
+            ts(1, 3),
+            ts(1, 2),
+        ]
+        .into();
+        assert_eq!(ids_walk(&rga, ts(1, 10), false, false), expected);
+    }
+
+    #[test]
+    fn next_id_skips_deleted_chunks_when_requested() {
+        let mut rga = sequence();
+        rga.delete(&[tss(2, 5, 3)]); // delete the "xxx" chunk
+        assert_eq!(
+            rga.next_id(ts(1, 4), false).map(|(id, _)| id),
+            Some(ts(2, 5))
+        );
+        assert_eq!(
+            rga.next_id(ts(1, 4), true).map(|(id, _)| id),
+            Some(ts(1, 5))
+        );
+    }
+
+    #[test]
+    fn prev_id_skips_deleted_chunks_when_requested() {
+        let mut rga = sequence();
+        rga.delete(&[tss(2, 5, 3)]); // delete the "xxx" chunk
+        assert_eq!(
+            rga.prev_id(ts(1, 5), false).map(|(id, _)| id),
+            Some(ts(2, 7))
+        );
+        assert_eq!(
+            rga.prev_id(ts(1, 5), true).map(|(id, _)| id),
+            Some(ts(1, 4))
+        );
+    }
+
+    #[test]
+    fn next_id_at_end_of_sequence_returns_none() {
+        let rga = sequence();
+        assert_eq!(rga.next_id(ts(1, 10), false), None);
+    }
+
+    #[test]
+    fn prev_id_at_start_of_sequence_returns_none() {
+        let rga = sequence();
+        assert_eq!(rga.prev_id(ts(1, 2), false), None);
+    }
+
+    #[test]
+    fn prev_id_at_time_zero_does_not_underflow() {
+        let mut rga: Rga<String> = Rga::new();
+        rga.insert(origin(), ts(1, 0), 3, "abc".to_string());
+        assert_eq!(rga.prev_id(ts(1, 0), false), None);
+        assert_eq!(
+            rga.prev_id(ts(1, 1), false).map(|(id, _)| id),
+            Some(ts(1, 0))
+        );
+    }
+
+    #[test]
+    fn skip_deleted_queries_from_inside_tombstone_jump_out_of_it() {
+        let mut rga = sequence();
+        rga.delete(&[tss(2, 5, 3)]); // delete the "xxx" chunk
+                                     // Query from inside the deleted chunk: must not walk within the
+                                     // tombstone even though adjacent IDs exist there.
+        assert_eq!(
+            rga.next_id(ts(2, 6), true).map(|(id, _)| id),
+            Some(ts(1, 5))
+        );
+        assert_eq!(
+            rga.prev_id(ts(2, 6), true).map(|(id, _)| id),
+            Some(ts(1, 4))
+        );
+        // Without skip_deleted, traversal stays inside the tombstone.
+        assert_eq!(
+            rga.next_id(ts(2, 6), false).map(|(id, _)| id),
+            Some(ts(2, 7))
+        );
+        assert_eq!(
+            rga.prev_id(ts(2, 6), false).map(|(id, _)| id),
+            Some(ts(2, 5))
+        );
+    }
+
+    #[test]
+    fn returned_chunk_index_contains_returned_id() {
+        let rga = sequence();
+        for query in [ts(1, 4), ts(1, 8), ts(2, 6), ts(3, 5)] {
+            let (id, idx) = rga.prev_id(query, false).unwrap();
+            let c = rga.slot(idx);
+            assert!(
+                c.id.sid == id.sid && c.id.time <= id.time && id.time < c.id.time + c.span,
+                "prev_id chunk index must contain returned id"
+            );
+            let (id, idx) = rga.next_id(query, false).unwrap();
+            let c = rga.slot(idx);
+            assert!(
+                c.id.sid == id.sid && c.id.time <= id.time && id.time < c.id.time + c.span,
+                "next_id chunk index must contain returned id"
+            );
+        }
+    }
+
+    #[test]
+    fn next_id_unknown_id_returns_none() {
+        let rga = sequence();
+        assert_eq!(rga.next_id(ts(9, 9), false), None);
+        assert_eq!(rga.prev_id(ts(9, 9), false), None);
     }
 }

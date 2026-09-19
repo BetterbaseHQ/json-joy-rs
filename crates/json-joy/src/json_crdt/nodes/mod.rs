@@ -475,16 +475,18 @@ impl ArrNode {
     }
 
     /// View: resolve all non-deleted element IDs from the index.
+    ///
+    /// Mirrors upstream `ArrNode.view()`: elements whose child node is
+    /// missing from the index are skipped, not rendered as null
+    /// (see upstream commit a89fbfa05).
     pub fn view(&self, index: &NodeIndex) -> Value {
         let mut items = Vec::new();
         for chunk in self.rga.iter_live() {
             if let Some(ids) = &chunk.data {
                 for id in ids {
-                    let val = match index.get(&TsKey::from(*id)) {
-                        Some(node) => node.view(index),
-                        None => Value::Null,
-                    };
-                    items.push(val);
+                    if let Some(node) = index.get(&TsKey::from(*id)) {
+                        items.push(node.view(index));
+                    }
                 }
             }
         }
@@ -588,6 +590,10 @@ impl CrdtNode {
     /// - `ObjNode` children are all values in its keys map.
     /// - `VecNode` children are all non-None elements.
     /// - `ArrNode` children are all data-node timestamps across all chunks.
+    ///
+    /// Note: upstream `children()` skips IDs missing from the document index
+    /// (commit a89fbfa05); this method returns all IDs and callers must
+    /// tolerate dangling references.
     pub fn child_ids(&self) -> Vec<Ts> {
         match self {
             Self::Con(_) | Self::Str(_) | Self::Bin(_) => Vec::new(),
@@ -819,5 +825,42 @@ mod tests {
             vec![10, 20, 30],
             "same-time entries should order by sid"
         );
+    }
+
+    // ── ArrNode view with missing children ──────────────────────────────
+    // Mirrors upstream `ArrNode.view()`/`children()` semantics: elements
+    // whose child node is missing from the index are skipped (upstream
+    // commit a89fbfa05).
+
+    #[test]
+    fn arr_view_skips_elements_missing_from_index() {
+        use crate::json_crdt_patch::operations::ConValue;
+        let mut arr = ArrNode::new(ts(sid(), 1));
+        arr.ins(ORIGIN, ts(sid(), 2), vec![ts(9, 1), ts(8, 1), ts(7, 1)]);
+        let mut index = NodeIndex::new();
+        index.insert_node(
+            ts(9, 1),
+            CrdtNode::Con(ConNode::new(ts(9, 1), ConValue::Val(PackValue::Bool(true)))),
+        );
+        index.insert_node(
+            ts(7, 1),
+            CrdtNode::Con(ConNode::new(
+                ts(7, 1),
+                ConValue::Val(PackValue::Bool(false)),
+            )),
+        );
+        // ts(8,1) has no node in the index — skipped, not rendered as null.
+        assert_eq!(
+            arr.view(&index),
+            serde_json::json!([true, false]),
+            "missing children should be skipped, preserving order of present ones"
+        );
+    }
+
+    #[test]
+    fn arr_view_empty_when_all_elements_missing_from_index() {
+        let mut arr = ArrNode::new(ts(sid(), 1));
+        arr.ins(ORIGIN, ts(sid(), 2), vec![ts(9, 1), ts(9, 2)]);
+        assert_eq!(arr.view(&NodeIndex::new()), serde_json::json!([]));
     }
 }

@@ -1,6 +1,6 @@
 # Parity Audit (json-joy@18.0.0)
 
-Last updated: 2026-02-22
+Last updated: 2026-09-18
 
 This document tracks known, explicit parity gaps between:
 
@@ -9,10 +9,79 @@ This document tracks known, explicit parity gaps between:
 
 It is a review checkpoint artifact and should be updated as gaps are closed.
 
+## Upstream review: v18.0.0 → v18.30.0 (2026-09-18)
+
+Upstream advanced from v18.0.0 (2026-02) to v18.30.0 (2026-09-08,
+1,233 commits). Reviewed changes by applicability:
+
+### Ported in this pass
+
+- **RGA `prevId()`/`nextId()`** (upstream commits `78e3028c1`,
+  `96132112b`): added `Rga::prev_id`/`Rga::next_id` with `skip_deleted`
+  support, returning `(id, chunk_arena_index)`. Tests mirror upstream
+  `StrNode.spec.ts` iteration scenarios.
+- **Array iteration over missing children** (upstream commit `a89fbfa05`
+  + baseline `ArrNode.view()` semantics): `ArrNode::view` now skips
+  elements whose child node is missing from the index instead of
+  rendering `null`. This was a pre-existing port divergence from v18.0.0
+  upstream behavior, closed by this change.
+
+### Reviewed, not applicable to the Rust port
+
+- **`ValNode` UNDEFINED singleton sharing** (`daa0f27ab`): JS
+  object-identity issue; Rust `ValNode` stores a `Ts` ID and resolves
+  through `NodeIndex` — no shared node singleton exists.
+- **Prototype pollution fixes** (`87333a5b02`, `40bcaf3bef`,
+  `fa6f33308b`): JS `__proto__` attack surface; Rust maps/objects are
+  immune.
+- **Schema OO generic / type inference** (`415f92d42`, `5fb1e4148`):
+  TypeScript type-level only, no runtime behavior.
+- **Structural hash file moves** (`9d1941893c`), **print utils move**
+  (`12a83e6c67`), **iterator helpers move** (`2275c0a84c`): upstream
+  file-layout reorganizations; local module mapping is documented in
+  `AGENTS.md` and layout parity is explicitly not required.
+- **json-pack NFSv4 removal** (−82k lines upstream): local port never
+  included the NFS server family; nothing to remove.
+- **Jest→Vitest test migrations, formatter/linter churn, UI-app
+  packages** (click-json, click-type, peritext-ui, storybook,
+  collaborative-*): out of port scope.
+
+### Deferred (candidate future work)
+
+- **Delta computation & codecs** (~15 commits, `json-crdt/delta/**`):
+  `Model.delta()` for all node types, binary/compact/verbose delta
+  codecs, columnar batch encoding (RLE, zigzag), `delta/sync.ts`
+  protocol helpers. Potentially relevant to Betterbase sync (delta sync
+  instead of full-blob). Large surface (~25 upstream files).
+- **Patch batch codec family** (`json-crdt-patch/batch/**`): binary,
+  compact, verbose, and columnar batch codecs with metadata support.
+  Local `batch.rs` (87 lines) predates this family. Includes the "con"
+  encoding fix (`1e055c9c65`) inside the columnar codec.
+- **Delta correctness fixes** (`4b7674427b`, `bfc2c78cc9`): only affect
+  the deferred delta feature.
+- **Version vector primitives, clock `.has()`, clock vector marshaling**
+  (`f26970fe94`, `6925f0a55`, `9b59c3cd53`).
+- **json-type Reactive JSON RPC binary codec** (`2b8b7eb598`),
+  undefined field lookup fix (`c16f9c44ca`).
+- **json-pack null-prototype object encoding** (`c64e73cdca`): JS
+  specific; revisit only if fixture parity diverges.
+- **`json-hash` extraction** into standalone upstream package
+  (`502e246b99`): cosmetic, watch during next sync.
+- **Monorepo split beginning**: upstream created a placeholder
+  `packages/json-crdt` package (empty re-export). Track before the next
+  full sync; also note `sonic-forest` no longer exists in the upstream
+  monorepo.
+
+### Wire-format safety note
+
+The `json-crdt-patch` binary codec (upstream commit `ba21ae64c4`)
+changed method names only — the wire format is unchanged. Betterbase's
+patch log format v1 remains compatible; no action taken.
+
 ## Current gate status
 
-- `just test-gates`: pass (2026-02-22)
-- `just test`: pass (2026-02-22)
+- `just test-gates`: pass (2026-09-18)
+- `just test`: pass (2026-09-18)
 - `cargo test -p json-joy --test upstream_port_diff_workflows --offline`: pass (2026-02-22)
 - `cargo test -p json-joy --test upstream_port_model_api_workflow --offline`: pass (2026-02-22)
 - `cargo test -p json-joy --test upstream_port_model_api_proxy_fanout_workflow --offline`: pass (2026-02-22)
@@ -63,6 +132,7 @@ No active compat xfails remain.
 
 ### In-code stubs and intentional behavior notes
 
+- `crates/json-joy/src/json_crdt/nodes/mod.rs` (`VecNode::view`): upstream pushes JS `undefined` for unset/missing vec elements; the Rust port renders `Value::Null`, matching `JSON.stringify` output of upstream views. Accepted divergence (serde_json has no undefined).
 - `crates/json-joy/src/json_crdt/draft.rs`: redo methods are explicit stubs.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
 - `crates/json-joy-json-pack/src/ejson/decoder.rs`: Decimal128 decoder returns zero 16-byte stub (matching upstream stub behavior).
