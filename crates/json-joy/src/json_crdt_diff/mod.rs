@@ -83,6 +83,10 @@ impl<'a> JsonCrdtDiff<'a> {
             Del(Vec<Tss>),
         }
         let edits: RefCell<Vec<StrEdit>> = RefCell::new(Vec::new());
+        // A failed anchor lookup means the position table and the node are
+        // out of sync — degrading to a head insert (as older code did) would
+        // silently misplace text. Upstream asserts; we surface the error.
+        let anchor_error: RefCell<Option<DiffError>> = RefCell::new(None);
 
         str_diff::apply(
             &patch,
@@ -94,7 +98,15 @@ impl<'a> JsonCrdtDiff<'a> {
                 let after = if upos == 0 {
                     src_id
                 } else {
-                    src.find(upos - 1).unwrap_or(src_id)
+                    match src.find(upos - 1) {
+                        Some(ts) => ts,
+                        None => {
+                            *anchor_error.borrow_mut() = Some(DiffError(
+                                "str diff: insert anchor not found in source node",
+                            ));
+                            return;
+                        }
+                    }
                 };
                 edits
                     .borrow_mut()
@@ -110,6 +122,9 @@ impl<'a> JsonCrdtDiff<'a> {
             },
         );
 
+        if let Some(err) = anchor_error.into_inner() {
+            return Err(err);
+        }
         for edit in edits.into_inner() {
             match edit {
                 StrEdit::Ins(after, text) => {
