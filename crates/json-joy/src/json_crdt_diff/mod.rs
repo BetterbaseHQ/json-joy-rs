@@ -64,6 +64,20 @@ impl<'a> JsonCrdtDiff<'a> {
         let src_id = src.id;
         let patch = str_diff::diff(&view, dst);
 
+        // Scalar→UTF-16 position mapping. StrNode spans count UTF-16 code
+        // units (mirroring upstream JS `string.length`), while the diff walks
+        // Unicode scalars — and must, because Rust strings cannot represent
+        // the lone surrogates a code-unit diff could split an edit on.
+        // Convert positions at the CRDT lookup boundary so anchors and spans
+        // stay correct for supplementary-plane characters.
+        let mut u16_at: Vec<usize> = Vec::with_capacity(view.chars().count() + 1);
+        let mut u16_total = 0usize;
+        u16_at.push(0);
+        for ch in view.chars() {
+            u16_total += ch.len_utf16();
+            u16_at.push(u16_total);
+        }
+
         enum StrEdit {
             Ins(Ts, String),
             Del(Vec<Tss>),
@@ -74,19 +88,22 @@ impl<'a> JsonCrdtDiff<'a> {
             &patch,
             view.chars().count(),
             |pos, text| {
-                // For pos=0, use the StrNode's own ID as the head sentinel.
+                let upos = u16_at[pos];
+                // For upos=0, use the StrNode's own ID as the head sentinel.
                 // Mirrors upstream TS: `!pos ? src.id : src.find(pos - 1)!`
-                let after = if pos == 0 {
+                let after = if upos == 0 {
                     src_id
                 } else {
-                    src.find(pos - 1).unwrap_or(src_id)
+                    src.find(upos - 1).unwrap_or(src_id)
                 };
                 edits
                     .borrow_mut()
                     .push(StrEdit::Ins(after, text.to_string()));
             },
             |pos, len, _| {
-                let spans = src.find_interval(pos, len);
+                let upos = u16_at[pos];
+                let ulen = u16_at[pos + len] - upos;
+                let spans = src.find_interval(upos, ulen);
                 if !spans.is_empty() {
                     edits.borrow_mut().push(StrEdit::Del(spans));
                 }
@@ -688,6 +705,58 @@ mod tests {
         .unwrap();
         model.apply_patch(&patch);
         assert_eq!(model.view(), json!("world"));
+    }
+
+    // UTF-16 vs Unicode-scalar position mapping: StrNode spans count UTF-16
+    // code units (mirroring upstream JS string.length); the diff walks
+    // scalars. Positions must be converted at the find/find_interval boundary
+    // or supplementary-plane characters (emoji) get mis-anchored/mis-spanned.
+    #[test]
+    fn diff_str_append_after_emoji() {
+        let (mut model, key) = model_with_str("\u{1F600}ab");
+        let src_node = model.index.get(&key).unwrap().clone();
+        let patch = diff_node(
+            &src_node,
+            &model.index,
+            model.clock.sid,
+            model.clock.time,
+            &json!("\u{1F600}abXYZ"),
+        )
+        .unwrap();
+        model.apply_patch(&patch);
+        assert_eq!(model.view(), json!("\u{1F600}abXYZ"));
+    }
+
+    #[test]
+    fn diff_str_delete_emoji() {
+        let (mut model, key) = model_with_str("x\u{1F600}yz");
+        let src_node = model.index.get(&key).unwrap().clone();
+        let patch = diff_node(
+            &src_node,
+            &model.index,
+            model.clock.sid,
+            model.clock.time,
+            &json!("xyz"),
+        )
+        .unwrap();
+        model.apply_patch(&patch);
+        assert_eq!(model.view(), json!("xyz"));
+    }
+
+    #[test]
+    fn diff_str_edit_tail_after_multiple_emoji() {
+        let (mut model, key) = model_with_str("\u{1F600}\u{1F601}tail");
+        let src_node = model.index.get(&key).unwrap().clone();
+        let patch = diff_node(
+            &src_node,
+            &model.index,
+            model.clock.sid,
+            model.clock.time,
+            &json!("\u{1F600}\u{1F601}TAIL"),
+        )
+        .unwrap();
+        model.apply_patch(&patch);
+        assert_eq!(model.view(), json!("\u{1F600}\u{1F601}TAIL"));
     }
 
     #[test]
