@@ -640,6 +640,7 @@ fn decode_obj_server(
     use crate::json_crdt::nodes::ObjNode;
     let mut node = ObjNode::new(id);
     for _ in 0..length {
+        require_input(r)?;
         let key = read_cbor_str(r)?;
         let child_id = decode_node_server(r, model, server_time)?;
         node.keys.insert(key, child_id);
@@ -658,7 +659,8 @@ fn decode_vec_server(
     use crate::json_crdt::nodes::VecNode;
     let mut node = VecNode::new(id);
     for _ in 0..length {
-        let peek = r.data.get(r.x).copied().unwrap_or(0);
+        require_input(r)?;
+        let peek = r.data[r.x];
         if peek == 0 {
             r.x += 1;
             node.elements.push(None);
@@ -681,6 +683,7 @@ fn decode_str_server(
     use crate::json_crdt::nodes::StrNode;
     let mut node = StrNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_server(r);
         let val = read_cbor_value(r)?;
         match val {
@@ -708,12 +711,16 @@ fn decode_bin_server(
     use crate::json_crdt::nodes::BinNode;
     let mut node = BinNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_server(r);
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
+            if data.len() < span as usize {
+                return Err(DecodeError::EndOfInput);
+            }
             node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
@@ -732,6 +739,7 @@ fn decode_arr_server(
     use crate::json_crdt::nodes::ArrNode;
     let mut node = ArrNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_server(r);
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
@@ -739,6 +747,7 @@ fn decode_arr_server(
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
+                require_input(r)?;
                 let child_id = decode_node_server(r, model, server_time)?;
                 ids.push(child_id);
             }
@@ -823,6 +832,7 @@ fn decode_obj_logical(
     use crate::json_crdt::nodes::ObjNode;
     let mut node = ObjNode::new(id);
     for _ in 0..length {
+        require_input(r)?;
         let key = read_cbor_str(r)?;
         let child_id = decode_node_logical(r, model, cd)?;
         node.keys.insert(key, child_id);
@@ -841,6 +851,7 @@ fn decode_vec_logical(
     use crate::json_crdt::nodes::VecNode;
     let mut node = VecNode::new(id);
     for _ in 0..length {
+        require_input(r)?;
         let peek = r.data[r.x];
         if peek == 0 {
             r.x += 1;
@@ -865,6 +876,7 @@ fn decode_str_logical(
     use crate::json_crdt::nodes::StrNode;
     let mut node = StrNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_logical(r, cd)?;
         let val = read_cbor_value(r)?;
         match val {
@@ -893,12 +905,16 @@ fn decode_bin_logical(
     use crate::json_crdt::nodes::BinNode;
     let mut node = BinNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_logical(r, cd)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
+            if data.len() < span as usize {
+                return Err(DecodeError::EndOfInput);
+            }
             node.rga.push_chunk(Chunk::new(chunk_id, span, data));
         }
     }
@@ -917,6 +933,7 @@ fn decode_arr_logical(
     use crate::json_crdt::nodes::ArrNode;
     let mut node = ArrNode::new(id);
     for _ in 0..count {
+        require_input(r)?;
         let chunk_id = read_ts_logical(r, cd)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
@@ -924,6 +941,7 @@ fn decode_arr_logical(
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
+                require_input(r)?;
                 let child_id = decode_node_logical(r, model, cd)?;
                 ids.push(child_id);
             }
@@ -937,7 +955,7 @@ fn decode_arr_logical(
 // ── Minimal CBOR reader ───────────────────────────────────────────────────
 
 fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, DecodeError> {
-    if r.x > r.data.len() {
+    if r.x >= r.data.len() {
         return Err(DecodeError::EndOfInput);
     }
     let bytes = &r.data[r.x..];
@@ -945,6 +963,19 @@ fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, DecodeError> {
         .map_err(|e| DecodeError::Format(format!("invalid CBOR value: {e}")))?;
     r.x += consumed;
     Ok(value)
+}
+
+/// AUD-021: count-driven element loops must not trust declared counts
+/// past the available input. Every element of every container consumes
+/// at least one byte, so a cursor at/past the end while elements remain
+/// means the model is truncated — error instead of materialising
+/// zero-filled elements (which lets a handful of bytes force a huge
+/// allocation).
+fn require_input(r: &CrdtReader) -> Result<(), DecodeError> {
+    if r.x >= r.data.len() {
+        return Err(DecodeError::EndOfInput);
+    }
+    Ok(())
 }
 
 fn read_cbor_str(r: &mut CrdtReader) -> Result<String, DecodeError> {
@@ -961,6 +992,48 @@ fn read_cbor_str(r: &mut CrdtReader) -> Result<String, DecodeError> {
 mod tests {
     use super::*;
     use crate::json_crdt_patch::clock::ts;
+
+    #[test]
+    fn truncated_vec_count_errors_instead_of_allocating() {
+        // AUD-021 reproduction: server-format model declaring a 100000
+        // element vector with no payload. Must be rejected, not decoded
+        // into 100000 null slots.
+        let data = [0x80u8, 0x01, 0x01, 0x7F, 0xA0, 0x8D, 0x06];
+        match decode(&data) {
+            Err(DecodeError::EndOfInput) => {}
+            other => panic!("expected EndOfInput, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn truncated_logical_vec_does_not_panic() {
+        // Logical-format vector whose declared count exceeds the input:
+        // previously a direct index panicked past EOF.
+        let data = [
+            0x00, 0x00, 0x00, 0x03, // clock table offset (from tree start)
+            0x01, 0x7F, 0x02, // tree: id, vec header (major 3, ext count), count = 2
+            0x01, 0x01, 0x02, // clock table: n=1, sid=1, time=2
+        ];
+        match decode(&data) {
+            Err(DecodeError::EndOfInput) => {}
+            other => panic!("expected EndOfInput, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn truncated_bin_chunk_span_errors() {
+        // Declared chunk span (50) exceeds remaining payload (3 bytes).
+        let mut data = vec![0x80u8, 0x01, 0x01, 0xA1]; // server, t=1, id=1, bin major, 1 chunk
+        let mut w = crate::json_crdt_patch::util::binary::CrdtWriter::new();
+        w.vu57(1); // chunk timestamp
+        w.b1vu56(0, 50); // not deleted, span 50
+        data.extend_from_slice(&w.flush());
+        data.extend_from_slice(&[0xAA, 0xBB, 0xCC]); // only 3 of 50 bytes
+        match decode(&data) {
+            Err(DecodeError::EndOfInput) => {}
+            other => panic!("expected EndOfInput, got {other:?}"),
+        }
+    }
     use crate::json_crdt_patch::operations::{ConValue, Op};
     use json_joy_json_pack::PackValue;
 

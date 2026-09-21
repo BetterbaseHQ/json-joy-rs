@@ -132,6 +132,8 @@ No active compat xfails remain.
 
 ### In-code stubs and intentional behavior notes
 
+- `crates/json-joy/src/json_crdt/codec/structural/binary.rs` (AUD-021 hardening): the structural decoder rejects count-driven containers whose declared element counts exceed the available input with `DecodeError::EndOfInput`, instead of materializing zero/null-filled elements from bytes past EOF the way upstream does. Also fixes a direct-index panic in `decode_vec_logical` and rejects truncated binary chunk spans. Permanent divergence: malformed/truncated models (malicious or corrupt import/decrypt output) must not force allocations unbounded by input size. Tested by `truncated_vec_count_errors_instead_of_allocating`, `truncated_logical_vec_does_not_panic`, and `truncated_bin_chunk_span_errors`; well-formed round-trips are unaffected (every element consumes ≥1 byte).
+
 - `crates/json-joy/src/json_crdt/nodes/mod.rs` (`VecNode::view`): upstream pushes JS `undefined` for unset/missing vec elements; the Rust port renders `Value::Null`, matching `JSON.stringify` output of upstream views. Accepted divergence (serde_json has no undefined).
 - `crates/json-joy/src/json_crdt/draft.rs`: redo methods are explicit stubs.
 - `crates/json-joy-json-pack/src/ejson/encoder.rs`: Decimal128 encoder keeps upstream "return 0" stub behavior.
