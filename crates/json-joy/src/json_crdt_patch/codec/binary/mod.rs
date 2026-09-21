@@ -305,6 +305,24 @@ mod tests {
     }
 
     #[test]
+    fn truncated_op_count_errors_instead_of_fabricating() {
+        // AUD-021 (review follow-up): 6 bytes declaring 1,000,000
+        // operations with no payload. Previously fabricated a million
+        // zero-filled ops and returned Ok.
+        let mut w = crate::json_crdt_patch::util::binary::CrdtWriter::new();
+        w.vu57(1); // patch sid
+        w.vu57(1); // patch time
+        w.u8(0xF6); // meta: CBOR null
+        w.vu57(1_000_000); // op count
+        let data = w.flush();
+        assert!(data.len() <= 7);
+        match decode(&data) {
+            Err(DecodeError::UnexpectedEof) => {}
+            other => panic!("expected UnexpectedEof, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn short_inputs_are_tolerated() {
         assert!(decode(&[]).is_ok());
         assert!(decode(&[0u8]).is_ok());

@@ -288,6 +288,8 @@ fn write_cbor_str(w: &mut CrdtWriter, s: &str) {
 /// Errors that can occur during indexed binary decode.
 #[derive(Debug, thiserror::Error)]
 pub enum DecodeError {
+    #[error("unexpected end of input")]
+    EndOfInput,
     #[error("missing clock field")]
     MissingClock,
     #[error("invalid clock table")]
@@ -347,6 +349,10 @@ fn decode_clock_table(data: &[u8]) -> Result<ClockTable, DecodeError> {
     }
     let mut table = ClockTable::new();
     for _ in 0..n {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let sid = r.vu57();
         let time = r.vu57();
         table.push(mk_ts(sid, time));
@@ -441,6 +447,10 @@ fn decode_obj(
 ) -> Result<CrdtNode, DecodeError> {
     let mut node = ObjNode::new(id);
     for _ in 0..length {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let key = read_cbor_str_indexed(r).map_err(|e| DecodeError::Format(e.to_string()))?;
         let child_ts = read_ts_indexed(r, table)?;
         node.keys.insert(key, child_ts);
@@ -456,6 +466,10 @@ fn decode_vec(
 ) -> Result<CrdtNode, DecodeError> {
     let mut node = VecNode::new(id);
     for _ in 0..length {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let octet = r.u8();
         if octet == 0 {
             node.elements.push(None);
@@ -477,6 +491,10 @@ fn decode_str(
     use crate::json_crdt::nodes::StrNode;
     let mut node = StrNode::new(id);
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_indexed(r, table)?;
         let val = read_cbor_value(r).map_err(|e| DecodeError::Format(e.to_string()))?;
         match val {
@@ -503,6 +521,10 @@ fn decode_bin(
     use crate::json_crdt::nodes::BinNode;
     let mut node = BinNode::new(id);
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_indexed(r, table)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
@@ -525,6 +547,10 @@ fn decode_arr(
     use crate::json_crdt::nodes::ArrNode;
     let mut node = ArrNode::new(id);
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if r.x >= r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_indexed(r, table)?;
         let (deleted, span) = r.b1vu56();
         if deleted != 0 {
@@ -532,6 +558,10 @@ fn decode_arr(
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
+                // AUD-021: element must consume >= 1 byte
+                if r.x >= r.data.len() {
+                    return Err(DecodeError::EndOfInput);
+                }
                 let child_ts = read_ts_indexed(r, table)?;
                 ids.push(child_ts);
             }
@@ -573,7 +603,8 @@ fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, CborError> {
         }
         4 => {
             let len = read_cbor_argument(r, info)? as usize;
-            let mut items = Vec::with_capacity(len);
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut items = Vec::with_capacity(cap);
             for _ in 0..len {
                 items.push(read_cbor_value(r)?);
             }
@@ -581,7 +612,8 @@ fn read_cbor_value(r: &mut CrdtReader) -> Result<PackValue, CborError> {
         }
         5 => {
             let len = read_cbor_argument(r, info)? as usize;
-            let mut map = Vec::with_capacity(len);
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut map = Vec::with_capacity(cap);
             for _ in 0..len {
                 let k = match read_cbor_value(r)? {
                     PackValue::Str(s) => s,

@@ -507,6 +507,13 @@ fn decode_logical(data: &[u8]) -> Result<Model, DecodeError> {
     let first_time = r.vu57();
     let mut cd = ClockDecoder::new(first_sid, first_time);
     for _ in 1..n {
+        // AUD-021: each tuple consumes >= 2 bytes; a cursor at/past EOF
+        // means the declared table size exceeds the input — reject
+        // instead of fabricating zero-filled tuples (a handful of bytes
+        // could otherwise materialize millions of table entries).
+        if r.x + 2 > r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let sid = r.vu57();
         let time = r.vu57();
         cd.push_tuple(sid, time);
@@ -718,7 +725,9 @@ fn decode_bin_server(
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
-            if data.len() < span as usize {
+            // Compare in u64: `span as usize` truncates on wasm32, which
+            // would let an oversized declared span pass the check.
+            if (data.len() as u64) < span {
                 return Err(DecodeError::EndOfInput);
             }
             node.rga.push_chunk(Chunk::new(chunk_id, span, data));
@@ -912,7 +921,9 @@ fn decode_bin_logical(
             node.rga.push_chunk(Chunk::new_deleted(chunk_id, span));
         } else {
             let data = r.buf(span as usize).to_vec();
-            if data.len() < span as usize {
+            // Compare in u64: `span as usize` truncates on wasm32, which
+            // would let an oversized declared span pass the check.
+            if (data.len() as u64) < span {
                 return Err(DecodeError::EndOfInput);
             }
             node.rga.push_chunk(Chunk::new(chunk_id, span, data));
@@ -992,6 +1003,26 @@ fn read_cbor_str(r: &mut CrdtReader) -> Result<String, DecodeError> {
 mod tests {
     use super::*;
     use crate::json_crdt_patch::clock::ts;
+
+    #[test]
+    fn truncated_clock_table_count_errors_instead_of_allocating() {
+        // AUD-021 (review follow-up): logical model whose clock table
+        // declares 2,000,000 tuples with no payload. Previously decoded
+        // Ok with a 2M-entry table fabricated from zero bytes.
+        let mut w = crate::json_crdt_patch::util::binary::CrdtWriter::new();
+        w.vu57(2_000_000); // table size n
+        w.vu57(1); // first sid
+        w.vu57(2); // first time
+        let table = w.flush();
+        let mut data = Vec::new();
+        let offset = 0u32.to_be_bytes(); // tree starts immediately (empty)
+        data.extend_from_slice(&offset);
+        data.extend_from_slice(&table);
+        match decode(&data) {
+            Err(DecodeError::EndOfInput) => {}
+            other => panic!("expected EndOfInput, got {other:?}"),
+        }
+    }
 
     #[test]
     fn truncated_vec_count_errors_instead_of_allocating() {

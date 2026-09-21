@@ -567,6 +567,10 @@ fn decode_obj(
 
     let mut node = ObjNode::new(id);
     for _ in 0..length {
+        // AUD-021: each element's key consumes >= 1 view byte
+        if view_r.x >= view_r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let key = read_cbor_str_sidecar(view_r)?;
         let child_id = decode_node(view_r, meta_r, model, cd)?;
         node.keys.insert(key, child_id);
@@ -589,6 +593,10 @@ fn decode_vec(
 
     let mut node = VecNode::new(id);
     for _ in 0..length {
+        // AUD-021: element must consume >= 1 byte
+        if meta_r.x >= meta_r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let peek = meta_r.data[meta_r.x];
         if peek == 0 {
             meta_r.x += 1;
@@ -622,6 +630,10 @@ fn decode_str(
     let mut offset = 0usize;
 
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if meta_r.x >= meta_r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_logical(meta_r, cd)?;
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
@@ -657,6 +669,10 @@ fn decode_bin(
     let mut offset = 0usize;
 
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if meta_r.x >= meta_r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_logical(meta_r, cd)?;
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
@@ -689,6 +705,10 @@ fn decode_arr(
 
     let mut node = ArrNode::new(id);
     for _ in 0..count {
+        // AUD-021: element must consume >= 1 byte
+        if meta_r.x >= meta_r.data.len() {
+            return Err(DecodeError::EndOfInput);
+        }
         let chunk_id = read_ts_logical(meta_r, cd)?;
         let (deleted_flag, span) = meta_r.b1vu56();
         let deleted = deleted_flag != 0;
@@ -697,6 +717,10 @@ fn decode_arr(
         } else {
             let mut ids = Vec::new();
             for _ in 0..span {
+                // AUD-021: each child node consumes >= 1 meta byte
+                if meta_r.x >= meta_r.data.len() {
+                    return Err(DecodeError::EndOfInput);
+                }
                 let child_id = decode_node(view_r, meta_r, model, cd)?;
                 ids.push(child_id);
             }
@@ -732,7 +756,8 @@ fn read_cbor_value_sidecar(r: &mut CrdtReader) -> Result<PackValue, DecodeError>
         }
         4 => {
             let len = read_cbor_arg(r, info)? as usize;
-            let mut items = Vec::with_capacity(len);
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut items = Vec::with_capacity(cap);
             for _ in 0..len {
                 items.push(read_cbor_value_sidecar(r)?);
             }
@@ -740,7 +765,8 @@ fn read_cbor_value_sidecar(r: &mut CrdtReader) -> Result<PackValue, DecodeError>
         }
         5 => {
             let len = read_cbor_arg(r, info)? as usize;
-            let mut map = Vec::with_capacity(len);
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut map = Vec::with_capacity(cap);
             for _ in 0..len {
                 let k = match read_cbor_value_sidecar(r)? {
                     PackValue::Str(s) => s,

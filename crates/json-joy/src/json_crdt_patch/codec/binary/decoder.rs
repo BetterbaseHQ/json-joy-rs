@@ -76,6 +76,13 @@ impl Decoder {
         // Decode operations
         let op_count = r.vu57() as usize;
         for _ in 0..op_count {
+            // AUD-021: every operation consumes at least the opcode
+            // octet; a cursor at/past EOF while operations remain means
+            // the patch is truncated. Without this guard a handful of
+            // bytes can fabricate millions of zero-filled operations.
+            if r.x >= r.data.len() {
+                return Err(DecodeError::UnexpectedEof);
+            }
             self.decode_operation(r, &mut builder, patch_sid)?;
         }
 
@@ -144,8 +151,11 @@ impl Decoder {
             Some(JsonCrdtPatchOpcode::InsObj) => {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
-                let mut tuples = Vec::with_capacity(length);
+                let mut tuples = Vec::new();
                 for _ in 0..length {
+                    if r.x >= r.data.len() {
+                        return Err(DecodeError::UnexpectedEof);
+                    }
                     let key_str = read_cbor_str(r)?;
                     let val_id = self.decode_id(r, patch_sid);
                     tuples.push((key_str, val_id));
@@ -155,8 +165,11 @@ impl Decoder {
             Some(JsonCrdtPatchOpcode::InsVec) => {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
-                let mut tuples = Vec::with_capacity(length);
+                let mut tuples = Vec::new();
                 for _ in 0..length {
+                    if r.x >= r.data.len() {
+                        return Err(DecodeError::UnexpectedEof);
+                    }
                     let idx = r.u8();
                     let val_id = self.decode_id(r, patch_sid);
                     tuples.push((idx, val_id));
@@ -167,6 +180,12 @@ impl Decoder {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
                 let after = self.decode_id(r, patch_sid);
+                // AUD-021: the declared length must fit in the remaining
+                // input (utf8/buf clamp, but the cursor advance on an
+                // oversized length can overflow usize on 32-bit targets).
+                if length > r.data.len().saturating_sub(r.x) {
+                    return Err(DecodeError::UnexpectedEof);
+                }
                 let s = r.utf8(length).to_owned();
                 builder.ins_str(obj, after, s);
             }
@@ -174,6 +193,9 @@ impl Decoder {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
                 let after = self.decode_id(r, patch_sid);
+                if length > r.data.len().saturating_sub(r.x) {
+                    return Err(DecodeError::UnexpectedEof);
+                }
                 let data = r.buf(length).to_vec();
                 builder.ins_bin(obj, after, data);
             }
@@ -181,8 +203,13 @@ impl Decoder {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
                 let after = self.decode_id(r, patch_sid);
-                let mut elems = Vec::with_capacity(length);
+                // Each element is >= 1 byte; grow from real input, never
+                // pre-reserve from the declared count.
+                let mut elems = Vec::new();
                 for _ in 0..length {
+                    if r.x >= r.data.len() {
+                        return Err(DecodeError::UnexpectedEof);
+                    }
                     elems.push(self.decode_id(r, patch_sid));
                 }
                 builder.ins_arr(obj, after, elems);
@@ -196,8 +223,11 @@ impl Decoder {
             Some(JsonCrdtPatchOpcode::Del) => {
                 let length = if inline == 0 { r.vu57() } else { inline } as usize;
                 let obj = self.decode_id(r, patch_sid);
-                let mut what = Vec::with_capacity(length);
+                let mut what = Vec::new();
                 for _ in 0..length {
+                    if r.x >= r.data.len() {
+                        return Err(DecodeError::UnexpectedEof);
+                    }
                     what.push(self.decode_tss(r, patch_sid));
                 }
                 builder.del(obj, what);
@@ -214,6 +244,10 @@ impl Decoder {
 
 /// Read a CBOR value from the reader (minimal subset needed for patch decoding).
 fn read_cbor<'a>(r: &mut CrdtReader<'a>) -> Result<PackValue, DecodeError> {
+    // NOTE: a read at EOF fabricates a zero uint (upstream-permissive
+    // behavior pinned by short_inputs_are_tolerated). Count-driven
+    // consumers guard themselves with per-element input checks so
+    // fabrication stays bounded.
     let b = r.u8();
     let major = b >> 5;
     let info = b & 0x1F;
@@ -241,7 +275,11 @@ fn read_cbor<'a>(r: &mut CrdtReader<'a>) -> Result<PackValue, DecodeError> {
         4 => {
             // Array
             let len = read_cbor_uint(r, info)? as usize;
-            let mut arr = Vec::with_capacity(len);
+            // AUD-021: cap the reservation by remaining input (each
+            // element is >= 1 byte) — a declared count must never
+            // reserve memory unbounded by the actual payload.
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut arr = Vec::with_capacity(cap);
             for _ in 0..len {
                 arr.push(read_cbor(r)?);
             }
@@ -250,7 +288,8 @@ fn read_cbor<'a>(r: &mut CrdtReader<'a>) -> Result<PackValue, DecodeError> {
         5 => {
             // Map
             let len = read_cbor_uint(r, info)? as usize;
-            let mut map = Vec::with_capacity(len);
+            let cap = len.min(r.data.len().saturating_sub(r.x));
+            let mut map = Vec::with_capacity(cap);
             for _ in 0..len {
                 let key = match read_cbor(r)? {
                     PackValue::Str(s) => s,
