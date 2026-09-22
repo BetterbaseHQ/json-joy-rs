@@ -157,6 +157,11 @@ impl CrdtWriter {
             self.inner.x += 7;
         } else {
             // Up to 57 bits (8 bytes)
+            // AUD-018 guard: values above 2^57-1 cannot be represented — the
+            // shift below would silently drop the high bits, corrupting CRDT
+            // identities. Callers must reject (or mask) such values; this
+            // assertion turns silent truncation into a test-build failure.
+            debug_assert!(num >> 57 == 0, "vu57 value exceeds 57 bits: {num}");
             self.inner.ensure_capacity(8);
             let x = self.inner.x;
             self.inner.uint8[x] = 0x80 | (num & 0x7F) as u8;
@@ -234,6 +239,9 @@ impl CrdtWriter {
                 self.inner.x += 7;
             } else {
                 // 56-bit max: 8 bytes
+                // AUD-018 guard: as with vu57, values above the representable
+                // range must not be silently truncated by the shifts below.
+                debug_assert!(num >> 56 == 0, "b1vu56 value exceeds 56 bits: {num}");
                 self.inner.ensure_capacity(8);
                 let x = self.inner.x;
                 self.inner.uint8[x] = first as u8;
